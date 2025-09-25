@@ -1,0 +1,19 @@
+.tools-form {
+    width: 100%;
+    padding-left: 95px;
+    padding-top: 28px;
+    position: relative;
+    overflow: hidden;
+}
+
+.subtitle-container {
+    padding-top: 19px;
+}
+
+.widget-placeholder {
+    width: 100%;
+    padding-top: 31px;
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+}

@@ -1,0 +1,21 @@
+.Login {
+  width: 80%;
+}
+
+.Login .link {
+  cursor: pointer;
+}
+
+
+@media screen and (max-width: 1200px) {
+  /* .Login  {
+    margin-bottom: 200px;
+  } */
+}
+
+@media screen and (max-width: 880px) {
+  .Login  {
+    width: 100%;
+    /* margin-bottom: 160px; */
+  }
+}

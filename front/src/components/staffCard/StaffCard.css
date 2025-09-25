@@ -1,0 +1,160 @@
+/* .card-container {
+  width: 224px;
+  height: 146px;
+  background-color: #F1F4F8;
+  border-radius: 5px;
+}
+
+.titulo-container {
+  width: 150px;
+  margin: auto;
+  padding-top: 16px;
+}
+
+.titulo-container p {
+  font-size: 12px;
+  text-align: center;
+}
+
+.photo-container {
+  padding-top: 22px;
+}
+
+.photo-border {
+  display: block;
+  position: relative;
+  width: 52px;
+  height: 40px;
+  background: #EB5E00;
+  box-sizing: border-box;
+  clip-path: circle(40% at 50% 50%);
+  margin:auto;
+}
+
+.photo {
+  position: absolute;
+  top: 1px; 
+  left: 1px; 
+  width: 50px;
+  clip-path: circle(40% at 50% 50%);
+  
+} */
+
+.nosotros-form {
+  width: 100%;
+  padding-left: 95px;
+  padding-top: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.subtitle-container {
+  padding-top: 19px;
+}
+
+.intro-container {
+  padding-top: 29px;
+  width: 583px;
+}
+
+.intro-container p {
+  font-size: 16px;
+}
+
+.text-placeholder {
+  width: 100%;
+  padding-top: 29px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.text-container {
+  width: 680px;
+  padding-right: 80px;
+}
+
+.text-container p {
+  font-size: 13px;
+  text-align: justify;
+}
+
+.staff-container {
+  padding-top: 57px;
+}
+
+.staff-cards-placeholder {
+  width: 100%;
+  padding-top: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+  gap: 20px;
+  /* Añadí un espacio entre las tarjetas */
+}
+
+.card-container {
+  background-color: #F1F4F8;
+  border-radius: 5px;
+  width: 224px;
+  height: 320px;
+  /* Ajusté la altura para dar más espacio a la imagen */
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+.titulo-container {
+  width: 100%;
+  margin-top: 10px;
+  text-align: center;
+}
+
+.titulo-container p {
+  font-size: 14px;
+  color: #333;
+  font-weight: bold;
+}
+
+.photo-container {
+  width: 120px;
+  /* Aumenté el tamaño de la imagen */
+  height: 120px;
+  /* Aumenté el tamaño de la imagen */
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  margin-bottom: 10px;
+  background-color: #EB5E00;
+  border-radius: 50%;
+  /* Mantiene la forma circular */
+  overflow: hidden;
+  /* Hace que la imagen no se salga del círculo */
+}
+
+.photo {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  /* Ajusta la imagen para que cubra todo el contenedor */
+  border-radius: 50%;
+  /* Mantiene la imagen circular */
+}
+
+@media (max-width: 768px) {
+  .staff-cards-placeholder {
+    justify-content: center;
+  }
+
+  .card-container {
+    width: 150px;
+    height: 350px;
+  }
+
+  .photo-container {
+    width: 90px;
+    height: 90px;
+  }
+}

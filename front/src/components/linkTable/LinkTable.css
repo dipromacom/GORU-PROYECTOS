@@ -1,0 +1,46 @@
+.linkTable {
+  border-spacing: 0;
+  width: 100%;
+  font-size: 13px;
+  border: none;
+}
+
+.linkTable thead > tr{
+  border-bottom: 1pt solid #DEDFE9;
+}
+
+.linkTable th, .linkTable td {
+  margin: 0;
+  padding: 0.5rem;
+  border-spacing: 0;
+  border: none;
+  border-bottom: 1pt solid #DEDFE9;
+  height: 46px;
+}
+
+.linkTable tr:last-child {
+  border: none;
+}
+
+.linkTable .bg-color{
+  background-color: #DEDFE9;
+}
+
+.linkTable .subtitle {
+  font-weight: bold;
+}
+
+.linkTable .align_right {
+  text-align: center;
+}
+
+.linkTable .edit-button > button {
+	background: none;
+	color: inherit;
+	border: none;
+	padding: 0;
+	font: inherit;
+	cursor: pointer;
+	outline: inherit;
+  text-decoration: underline;
+}

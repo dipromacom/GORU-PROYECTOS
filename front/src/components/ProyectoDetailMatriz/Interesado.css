@@ -1,0 +1,13 @@
+.proyectos-form {
+    width: 95%;
+    padding-left: 95px;
+    padding-top: 28px;
+}
+
+.proyectos-form .icons-container {
+    float: right;
+}
+
+.icons-container .icon {
+    padding: 1em;
+}

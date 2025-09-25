@@ -1,0 +1,12 @@
+.todo-list h2{
+    border-bottom: none;
+}
+
+.todo-list .text-center h2 {
+    color: #00000050;
+}
+
+.todo-list .text-center h2 > i {
+    
+    font-size: 3rem;
+}

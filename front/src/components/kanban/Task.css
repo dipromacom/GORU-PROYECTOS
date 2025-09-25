@@ -1,0 +1,14 @@
+.kanban-task {
+    font-size: small
+}
+
+.kanban-task  .float-right{
+    position: absolute !important;
+    right: 16px;
+    top: 16px;
+}
+
+
+.kanban-task .edit, .kanban-task .delete {
+    background-color: white;
+}

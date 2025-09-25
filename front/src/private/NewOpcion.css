@@ -1,0 +1,9 @@
+.new-opcion-form {
+  width: 900px;
+  padding-left: 95px;
+  padding-top: 28px;
+}
+
+.new-opcion-form .button-group button {
+  font-size: 14px !important;
+}

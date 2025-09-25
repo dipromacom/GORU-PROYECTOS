@@ -1,0 +1,80 @@
+.submenu-container {
+  width: 100%;
+  height: 109px;
+  background-color: #F1F4F8;
+  position: relative;
+}
+
+.submenu-container > .title-container {
+  position: absolute;
+  left: 95px;
+  top: 29px;
+}
+
+.submenu-container > .total-container {
+  position: absolute;
+  bottom: 14px;
+  right: 75px;
+}
+
+.total-label {
+  font-size: 13px;
+}
+
+.submenu-container > .options-container {
+  position: absolute;
+  left: 95px;
+  bottom: 14px;
+  width: 80px;
+  height: 35px;
+  border-radius: 17.5px;
+  background-color: rgba(18,37,68,0.15);
+  cursor: pointer;
+}
+
+.option-title-container {
+  padding-top: 5px;
+  padding-left: 16px;
+  height: 100%;
+}
+
+.option-title {
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.arrow-container {
+  height: 100%;
+  padding-top: 4px;
+  padding-left: 8px;
+}
+
+.submenu-container > .widget-container {
+  position: absolute;
+  top: 29px;
+  right: 75px;
+}
+
+.vertical-separator {
+  box-sizing: border-box;
+  height: 29px;
+  width: 1px;
+  border: 1px solid #D1D5DC;
+}
+
+.widget-label {
+  font-size: 14px !important; 
+  font-weight: 600;
+}
+
+.new-container {
+  padding-right: 14px;
+  padding-top: 4px;
+  cursor: pointer;
+}
+
+.dashboard-container{
+  padding-left: 25px;
+  padding-top: 4px;
+  cursor: pointer;
+}

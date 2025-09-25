@@ -1,0 +1,19 @@
+.todo-item .title {
+    font-weight: bold;
+    color: #212529ba;
+}
+
+.todo-item .lighter{
+    color: rgba(62, 72, 81, 0.553);
+}
+
+.todo-item {
+    transform: translateX(0);
+    opacity: 1;
+    transition: all .3s ease-out;
+}
+
+.todo-item.dismissed {
+    transform: translateX(100%);
+    opacity: 0.7;
+}

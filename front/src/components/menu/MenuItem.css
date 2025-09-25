@@ -1,0 +1,39 @@
+.menu-container {
+  width: auto;
+  height: 46px;
+  position: relative;
+}
+
+.menu-item {
+  height: 100%;
+  cursor: pointer;
+}
+
+.menu-tooltip {
+  width: 98px;
+  height: 18px;
+  border-radius: 9px;
+}
+
+.tooltip-text {
+  font-size: 12px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  color: #fff;
+  text-align: center;
+}
+
+.menu-hover-container {
+  position: absolute;
+  top: 0;
+  left: 0;
+  width: 4px;
+  background-color: #52CA11;
+  height: 46px;
+}
+
+.tooltip-container {
+  position: absolute;
+  left: 75px;
+  top: 40%;
+}

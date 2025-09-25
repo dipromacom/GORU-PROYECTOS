@@ -1,0 +1,50 @@
+.nosotros-form {
+  width: 100%;
+  padding-left: 95px;
+  padding-top: 28px;
+  position: relative;
+  overflow: hidden;
+}
+
+.subtitle-container {
+  padding-top: 19px;
+}
+
+.intro-container {
+  padding-top: 29px;
+  width: 583px;
+}
+
+.intro-container p {
+  font-size: 16px;
+}
+
+.text-placeholder {
+  width: 100%;
+  padding-top: 29px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}
+
+.text-container {
+  width: 680px;
+  padding-right: 80px;
+}
+
+.text-container p {
+  font-size: 13px;
+  text-align: justify;
+}
+
+.staff-container {
+  padding-top: 57px;
+}
+
+.staff-cards-placeholder {
+  width: 100%;
+  padding-top: 15px;
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: space-between;
+}

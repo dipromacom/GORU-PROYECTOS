@@ -1,0 +1,17 @@
+.Signup {
+  width: 80%;
+}
+
+
+@media screen and (max-width: 1200px) {
+/*   .Signup  {
+    margin-bottom: 200px;
+  } */
+}
+
+@media screen and (max-width: 880px) {
+  .Signup  {
+    width: 100%;
+    /* margin-bottom: 160px; */
+  }
+}

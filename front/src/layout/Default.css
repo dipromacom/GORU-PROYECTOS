@@ -1,0 +1,159 @@
+/* .img {
+  max-width: 100%;
+} */
+
+.Default .header, .Default .body {
+  float: left;
+  width: 100%;
+}
+
+/* HEADER */
+.logo {
+  cursor: pointer;
+}
+
+.header {
+  margin-top: 40px;
+}
+
+.Default .header .left {
+  float: left;
+  width: 30%;
+}
+
+.Default .header .right {
+  float: right;
+  width: 30%;
+}
+
+.header-text {
+  text-align: right;
+  font-size: 17px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: bold;
+}
+
+.link {
+  cursor: pointer;
+}
+
+/* CONTENT */
+
+.center-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+}
+
+.img-index {
+  max-width: 90%;
+  height: auto;
+}
+
+.body-container-left {
+  width: 60%;
+}
+
+.body-container-right {
+  width: 40%;
+}
+
+.body-text {
+  font-size: 50px;
+  line-height: 50px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: bold;
+}
+
+.footer{
+  position: fixed;
+  bottom: 0;
+  width:100%;
+  background-color: rgba(231,235,243,0.5);
+  height: 150px;
+  margin-top: 30px !important;
+  margin: auto;
+}
+
+.footer-container-left {
+  float: left;
+  width: 75%;
+}
+
+.footer-container-right {
+  float: left;
+  width: 25%;
+}
+
+.footer-text {
+  font-size: 14px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: lighter;
+}
+
+.footer-title {
+  font-size: 17px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+}
+
+.btn-grey {
+  background-color: rgba(231,235,243,0.5);
+  font-size:16px !important;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  height: 48px;
+  width: 182px;
+}
+
+.btn-login {
+  font-size:16px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  width: 140px;
+  height: 48px;
+}
+
+.btn-signup {
+  font-size:16px !important;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  width: 182px;
+  height: 48px;
+}
+
+@media screen and (max-width: 1800px) {
+  .Default .body  {
+    margin-top: 60px;
+  }
+}
+
+@media screen and (max-width: 1050px) {
+  .btn-grey {
+    height: 60px;
+  }
+}
+
+@media screen and (max-width: 880px) {
+  .Default .body .left-content {
+    vertical-align: top;
+  }
+
+  .body-container-left, .body-container-right  {
+    width: 100%;
+  }
+
+  .footer-container-left {
+    display: none;
+  }
+
+  .footer-container-right {
+    width: 100%;
+  }
+
+  .img-index {
+    display: none;
+  }
+}
+
+

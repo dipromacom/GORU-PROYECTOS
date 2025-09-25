@@ -1,0 +1,11 @@
+.input-text-list .SingleDatePickerInput__withBorder {
+    border: none !important;
+}
+
+.input-text-list .DateInput_input {
+    border-radius: .25rem !important;
+    height: 35px !important;
+    border: 1px solid #ced4da !important;
+    font-size: 14px;
+    font-weight: inherit;
+}

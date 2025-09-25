@@ -1,0 +1,15 @@
+api/node_modules
+api/logs
+api/.env.dev
+api/.env.prod
+api/package.json
+api/**.crt
+api/**.pem
+api/**.key
+api/nohup.out
+
+front/node_modules
+front/.env.development
+front/.env.production
+.DS_Store
+.vscode

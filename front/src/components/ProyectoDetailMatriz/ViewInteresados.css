@@ -1,0 +1,135 @@
+.proyectos-form {
+    width: 95%;
+    padding-left: 95px;
+    padding-top: 28px;
+}
+
+.proyectos-form .icons-container {
+    float: right;
+}
+
+.icons-container .icon {
+    padding: 1em;
+}
+
+.checkTable .align-right {
+    text-align: left !important;
+}
+
+.indicator:before {
+    content: "";
+    display: inline-block;
+    width: 10px;
+    height: 10px;
+    background-color: #6c757d !important;
+    /* color del indicador */
+    border-radius: 50%;
+    margin-right: 6px;
+}
+
+.indicator.iniciado:before {
+    background-color: #198754 !important;
+    /* color del indicador cuando está activo */
+}
+
+.indicator.parado:before {
+    background-color: #dc3545 !important;
+    /* color del indicador cuando está activo */
+}
+
+.dropdown-item p {
+    margin-bottom: 0 !important;
+}
+
+
+.DateRangePickerInput__withBorder {
+    border-radius: .25rem !important;
+    height: 35px !important;
+    border: 1px solid #ced4da !important;
+    color: #212529 !important
+}
+
+.CalendarDay__selected,
+.CalendarDay__selected:active,
+.CalendarDay__selected:hover {
+    background: #122544 !important;
+    border: 1px double #122544 !important;
+    color: #fff;
+}
+
+.CalendarDay__selected_span {
+    background: #2e5fad !important;
+    border: 1px double #234a89 !important;
+    color: #fff;
+}
+
+.CalendarDay__selected_span:active,
+.CalendarDay__selected_span:hover {
+    background: #3c7ce3 !important;
+    border: 1px double #234a89 !important;
+    color: #fff;
+}
+
+.CalendarDay__hovered_span:active,
+.CalendarDay__hovered_span:hover {
+    background: #3c7ce3 !important;
+    border: 1px double #234a89 !important;
+    color: #fff !important;
+}
+
+.CalendarDay__hovered_span,
+.CalendarDay__hovered_span {
+    background: #3c7ce39d !important;
+    border: 1px double #2d60b3b8 !important;
+    color: #fff !important;
+}
+
+.DayPickerKeyboardShortcuts_show__bottomRight::before {
+    border-top: 26px solid transparent;
+    border-right: 33px solid #234a89 !important;
+    bottom: 0;
+    right: 0;
+}
+
+.DateInput_input__focused {
+    border-bottom: 2px solid #234a89 !important;
+}
+
+.DateInput {
+    height: 32px !important
+}
+
+.DateInput::placeholder {
+    color: #212529 !important
+}
+
+.DateRangePickerInput_calendarIcon {
+    margin: -7px 1px -3px 10px !important
+}
+
+/* Estilos para la tabla */
+.table-row-spacing tr {
+    margin-bottom: 20px;
+    /* Espaciado entre filas */
+}
+
+.table-cell-spacing td {
+    padding: 15px;
+    /* Espaciado interno de las celdas */
+}
+
+/* Estilos para el contenedor principal */
+.proyectos-form {
+    margin: 20px 0;
+    /* Espaciado alrededor del contenedor */
+}
+
+/* Estilos para el mensaje cuando no hay datos */
+.center {
+    text-align: center;
+}
+
+.pull-down {
+    margin-top: 20px;
+    /* Espaciado superior */
+}

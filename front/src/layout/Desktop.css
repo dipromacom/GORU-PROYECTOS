@@ -1,0 +1,11 @@
+.main-container {
+  width: 96%;
+  margin: 0;
+  height: 100vh;
+}
+
+.left-menu {
+  width: 4%;
+  margin: 0;
+  height: 100vh;
+}

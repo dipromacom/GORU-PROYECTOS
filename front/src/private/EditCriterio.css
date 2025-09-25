@@ -1,0 +1,13 @@
+.edit-criterio-form {
+  width: 900px;
+  padding-left: 95px;
+  padding-top: 28px;
+}
+
+.edit-criterio-form .button-group button:last-child {
+  margin-left: 10px;
+}
+
+.edit-criterio-form .button-group button {
+  font-size: 14px !important;
+}

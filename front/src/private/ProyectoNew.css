@@ -1,0 +1,51 @@
+.tabbed-form {
+    left: 120px;
+    position: absolute;
+    bottom: 0;
+  }
+
+.nav-link {
+    color: #122544
+}
+
+.nav-link.active {
+    border-bottom: 2px solid #122544 !important; /* Change the border color and width */
+    border-top: none !important;
+    border-left: none !important;
+    border-right: none !important;
+    background-color: transparent !important; /* Remove the background color */
+    color: #122544 !important; /* Change the text color */
+}
+
+.container{
+    margin-top: 40px;
+}
+
+.campo-error {
+    border: 2px solid red;
+    background-color: #ffdddd;
+}
+
+.form-check .form-check-input {
+    margin-top: 5px !important;
+}
+
+h2 {
+    border-bottom-color: #122544;
+    border-bottom-style: solid;
+    border-bottom-width: 1.2pt;
+    margin-top: 25px;
+}
+
+span.pull-end{
+    float: right;
+}
+
+.input-group-text {
+    font-size: .89rem;
+}
+
+input[type="number"] {
+    -moz-appearance: textfield;
+}
+  

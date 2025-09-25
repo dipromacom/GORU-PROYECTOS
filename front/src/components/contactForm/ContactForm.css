@@ -1,0 +1,45 @@
+.pop-modal {
+  font-size: 14px;
+}
+.pop-modal > .header {
+  padding-left: 65px;
+}
+.pop-modal > .content {
+  width: 100%;
+  padding-top: 31px;
+  padding-left: 65px;
+  padding-right: 65px;
+}
+.pop-modal > .actions {
+  width: 100%;
+  padding-top: 28px;
+  padding-bottom: 40px;
+  margin: auto;
+  text-align: center;
+}
+.pop-modal > .close {
+  cursor: pointer;
+  position: absolute;
+  display: block;
+  line-height: 15px;
+  right: 15px;
+  top: 15px;
+  font-size: 34px;
+  outline: none;
+}
+
+.btn-send {
+  font-size: 14px !important;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  width: 110px;
+  height: 45px;
+}
+
+.popup-content {
+  width: 580px !important;
+}
+
+.text-multine {
+  font-size: 14px !important;
+}

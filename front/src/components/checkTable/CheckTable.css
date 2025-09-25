@@ -1,0 +1,44 @@
+.checkTable {
+  border-spacing: 0;
+  width: 100%;
+  font-size: 13px;
+  border: none;
+  
+}
+
+.checkTable th, .checkTable td {
+  margin: 0;
+  padding: 0.5rem;
+  border-spacing: 0;
+  border: none;
+  /* border-bottom: 1pt solid #DEDFE9; */
+  height: 46px;
+}
+
+.checkTable tbody tr {
+  cursor: pointer;
+}
+
+.checkTable .table-header {
+  border-bottom: 0.01em solid #DEDFE9 !important;
+}
+
+.checkTable tr:last-child {
+  border: none;
+}
+
+.checkTable .bg-color{
+  background-color: #DEDFE9;
+}
+
+.checkTable .subtitle {
+  font-weight: bold;
+}
+
+.checkTable .align-center {
+  text-align: center;
+}
+
+.checkTable .align-right {
+  text-align: right;
+}

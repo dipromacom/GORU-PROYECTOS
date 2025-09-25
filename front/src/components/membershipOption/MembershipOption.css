@@ -1,0 +1,45 @@
+.btn-membership {
+  border-color: #52CA11 !important;
+  height: 111px;
+  width: 221px;
+  margin: 0px 20px;
+}
+
+.btn-membership:disabled {
+  border-color: #D1D5DC;
+  background-color: rgba(209,213,220,0.1);
+  height: 111px;
+  width: 221px;
+  margin: 0px 20px;
+}
+
+.btn-membership p {
+  font-size: 16px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+}
+
+.btn-membership-icon {
+  height: 65%;
+}
+
+.soon-container {
+  width: 70px;
+  height: 18px;
+  border-radius: 9px;
+  position: absolute;
+  bottom: 100px;
+  left: 160px;
+}
+
+.soon-container p{
+  font-size: 11px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  color: #fff;
+  margin: 0;
+}
+
+.option {
+  position: relative;
+}

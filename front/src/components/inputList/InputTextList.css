@@ -1,0 +1,12 @@
+.list-group-item{
+    margin-bottom: 0px !important;
+}
+
+.list-group-item:hover{
+    background-color: rgba(0, 0, 0, .02);
+}
+
+.btn{
+    padding-top: 4px;
+    padding-bottom: 4px;
+}

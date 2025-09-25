@@ -1,0 +1,12 @@
+.clear > .input-group-text{
+    background-color: #fff;
+    z-index: 1;
+    margin-left: 0px;
+    border-left: 0px;
+    height: calc(100% - .8px);
+}
+
+.clear.disabled > .input-group-text{
+    background-color: #e9ecef !important;
+    height: calc(100% - .5px);
+}

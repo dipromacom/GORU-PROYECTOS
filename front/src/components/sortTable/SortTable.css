@@ -1,0 +1,27 @@
+.sortTable {
+  border-spacing: 0;
+  width: 100%;
+  font-size: 13px;
+  border: none;
+}
+
+.sortTable thead > tr {
+  border-bottom: 0.1em solid #DEDFE9 !important;
+}
+
+.sortTable th, .sortTable td {
+  margin: 0;
+  padding: 0.5rem;
+  border-spacing: 0;
+  border: none;
+  border-bottom: 1pt solid #DEDFE9;
+  height: 46px;
+}
+
+.sortTable tbody > tr:nth-child(even) {
+  background-color: #DEDFE9;
+}
+
+.sortTable tr:last-child {
+  border: none;
+}

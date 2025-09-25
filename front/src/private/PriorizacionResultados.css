@@ -1,0 +1,23 @@
+.priorization-result-form {
+  width: 900px;
+  padding-left: 95px;
+  padding-top: 28px;
+}
+
+.priorization-result-form .btn-save {
+  font-size: 14px !important;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  width: 161px;
+  height: 44px;
+}
+
+.priorization-result-form .button-group button:last-child {
+  margin-left: 10px;
+}
+
+.play{
+  background-image: url('./icons/play.svg') ;
+  background-repeat: no-repeat;
+  background-position: center center;
+}

@@ -1,0 +1,2 @@
+ALTER TABLE evaluaciones_interesados
+DROP CONSTRAINT evaluaciones_interesados_valoracion_check;

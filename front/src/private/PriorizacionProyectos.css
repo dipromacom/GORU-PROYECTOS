@@ -1,0 +1,13 @@
+.priorization-form {
+  width: 900px;
+  padding-left: 95px;
+  padding-top: 28px;
+}
+
+label {
+  font-size: 14px;
+}
+
+input.form-control, select.form-control {
+  font-size: 14px !important;
+}

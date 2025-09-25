@@ -1,0 +1,72 @@
+.Membership .header, .Membership .body {
+  float: left;
+  width: 100%;
+}
+
+.img {
+  max-width: 100%;
+}
+
+.header {
+  margin-top: 40px;
+}
+
+.Membership .footer{
+  width:100%;
+  height: 48px;
+  position: fixed;
+  bottom:0;
+  left:0;
+  background-color: rgba(231,235,243,0.5);
+  margin: auto;
+}
+
+.footer-text {
+  font-size: 14px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  margin: auto;
+}
+
+.footer-text-link {
+  font-size: 14px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  margin: auto;
+  cursor: pointer;
+}
+
+.body-header h1 {
+  font-size: 30px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: bold;
+  text-align: center;
+  line-height: 58px;
+  vertical-align: middle;
+}
+
+.body-header p {
+  font-size: 16px;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  text-align: center;
+  line-height: 19px;
+}
+
+.membership-options {
+  width: 100%;
+  margin-top: 95px;
+}
+
+.continue-container {
+  width: 100%;
+  margin-top: 80px;
+}
+
+.btn-continue {
+  font-size:16px !important;
+  font-family: 'Rubik', sans-serif;
+  font-weight: normal;
+  width: 132px;
+  height: 48px;
+}

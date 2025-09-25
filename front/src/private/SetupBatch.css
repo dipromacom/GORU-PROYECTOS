@@ -1,0 +1,13 @@
+.setup-batch-form {
+  width: 900px;
+  padding-left: 95px;
+  padding-top: 28px;
+}
+
+.setup-batch-form .button-group button:last-child {
+  margin-left: 10px;
+}
+
+.setup-batch-form .button-group button {
+  font-size: 14px !important;
+}

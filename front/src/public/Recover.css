@@ -1,0 +1,17 @@
+.Recover {
+  width: 80%;
+}
+
+
+@media screen and (max-width: 1200px) {
+/*   .Recover  {
+    margin-bottom: 200px;
+  } */
+}
+
+@media screen and (max-width: 880px) {
+  .Recover  {
+    width: 100%;
+    /* margin-bottom: 160px; */
+  }
+}
