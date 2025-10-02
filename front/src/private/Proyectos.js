@@ -112,7 +112,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
       alert("La fecha de cierre no puede ser menor a la fecha de inicio.");
       return;
     }
-    
+
     dispatch(actions.closeProject(selectedProject.id, modo, fechaCierre));
     setShowCerrarModal(false);
   };
@@ -435,7 +435,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
 
       <Modal show={showCerrarModal} onHide={handleCloseCerrarModal}>
         <Modal.Header closeButton>
-          <Modal.Title>Cerrar Proyecto</Modal.Title>
+          <Modal.Title>Cerrar {location.pathname.includes("/activities") ? "Actividad" : "Proyecto"}</Modal.Title>
         </Modal.Header>
         <Modal.Body>
           <Form.Group>

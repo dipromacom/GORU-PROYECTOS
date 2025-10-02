@@ -69,14 +69,16 @@ const getKanban = async ({projectId})=>{
             where:{
                 project_id: projectId
             },
-            attributes:['id', 'title'],
-            order: [['index', 'ASC']],
-            include:{
+            attributes: ['id', 'title'],
+            include: [{
                 as: 'tasks',
                 model: KanbanTask,
-                attributes: ['id', 'content', 'priority', 'interesadoId'],
-                order: [['index', 'ASC']]
-            }
+                attributes: ['id', 'content', 'priority', 'interesadoId']
+            }],
+            order: [
+                ['index', 'ASC'],                   
+                [{ model: KanbanTask, as: 'tasks' }, 'index', 'ASC'] 
+            ]
         })
         return status
     }catch(e){

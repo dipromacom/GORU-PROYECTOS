@@ -27,6 +27,9 @@ import TodoList from "../components/todoList/TodoList";
 import { toast } from "react-toastify";
 import { useLocation } from "react-router-dom";
 
+// nuevos componentes para alcance/hitos/costo/calidad
+import InputAlcanceList from "../components/inputList/InputAlcanceList";
+
 
 
 function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
@@ -302,6 +305,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
             tipoProyecto,
             modo
         };
+        payload = appendActaDeInicio(payload);
         dispatch(actions.createProjectGeneralDataRequest(payload));
     }
 
@@ -540,14 +544,19 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                             <Nav.Item>
                                 <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
                             </Nav.Item>
+                            {!esActividad && (
+                                <Nav.Item>
+                                    <Nav.Link eventKey="alcance">Alcance</Nav.Link>
+                                </Nav.Item>
+                            )}
                             {/* <Nav.Item>
                                 <Nav.Link eventKey="to-do" >To Do</Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
                                 <Nav.Link eventKey="project-management">Kanban</Nav.Link>
                             </Nav.Item> */}
-                            {/* <Nav.Item>
-                                <Nav.Link eventKey="Matriz-interesados" >Matriz de Interesados</Nav.Link>
+                            {/*<Nav.Item>
+                                <Nav.Link eventKey="Matriz-interesados" >Interesados</Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
                                 <Nav.Link eventKey="analisis-Ambiental">Analisis de Impacto Ambiental </Nav.Link>
@@ -1091,13 +1100,35 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                                     type="submit"
                                     className="btn-success btn-save"
                                     disabled={!validateForm()}
-                                    onClick={handleSubmit}
+                                    onClick={handleSubmitGeneralData}
                                 >
                                     Guardar Cambios
                                 </LoaderButton>
 
                             </div>
                         </Tab.Pane>
+
+                        {/* --- Alcance --- */}
+                        <Tab.Pane eventKey="alcance">
+                            <InputAlcanceList
+                                alcanceEntregables={alcanceEntregables}
+                                setAlcanceEntregables={setAlcanceEntregables}
+                                editMode={true}
+                            />
+                            <div className="mt-5 pb-5">
+                                {
+                                        <LoaderButton
+                                            type="submit"
+                                            className="btn-success btn-save"
+                                            disabled={!validateForm()}
+                                        onClick={handleSubmitGeneralData}
+                                        >
+                                            Guardar Cambios
+                                        </LoaderButton>
+                                }
+                            </div>
+                        </Tab.Pane>
+
                         {/* Analisis Ambiental */}
                         <Tab.Pane eventKey="analisis-Ambiental">
                             <Form className="blue">

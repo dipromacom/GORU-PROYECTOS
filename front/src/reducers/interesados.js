@@ -10,6 +10,9 @@ export const types = {
     GET_INTERESTED_DETAIL_REQUEST: "interested/GET_INTERESTED_DETAIL_REQUEST",
     GET_INTERESTED_DETAIL_SUCCESS: "interested/GET_INTERESTED_DETAIL_SUCCESS",
     GET_INTERESTED_DETAIL_ERROR: "interested/GET_INTERESTED_DETAIL_ERROR",
+    UPDATE_INTERESTED_REQUEST: "interested/UPDATE_INTERESTED_REQUEST",
+    UPDATE_INTERESTED_SUCCESS: "interested/UPDATE_INTERESTED_SUCCESS",
+    UPDATE_INTERESTED_ERROR: "interested/UPDATE_INTERESTED_ERROR",
 };
 
 export const actions = {
@@ -24,6 +27,10 @@ export const actions = {
     getInterestedDetail: (interestedId) => ({
         type: types.GET_INTERESTED_DETAIL_REQUEST,
         interestedId,
+    }),
+    updateInterested: (payload) => ({
+        type: types.UPDATE_INTERESTED_REQUEST,
+        payload,
     }),
 };
 
@@ -59,6 +66,26 @@ const interestedReducer = (state = defaultState, action = {}) => {
         case types.CREATE_INTERESTED_ERROR:
             return {
                 ...state,
+                isLoading: false,
+                error,
+            };
+        case types.UPDATE_INTERESTED_REQUEST:
+            return {
+                ...state,
+                isLoading: true,
+            };
+        case types.UPDATE_INTERESTED_SUCCESS:
+            return {
+                ...state,
+                isLoading: false,
+                interestedList: state.interestedList.map((i) =>
+                    i.id_interesado === interestedDetail.id_interesado ? interestedDetail : i
+                ),
+                error: null,
+            };
+        case types.UPDATE_INTERESTED_ERROR:
+            return {
+            ...state,
                 isLoading: false,
                 error,
             };

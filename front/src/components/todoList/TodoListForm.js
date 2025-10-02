@@ -158,7 +158,7 @@ const TodoListForm = ({ setToDos, usuario, labels = [], setLabels = () => { }, a
                                         {label}</Badge>
                                 </div>) :
                                 (<Dropdown as={ButtonGroup} onSelect={value => { setLabel(value); }}>
-                                    <Dropdown.Toggle variant="outline-primary">Etiquetas</Dropdown.Toggle>
+                                    {/*<Dropdown.Toggle variant="outline-primary">Etiquetas</Dropdown.Toggle>*/}
                                     <Dropdown.Menu as={CustomMenu} labels={labels} setLabels={setLabels}>
                                         {
                                             labels.map((item, idx) => (

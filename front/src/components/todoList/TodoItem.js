@@ -52,7 +52,7 @@ const TodoItem = ({
                     <div className='d-inline-flex w-100 align-items-center'>
 
                         {/* Hover solo controla la papelera */}
-                        <div className="m-2"
+                        {/*<div className="m-2"
                             onMouseEnter={() => setHover(true)}
                             onMouseLeave={() => setHover(false)}
                             style={{ cursor: "pointer" }}
@@ -72,7 +72,7 @@ const TodoItem = ({
                                     <i className="bi bi-square text-muted" />
                                 )
                             )}
-                        </div>
+                        </div>*/}
 
                         {/* Info de la tarea */}
                         <div className='flex-fill px-2'>

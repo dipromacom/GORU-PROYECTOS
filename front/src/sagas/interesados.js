@@ -1,5 +1,6 @@
 import { call, put, takeLatest } from "redux-saga/effects";
 import { types, actions } from "./interestedReducer";
+import { types } from "../reducers/interesados";
 import * as Api from "../api";
 
 // Saga para crear un interesado
@@ -50,9 +51,27 @@ function* getInterestedListSaga(action) {
 //     }
 // }
 
+// Saga para actualizar un interesado
+function* updateInterestedSaga(action) {
+    console.log("entra xd");
+    try {
+        const response = yield call(Api.updateInteresado, action.payload);
+        yield put({
+            type: types.UPDATE_INTERESTED_SUCCESS,
+            interestedDetail: response.data,
+        });
+    } catch (error) {
+        yield put({
+            type: types.UPDATE_INTERESTED_ERROR,
+            error: error.message || "Error al actualizar interesado",
+        });
+    }
+}
+
 // Observadores de las acciones para las sagas
 export default function* interestedSagas() {
     yield takeLatest(types.CREATE_INTERESTED_REQUEST, createInterestedSaga);
     yield takeLatest(types.GET_INTERESTED_LIST_REQUEST, getInterestedListSaga);
     // yield takeLatest(types.GET_INTERESTED_DETAIL_REQUEST, getInterestedDetailSaga);
+    yield takeLatest(types.UPDATE_INTERESTED_REQUEST, updateInterestedSaga);
 }

@@ -5,7 +5,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 import { useParams } from 'react-router-dom';
 import TodoItem from '../todoList/TodoItem'
-import { actions } from "../../reducers/project";
+import { actions, selectors } from "../../reducers/project";
 import './Interesado.css';
 
 export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enableCheck = true, markAsDoneCallback }) => {
@@ -32,6 +32,7 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
     const [expectativasProyecto, setExpectativasProyecto] = useState('');
     const [fechasNoDisponibilidad, setFechasNoDisponibilidad] = useState([]);
 
+    const [idEvaluacion, setIdEvaluacion] = useState('');
     const [compromiso, setCompromiso] = useState('');
     const [poder, setPoder] = useState('');
     const [influencia, setInfluencia] = useState('');
@@ -72,6 +73,7 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
         setExpectativasProyecto(interesados.expectativas || '');
         setFechasNoDisponibilidad(interesados.NoDisponibilidad || []);
         setCompromiso(interesados?.EvaluacionInteresado?.[0]?.compromiso || '');
+        setIdEvaluacion(interesados?.EvaluacionInteresado?.[0]?.id || '');
         setPoder(interesados?.EvaluacionInteresado?.[0]?.poder || '');
         setInfluencia(interesados?.EvaluacionInteresado?.[0]?.influencia || '');
         setConocimiento(interesados?.EvaluacionInteresado?.[0]?.conocimiento || '');
@@ -166,22 +168,40 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
 
     const handleSave = () => {
         if (!hasChanges()) {
-            alert("No hay cambios para guardar.");
+             alert("No hay cambios para guardar.");
             return;
         }
-
-        // Aquí enviarías la actualización a la API
+        console.log(props);
         const updatedData = {
-            interesado,
-            rol,
-            cargo,
-            companiaClasificacion,
+            id_interesado: Number(idInteresado),
+            proyecto_id: interesados.proyecto_id, // 🔹 asegúrate que lo recibes del padre
+            nombre_interesado: interesado,
             telefono,
             email,
-            fechasNoDisponibilidad
+            otrosDatos: otrosDatosContacto,
+            codigo: idInteresado,
+            rol,
+            id_interesados: Interesadoid,
+            cargo,
+            companiaClasificacion,
+            expectativasProyecto,
+            fechasNoDisponibilidad,
+            evaluacion: {
+                id: idEvaluacion,
+                compromiso,
+                poder,
+                influencia,
+                conocimiento,
+                interesActitud,
+                valoracion
+            },
+            accionEstrategica: "",
+            responsableEstrategia: ""
         };
-
-        console.log("Datos guardados:", updatedData);
+        dispatch(actions.updateInterested(updatedData));
+        setTimeout(() => {
+            window.location.reload(); // Recarga la página después de 1 segundo
+        }, 300);
         toggleEditMode();
     };
 
@@ -210,6 +230,21 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
 
     return (
         <Form className="blue">
+
+            <div className="d-flex justify-content-between align-items-center mb-3">
+                <h4>Detalle del Interesado</h4>
+                {!isEditable ? (
+                    <Button variant="warning" onClick={toggleEditMode}>
+                        Editar
+                    </Button>
+                ) : (
+                    <div>
+                        <Button variant="secondary" onClick={toggleEditMode} className="mr-2">Cancelar</Button>
+                        <Button variant="success" onClick={handleSave}>Guardar</Button>
+                    </div>
+                )}
+            </div>
+
             <div className="row">
                 
                 <div className="col-md-2">
@@ -394,7 +429,7 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                                 <th>Descripción</th>
                                 <th>Fecha de Inicio</th>
                                 <th>Fecha de Fin</th>
-                                <th>Total Días</th>
+                                {/*<th>Total Días</th>*/}
                             </tr>
                         </thead>
                         <tbody>
@@ -403,7 +438,7 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                                     <td>{fecha.motivo}</td>
                                     <td>{new Date(fecha.fechaInicio).toLocaleDateString()}</td>
                                     <td>{new Date(fecha.fechaFin).toLocaleDateString()}</td>
-                                    <td>{fecha.diasTotales}</td>
+                                    {/*<td>{fecha.diasTotales}</td>*/}
                                 </tr>
                             ))}
                         </tbody>
@@ -432,9 +467,7 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                 {/* Evaluación */}
             <h5>Evaluación</h5>
 
-            {!compromiso || !poder || !influencia || !conocimiento || !valoracion ? (
-                <p>El interesado no contiene datos en la evaluación</p>
-            ) : (
+            {isEditable || compromiso || poder || influencia || conocimiento || valoracion ? (
                 <div className="row">
                     <div className="col-md-4">
                         <Form.Group controlId="compromiso">
@@ -442,12 +475,17 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                             <Form.Control
                                 type="number"
                                 placeholder="Compromiso"
-                                value={isEditable ? '' : compromiso} // Vacío si editable
-                                onChange={e => setCompromiso(e.target.value)}
+                                value={compromiso ?? ''} // Vacío si editable
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    if (value === '' || (parseInt(value, 10) >= 1 && parseInt(value, 10) <= 5)) {
+                                        setCompromiso(value);
+                                    }
+                                }}
                                 readOnly={!isEditable}
                                 required
-                                min={1}
-                                max={5}
+                                min="1"
+                                max="5"
                             />
                         </Form.Group>
                     </div>
@@ -458,8 +496,13 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                             <Form.Control
                                 type="number"
                                 placeholder="Poder"
-                                value={isEditable ? '' : poder} // Vacío si editable
-                                onChange={e => setPoder(e.target.value)}
+                                    value={poder ?? ''} // Vacío si editable
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    if (value === '' || (parseInt(value, 10) >= 1 && parseInt(value, 10) <= 5)) {
+                                        setPoder(value);
+                                    }
+                                }}
                                 readOnly={!isEditable}
                                 required
                                 min={1}
@@ -474,8 +517,13 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                             <Form.Control
                                 type="number"
                                 placeholder="Influencia"
-                                value={isEditable ? '' : influencia} // Vacío si editable
-                                onChange={e => setInfluencia(e.target.value)}
+                                value={influencia ?? ''} // Vacío si editable
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    if (value === '' || (parseInt(value, 10) >= 1 && parseInt(value, 10) <= 5)) {
+                                        setInfluencia(value);
+                                    }
+                                }}
                                 readOnly={!isEditable}
                                 required
                                 min={1}
@@ -490,8 +538,13 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                             <Form.Control
                                 type="number"
                                 placeholder="Conocimiento"
-                                value={isEditable ? '' : conocimiento} // Vacío si editable
-                                onChange={e => setConocimiento(e.target.value)}
+                                value={conocimiento ?? ''} // Vacío si editable
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    if (value === '' || (parseInt(value, 10) >= 1 && parseInt(value, 10) <= 5)) {
+                                        setConocimiento(value);
+                                    }
+                                }}
                                 readOnly={!isEditable}
                                 required
                                 min={1}
@@ -506,8 +559,13 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                             <Form.Control
                                 type="number"
                                 placeholder="Interés - Actitud"
-                                value={isEditable ? '' : interesActitud} // Vacío si editable
-                                onChange={e => setInteresActitud(e.target.value)}
+                                value={interesActitud ?? ''} // Vacío si editable
+                                onChange={e => {
+                                    const value = e.target.value;
+                                    if (value === '' || (parseInt(value, 10) >= -1 && parseInt(value, 10) <= 1)) {
+                                        setInteresActitud(value);
+                                    }
+                                }}
                                 readOnly={!isEditable}
                                 required
                                 min={-1}
@@ -528,6 +586,9 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                         </Form.Group>
                     </div>
                 </div>
+                
+            ) : (
+                <p>El interesado no contiene datos en la evaluación</p>
             )}
 
 

@@ -100,18 +100,18 @@ const createInteresados = async (data) => {
             }
 
 
-            if (Object.keys(evaluacion).length > 0) {
+            if (evaluacion && Object.keys(evaluacion).length > 0) {
                 try {
                     await EvaluacionInteresado.create({
                         interesadoId: interesado.id,
-                        compromiso: limpiarValor(evaluacion.compromiso),
-                        poder: limpiarValor(evaluacion.poder),
-                        influencia: limpiarValor(evaluacion.influencia),
-                        conocimiento: limpiarValor(evaluacion.conocimiento),
-                        interesActitud: limpiarValor(evaluacion.interesActitud),
-                        valoracion: evaluacion.valoracion !== "" ? evaluacion.valoracion : null,
-                        accionEstrategica: limpiarValor(accionEstrategica),
-                        responsableEstrategia: limpiarValor(responsableEstrategia),
+                        compromiso: evaluacion.compromiso !== "" ? Number(evaluacion.compromiso) : null,
+                        poder: evaluacion.poder !== "" ? Number(evaluacion.poder) : null,
+                        influencia: evaluacion.influencia !== "" ? Number(evaluacion.influencia) : null,
+                        conocimiento: evaluacion.conocimiento !== "" ? Number(evaluacion.conocimiento) : null,
+                        interesActitud: evaluacion.interesActitud !== "" ? Number(evaluacion.interesActitud) : null,
+                        valoracion: evaluacion.valoracion !== "" ? Number(evaluacion.valoracion) : null,
+                        accionEstrategica: accionEstrategica || null,
+                        responsableEstrategia: responsableEstrategia || null,
                         fecha_evaluacion: new Date(),
                     }, { transaction });
                 } catch (error) {
@@ -153,43 +153,48 @@ const getAllInteresados = async () => {
 const updateInteresado = async (id, data) => {
     const transaction = await db.transaction();
 
-    const {
-        proyecto_id,
-        nombre_interesado,
-        telefono,
-        email,
-        otros_datos_contacto,
-        codigo,
-        rol,
-        cargo,
-        compania_clasificacion,
-        expectativas,
-        fechasNoDisponibilidad, // Array de objetos { id, fechaInicio, fechaFin, motivo }
-        evaluaciones, // Array de objetos { id, compromiso, poder, etc. }
-    } = data;
-
     try {
+        const {
+            proyecto_id,
+            id_interesado,
+            nombre_interesado,
+            telefono,
+            email,
+            otrosDatos,
+            codigo,
+            rol,
+            cargo,
+            companiaClasificacion,
+            expectativasProyecto,
+            fechasNoDisponibilidad,
+            evaluacion,    // singular
+            evaluaciones,  // plural
+            accionEstrategica,
+            responsableEstrategia,
+            id_interesados
+        } = data;
+
         // Buscar interesado por ID y proyecto
         const interesado = await Interesado.findOne({
-            where: { id, proyecto_id },
+            where: { id_interesado, proyecto_id },
         });
 
         if (!interesado) {
-            throw new Error(`Interesado con id ${id} y proyecto_id ${proyecto_id} no encontrado`);
+            throw new Error(`Interesado con id ${id_interesado} y proyecto_id ${proyecto_id} no encontrado`);
         }
 
-        // Actualizar datos del interesado
+        // Actualizar datos principales
         await interesado.update(
             {
                 nombre_interesado,
                 telefono,
                 email,
-                otros_datos_contacto,
+                otros_datos_contacto: otrosDatos,
                 codigo,
                 rol,
                 cargo,
-                compania_clasificacion,
-                expectativas,
+                compania_clasificacion: companiaClasificacion,
+                expectativas: expectativasProyecto,
             },
             { transaction }
         );
@@ -198,7 +203,6 @@ const updateInteresado = async (id, data) => {
         if (fechasNoDisponibilidad && fechasNoDisponibilidad.length > 0) {
             for (const noDisp of fechasNoDisponibilidad) {
                 if (noDisp.id) {
-                    // Actualizar si existe
                     await NoDisponibilidad.update(
                         {
                             fechaInicio: noDisp.fechaInicio,
@@ -206,15 +210,14 @@ const updateInteresado = async (id, data) => {
                             motivo: noDisp.motivo,
                         },
                         {
-                            where: { id: noDisp.id, interesadoId: id },
+                            where: { id: noDisp.id, interesadoId: id_interesados }, // usamos id del interesado real
                             transaction,
                         }
                     );
                 } else {
-                    // Crear nuevo registro
                     await NoDisponibilidad.create(
                         {
-                            interesadoId: id,
+                            interesadoId: id_interesados,
                             fechaInicio: noDisp.fechaInicio,
                             fechaFin: noDisp.fechaFin,
                             motivo: noDisp.motivo,
@@ -225,59 +228,61 @@ const updateInteresado = async (id, data) => {
             }
         }
 
+        // Normalizar evaluaciones
+        let evaluacionesToProcess = [];
+        if (Array.isArray(evaluaciones)) {
+            evaluacionesToProcess = evaluaciones;
+        } else if (evaluacion) {
+            evaluacionesToProcess = [evaluacion];
+        }
+
         // Manejo de evaluaciones del interesado
-        if (evaluaciones && evaluaciones.length > 0) {
-            for (const eval of evaluaciones) {
-                if (eval.id) {
-                    // Actualizar si existe
-                    await EvaluacionInteresado.update(
-                        {
-                            compromiso: eval.compromiso,
-                            poder: eval.poder,
-                            influencia: eval.influencia,
-                            conocimiento: eval.conocimiento,
-                            interesActitud: eval.interesActitud,
-                            valoracion: eval.valoracion,
-                            accionEstrategica: eval.accionEstrategica,
-                            responsableEstrategia: eval.responsableEstrategia,
-                            fechaEvaluacion: eval.fechaEvaluacion,
-                        },
-                        {
-                            where: { id: eval.id, interesadoId: id },
-                            transaction,
-                        }
-                    );
-                } else {
-                    // Crear nuevo registro
-                    await EvaluacionInteresado.create(
-                        {
-                            interesadoId: id,
-                            compromiso: eval.compromiso,
-                            poder: eval.poder,
-                            influencia: eval.influencia,
-                            conocimiento: eval.conocimiento,
-                            interesActitud: eval.interesActitud,
-                            valoracion: eval.valoracion,
-                            accionEstrategica: eval.accionEstrategica,
-                            responsableEstrategia: eval.responsableEstrategia,
-                            fechaEvaluacion: eval.fechaEvaluacion || new Date(),
-                        },
-                        { transaction }
-                    );
-                }
+        for (const eval of evaluacionesToProcess) {
+            if (eval.id) {
+                await EvaluacionInteresado.update(
+                    {
+                        compromiso: eval.compromiso,
+                        poder: eval.poder,
+                        influencia: eval.influencia,
+                        conocimiento: eval.conocimiento,
+                        interesActitud: eval.interesActitud,
+                        valoracion: eval.valoracion,
+                        accionEstrategica: eval.accionEstrategica || accionEstrategica,
+                        responsableEstrategia: eval.responsableEstrategia || responsableEstrategia,
+                        fechaEvaluacion: eval.fechaEvaluacion || new Date(),
+                    },
+                    {
+                        where: { id: eval.id, interesadoId: id_interesados },
+                        transaction,
+                    }
+                );
+            } else {
+                await EvaluacionInteresado.create(
+                    {
+                        interesadoId: id_interesados,
+                        compromiso: eval.compromiso,
+                        poder: eval.poder,
+                        influencia: eval.influencia,
+                        conocimiento: eval.conocimiento,
+                        interesActitud: eval.interesActitud,
+                        valoracion: eval.valoracion,
+                        accionEstrategica: eval.accionEstrategica || accionEstrategica,
+                        responsableEstrategia: eval.responsableEstrategia || responsableEstrategia,
+                        fechaEvaluacion: eval.fechaEvaluacion || new Date(),
+                    },
+                    { transaction }
+                );
             }
         }
 
-        // Confirmar transacción
         await transaction.commit();
-
         return { message: "Interesado actualizado exitosamente", interesado };
     } catch (error) {
-        // Revertir transacción en caso de error
         await transaction.rollback();
         throw error;
     }
 };
+
 
     // const getInteresadoListById = async (id) => {
     //     try {

@@ -19,6 +19,7 @@ const sagas = [
     takeLatest(types.DONE_TASK_REQUEST, handleDoneTask),
     takeLatest(types.GET_PROJECT_INTERESADOS_REQUEST, handleGetProjectInteresados),
     takeLatest(types.CREATE_INTERESADO_REQUEST, handleInsertInteresado), // Nueva saga para crear interesado
+    takeLatest(types.UPDATE_INTERESADO_REQUEST, handleUpdateInteresado),
     takeLatest(types.GET_LIST_INTERESADOS_REQUEST, handleGetListInteresados), 
     takeLatest(types.GET_ANALISIS_AMBIENTAL_REQUEST, handleGetAnalisisAmbiental),
     takeLatest(types.GET_CRITERIOS_ANALISIS_AMBIENTAL_REQUEST, handleGetCriteriosAnalisisAmbiental),
@@ -213,6 +214,33 @@ function* handleInsertInteresado({ payload }) {
         }
     } catch (e) {
         yield put({ type: types.CREATE_INTERESADO_ERROR });
+        onError(e);
+    }
+}
+
+function* handleUpdateInteresado({ payload }) {
+    try {
+        // 🔹 Llamada al API para actualizar
+        const response = yield call(Api.updateInteresado, payload);
+        const { success, data } = response.data;
+
+        if (success) {
+            // 🔹 Obtener la lista actual desde el store
+            const currentInteresados = yield select(state => state.interesados);
+
+            // 🔹 Reemplazar el interesado actualizado dentro de la lista
+            const updatedInteresados = (currentInteresados || []).map(item =>
+                item.id === data.id ? data : item
+            );
+
+            // 🔹 Actualizar en el store
+            yield put({ type: types.UPDATE_INTERESADO_SUCCESS, interesados: updatedInteresados });
+            yield put({ type: types.GET_LIST_INTERESADOS_SUCCESS, interesados: updatedInteresados });
+        } else {
+            yield put({ type: types.UPDATE_INTERESADO_ERROR });
+        }
+    } catch (e) {
+        yield put({ type: types.UPDATE_INTERESADO_ERROR });
         onError(e);
     }
 }

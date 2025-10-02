@@ -94,6 +94,8 @@ export const createInteresadosBatch = (payload) => apiWithToken.post('/interesad
 export const getInteresadosByProjectId = (proyectoId) => apiWithToken.get(`/interesados/${proyectoId}`)
 export const getInteresadoByProjectId = (proyectoId) => apiWithToken.get(`/interesado/${proyectoId}`)
 
+// actualizar interesado
+export const updateInteresado = (payload) => apiWithToken.put(`/interesados/${payload.id_interesado}`, payload);
 
 // datos generales del proyecto
 export const createDatosGeneralesProyecto = (payload) => apiWithToken.post("/proyecto/generalData",payload)

@@ -211,6 +211,19 @@ const createProyecto = async (data) => {
   return proyecto;
 };
 
+function toSnakeCase(obj) {
+  if (Array.isArray(obj)) {
+    return obj.map((item) => toSnakeCase(item));
+  } else if (obj !== null && typeof obj === "object") {
+    return Object.keys(obj).reduce((acc, key) => {
+      const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
+      acc[snakeKey] = toSnakeCase(obj[key]);
+      return acc;
+    }, {});
+  }
+  return obj;
+}
+
 const createProyectoGeneralData = async (data, usuarioId) => {
   const {
     nombreProyecto,
@@ -219,7 +232,8 @@ const createProyectoGeneralData = async (data, usuarioId) => {
     departamento: departamentoNombre,
     informacionBreve,
     tipoProyecto,
-    modo
+    modo,
+    ...rest
   } = data;
 
   let directorProyecto;
@@ -244,7 +258,10 @@ const createProyectoGeneralData = async (data, usuarioId) => {
   }
 
   if (patrocinadorProyectoDetails) {
-    if (patrocinadorProyectoDetails.toLowerCase() !== directorProyectoDetails.toLowerCase()) {
+    if (
+      !directorProyectoDetails ||
+      patrocinadorProyectoDetails.toLowerCase() !== directorProyectoDetails.toLowerCase()
+    ) {
       const { nombre, apellido } = getNombreApellidoFromStr(patrocinadorProyectoDetails);
 
       persona = await Persona.create({
@@ -269,22 +286,28 @@ const createProyectoGeneralData = async (data, usuarioId) => {
     });
   }
 
-  const proyecto = await Proyecto.create({
+  const restSnake = toSnakeCase(rest);
+
+  const proyectoPayload = {
     nombre: nombreProyecto,
-    director: directorProyecto.id,
-    patrocinador: patrocinador.id,
-    departamento: departamento.id,
     informacion: informacionBreve,
     tipo_proyecto: tipoProyecto,
-    estado: 'C',
+    estado: "C",
     activo: true,
     fecha_creacion: DateUtils.getLocalDate(),
     usuario_creador: usuarioId,
-    modo
-  })
+    modo,
+    director: directorProyecto?.id || null,
+    patrocinador: patrocinador?.id || null,
+    departamento: departamento?.id || null,
+    ...restSnake,
+  };
+
+  const proyecto = await Proyecto.create(proyectoPayload);
 
   return proyecto;
 };
+
 
 const updateProyecto = async (data, id) => {
   const proyecto = await Proyecto.findOne({

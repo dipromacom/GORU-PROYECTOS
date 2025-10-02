@@ -30,6 +30,10 @@ export const types = {
     CREATE_INTERESADO_REQUEST: "project/CREATE_INTERESADO_REQUEST",
     CREATE_INTERESADO_SUCCESS: "project/CREATE_INTERESADO_SUCCESS",
     CREATE_INTERESADO_ERROR: "project/CREATE_INTERESADO_ERROR",
+    UPDATE_INTERESADO_REQUEST: "project/UPDATE_INTERESADO_REQUEST",
+    UPDATE_INTERESADO_SUCCESS: "project/UPDATE_INTERESADO_SUCCESS",
+    UPDATE_INTERESADO_ERROR: "project/UPDATE_INTERESADO_ERROR",
+
     GET_PROJECT_INTERESADOS_REQUEST: "project/GET_INTERESADOS_REQUEST",
     GET_PROJECT_INTERESADOS_SUCCESS: "project/GET_INTERESADOS_SUCCESS",
     GET_PROJECT_INTERESADOS_ERROR: "project/GET_INTERESADOS_ERROR",
@@ -152,6 +156,10 @@ export const actions = {
     createInteresadoRequest: (payload) => ({
         type: types.CREATE_INTERESADO_REQUEST,
         payload
+    }),
+    updateInterested: (payload) => ({
+        type: types.UPDATE_INTERESADO_REQUEST,
+        payload,
     }),
     getInteresadosRequest: (projectId) => ({
         type: types.GET_PROJECT_INTERESADOS_REQUEST,
@@ -449,6 +457,22 @@ const projectReducer = (state = defaultState, action = {}) => {
                 ...state,
                 isLoading: false
             }
+        case types.UPDATE_INTERESADO_REQUEST:
+            return {
+                ...state,
+                isLoading: true,
+            };
+        case types.UPDATE_INTERESADO_SUCCESS:
+            return {
+                ...state,
+                interesados: interesados,
+                isLoading: false
+            };
+        case types.UPDATE_INTERESADO_ERROR:
+            return {
+            ...state,
+                isLoading: false,
+            };
         case types.GET_PROJECT_INTERESADOS_REQUEST:
             return {
                 ...state,
