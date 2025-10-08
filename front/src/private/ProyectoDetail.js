@@ -45,6 +45,9 @@ import InputHitosList from "../components/inputList/InputHitosList";
 import InputCostosList from "../components/inputList/InputCostosList";
 import InputCalidadList from "../components/inputList/InputCalidadList";
 
+//gantt
+import GanttChart from "../components/GanttChart/GanttChart";
+
 
 function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado }) {
     const routeParams = useParams();
@@ -53,6 +56,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [taskFilter, setTaskFilter] = useState("");
     const esActividad = projectDetail?.modo === "A";
     const disableEdit = projectDetail?.estado === "E";
+    const [projectId, setProjectId] = useState(null) 
 
 
     const [editMode, setEditMode] = useState(false)
@@ -90,6 +94,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const TIPO_PROYECTO_AGIL = "1"
 
     const loadFromDetail = () => {
+        setProjectId(projectDetail?.id)
         setNumeroProyecto(projectDetail?.numero ?? "")
         setNombreProyecto(projectDetail?.nombre ?? "")
 
@@ -560,6 +565,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             </Nav.Item>
                             <Nav.Item>
                                 <Nav.Link eventKey="project-management">Kanban</Nav.Link>
+                            </Nav.Item>
+                            <Nav.Item>
+                                <Nav.Link eventKey="gantt">Gantt</Nav.Link>
                             </Nav.Item>
                             
                             
@@ -1223,7 +1231,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             </div>
 
                         </Tab.Pane>
-                    </Tab.Content>  
+                    </Tab.Content>
+                    <Tab.Pane eventKey="gantt">
+                        <GanttChart 
+                            projectId={projectId}
+                            interesados={interesado}
+                        />
+                    </Tab.Pane>  
                 </div>
             </Tab.Container>
         </div>

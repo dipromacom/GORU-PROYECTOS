@@ -11,6 +11,7 @@ import contacto from "./contacto";
 import criterioCustom from "./criterioCustom";
 import opcionCustom from "./opcionCustom";
 import kanban from "./kanban"
+import gantt from "./gantt"
 import tipoProyecto from "./tipoProyecto"
 import { all, spawn, call } from "redux-saga/effects";
 
@@ -31,6 +32,7 @@ const sagas = [
   ...opcionCustom,
   ...project,
   ...kanban,
+  ...gantt,
   ...tipoProyecto
 ];
 

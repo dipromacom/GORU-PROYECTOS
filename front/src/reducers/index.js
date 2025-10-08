@@ -14,6 +14,7 @@ import criterioCustom from "./criterioCustom";
 import opcionCustom from "./opcionCustom";
 import project from "./project"
 import kanban from "./kanban"
+import gantt from "./gantt"
 import tipoProyecto from "./tipoProyecto"
 
 const createRootReducer = (history) => combineReducers({
@@ -31,6 +32,7 @@ const createRootReducer = (history) => combineReducers({
   opcionCustom,
   project,
   kanban,
+  gantt,
   tipoProyecto
 });
 

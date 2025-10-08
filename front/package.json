@@ -15,6 +15,7 @@
     "connected-react-router": "^6.9.1",
     "draft-js": "^0.11.7",
     "fontkit": "1.8.0",
+    "gantt-task-react": "^0.3.9",
     "history": "^4.10.1",
     "moment": "^2.30.1",
     "react": "^17.0.2",
@@ -73,6 +74,6 @@
   },
   "resolutions": {
     "@react-pdf/font": "2.2.0",
-     "@babel/core": "7.12.3"
+    "@babel/core": "7.12.3"
   }
 }

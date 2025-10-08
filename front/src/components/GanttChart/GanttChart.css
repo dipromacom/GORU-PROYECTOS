@@ -1,0 +1,151 @@
+/* Contenedor principal del Gantt + lista */
+.gantt-container {
+    padding: 12px;
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+
+/* LEFT: Lista de actividades */
+.gantt-left {
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    background: #fff;
+    height: 78vh;
+    min-width: 280px;
+    max-width: 30%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.gantt-left-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px;
+    border-bottom: 1px solid #eee;
+}
+
+.gantt-left-list {
+    max-height: 60vh;
+    overflow-y: auto;
+    padding: 0;
+}
+
+.gantt-empty {
+    padding: 8px;
+    color: #666;
+    font-style: italic;
+    text-align: center;
+}
+
+.gantt-list-item {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: 8px 6px;
+}
+
+.gantt-item-info {
+    flex: 1;
+}
+
+.gantt-item-title {
+    font-weight: 600;
+}
+
+.gantt-item-dates {
+    font-size: 12px;
+    color: #666;
+}
+
+.gantt-item-badges {
+    margin-top: 6px;
+}
+
+.gantt-mini-badge {
+    margin-right: 6px;
+    font-size: 11px;
+}
+
+/* Botones acción dentro de lista */
+.gantt-item-actions {
+    display: flex;
+    gap: 6px;
+    margin-left: 8px;
+}
+
+/* RIGHT: Gantt chart */
+.gantt-chart-wrapper {
+    border: 1px solid #e8e8e8;
+    border-radius: 8px;
+    background: #fff;
+    padding: 8px;
+    min-height: 78vh;
+    max-width: 70%;
+    flex: 1;
+    overflow: auto;
+}
+
+/* Custom tasks */
+.gantt-task-custom {
+    display: flex;
+    flex-direction: column;
+    padding: 2px 6px;
+    width: 100%;
+    height: 100%;
+    box-sizing: border-box;
+    font-size: 12px;
+    color: #ffffff;
+}
+
+.gantt-task-name {
+    font-weight: 600;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.gantt-task-interesados {
+    font-size: 11px;
+    opacity: 0.6;
+    margin-top: 4px;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 4px;
+    transition: opacity 150ms;
+}
+
+.gantt-task-custom:hover .gantt-task-interesados {
+    opacity: 1;
+}
+
+.gantt-task-badge {
+    font-size: 10px;
+    display: inline-block;
+}
+
+/* Texto para cuando no hay interesados */
+.gantt-task-none {
+    opacity: 0.6;
+    font-size: 11px;
+}
+
+/* Responsive para móviles: lista arriba, gantt abajo */
+@media (max-width: 768px) {
+    .gantt-container {
+        flex-direction: column;
+    }
+
+    .gantt-left {
+        max-width: 100%;
+        min-width: unset;
+        height: auto;
+    }
+
+    .gantt-chart-wrapper {
+        max-width: 100%;
+        min-height: 300px;
+    }
+}

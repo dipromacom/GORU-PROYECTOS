@@ -1,3 +1,4 @@
+import { v4 as uuidv4 } from "uuid";
 import axios from "axios";
 require("dotenv").config({ path: `.env.${process.env.NODE_ENV}` });
 
@@ -116,5 +117,105 @@ export const getTasks = (idProject, page = 1, limit = 10, done) => {
 }
 export const syncKanban = ({status, tasks, projectId}) => apiWithToken.post(`/proyecto/${projectId}/kanban`,{status, tasks})
 export const fetchKanban = ({projectId}) => apiWithToken.get(`/proyecto/${projectId}/kanban`)
+
+//gantt
+// 🟢 Obtener tareas del proyecto
+export const fetchGantt = ({ projectId }) =>
+  apiWithToken.get(`/proyecto/${projectId}/gantt`);
+
+// 🟢 Sincronizar tareas con backend
+export const syncGantt = ({ tasks, projectId }) => {
+  if (!projectId) throw new Error("projectId is required for syncGantt");
+
+  // Compatibilidad: convierte start → start_date y end → end_date si existen
+  const formattedTasks = Array.isArray(tasks)
+    ? tasks.map(t => ({
+      ...t,
+      start_date: t.start_date || t.start,
+      end_date: t.end_date || t.end,
+    }))
+    : {
+      ...tasks,
+      start_date: tasks.start_date || tasks.start,
+      end_date: tasks.end_date || tasks.end,
+    };
+
+  return apiWithToken.post(`/proyecto/${projectId}/gantt`, {
+    tasks: formattedTasks,
+  });
+};
+
+export const createTask = ({
+  id,
+  name,
+  start_date,
+  end_date,
+  progress = 0,
+  projectId,
+  description = "",
+  interesados_id = [],
+  dependencies = []
+}) => {
+  if (!projectId) return Promise.reject("Missing projectId");
+  return apiWithToken.post(`/proyecto/${projectId}/gantt`, {
+    task: {
+      id,
+      project_id: projectId,
+      name,
+      start_date,
+      end_date,
+      progress,
+      description,
+      status: "pending",
+      dependencies,
+      interesados_id,
+    },
+  });
+};
+
+
+// Editar tarea
+export const editTask = ({
+  id,
+  name,
+  start_date,
+  end_date,
+  progress = 0,
+  projectId,
+  description = "",
+  interesados_id = [],
+  dependencies = [],
+  status = "in-progress",
+}) => {
+  if (!projectId || !id)
+    return Promise.reject("Missing projectId or task id");
+
+  return apiWithToken.put(`/proyecto/${projectId}/gantt/${id}`, {
+    task: {
+      id,
+      project_id: projectId,
+      name,
+      start_date,
+      end_date,
+      progress,
+      description,
+      status,
+      dependencies,
+      interesados_id,
+    },
+  });
+};
+
+
+// Mover tarea (fechas)
+export const moveTask = ({ id, newStart, newEnd, projectId }) => {
+  return editTask({ id, start_date: newStart, end_date: newEnd, projectId });
+};
+
+// Eliminar tarea
+export const deleteTask = ({ id, projectId }) => {
+  if (!projectId || !id) return Promise.reject("Missing projectId or task id");
+  return apiWithToken.delete(`/proyecto/${projectId}/gantt/${id}`);
+};
 
 export const getTipoProyecto = () => apiWithToken.get(`/tipo-proyecto`)

@@ -8,6 +8,7 @@ import { actions, selectors } from "../../reducers/kanban";
 import { connect } from "react-redux";
 
 const Kanban = ({ dispatch, tasksByStatus, interesados }) => {
+  console.log(interesados);
   const routeParams = useParams();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);

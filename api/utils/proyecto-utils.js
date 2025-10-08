@@ -297,9 +297,9 @@ const createProyectoGeneralData = async (data, usuarioId) => {
     fecha_creacion: DateUtils.getLocalDate(),
     usuario_creador: usuarioId,
     modo,
-    director: directorProyecto?.id || null,
-    patrocinador: patrocinador?.id || null,
-    departamento: departamento?.id || null,
+    director: directorProyecto.id || null,
+    patrocinador: patrocinador.id || null,
+    departamento: departamento.id || null,
     ...restSnake,
   };
 
