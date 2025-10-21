@@ -27,11 +27,16 @@
 }
 
 .indicator.iniciado:before {
-  background-color: #198754 !important; /* color del indicador cuando está activo */
+  background-color: #e6d11c !important; /* color del indicador cuando está activo */
 }
-
+.indicator.planificado:before {
+  background-color: #0f4888 !important;
+}
+.indicator.ejecutado:before {
+  background-color: #198754 !important;
+}
 .indicator.parado:before {
-  background-color: #dc3545 !important; /* color del indicador cuando está activo */
+  background-color: #dc3545 !important;
 }
 .indicator.cerrado:before {
   background-color: #dc3545 !important;

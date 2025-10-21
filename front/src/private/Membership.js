@@ -14,6 +14,7 @@ import { actions as routeActions } from "../reducers/routes";
 function Membership({ dispatch, isLoading, user, persona }) {
   const [isMembershipSelected, setIsMembershipSelected] = useState(null);
   const [nombre, setNombre] = useState("");
+  const [value, setValue] = useState("");
 
   useEffect(() => {
     function onLoad() {
@@ -37,12 +38,14 @@ function Membership({ dispatch, isLoading, user, persona }) {
 
   function handleOptionClick(value) {
     setIsMembershipSelected(value);
+    setValue(value);
   }
   
   function handleContinue() {
     try {
       // dispatch(routeActions.goTo("desktop"))
-      dispatch(usuarioActions.setMembresia(user.id));
+      dispatch(usuarioActions.setMembresia(user.id, value));
+
     } catch (e) {
       onError(e);
     }
@@ -77,7 +80,6 @@ function Membership({ dispatch, isLoading, user, persona }) {
       <MembershipOption
         text="Gestión de Proyectos"
         value="Profesional"
-        disabled
         onClick={handleOptionClick}
       />
       <MembershipOption

@@ -8,9 +8,17 @@ module.exports = (db, Sequelize) => {
         project_id: {
             type: Sequelize.INTEGER,
             references: {
-                model: 'Proyecto', // Name of the referenced model
-                key: 'id' // Key in the referenced model
+                model: 'Proyecto',
+                key: 'id'
             }
+        },
+        parent_id: {
+            type: Sequelize.UUID, // 🔹 Permite agrupar tareas bajo una tarea padre
+            allowNull: true
+        },
+        type: {
+            type: Sequelize.STRING(20), // 🔹 'task' | 'group'
+            defaultValue: 'task'
         },
         name: {
             type: Sequelize.STRING(200),
@@ -27,21 +35,29 @@ module.exports = (db, Sequelize) => {
             type: Sequelize.DATE,
             allowNull: false
         },
+        duration: {
+            type: Sequelize.INTEGER, // 🔹 días entre start_date y end_date
+            allowNull: true
+        },
         progress: {
             type: Sequelize.INTEGER,
             defaultValue: 0
         },
         dependencies: {
-            type: Sequelize.JSONB, // array con IDs de otras actividades
+            type: Sequelize.JSONB,
             defaultValue: []
         },
         interesados_id: {
-            type: Sequelize.JSONB, // array con IDs de interesados
+            type: Sequelize.JSONB,
             defaultValue: []
         },
         status: {
-            type: Sequelize.STRING(50), // pending, in_progress, done
+            type: Sequelize.STRING(50),
             defaultValue: 'pending'
+        },
+        is_critical: {
+            type: Sequelize.BOOLEAN, // 🔹 ruta crítica
+            defaultValue: false
         },
         created_at: {
             type: Sequelize.DATE,

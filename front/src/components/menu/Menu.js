@@ -29,19 +29,21 @@ export default function Menu() {
           menuToolTip="PORTAFOLIOS"
           redirectTo="portfolios"
         />*/}
-        <MenuItem 
+        {/*<MenuItem 
           menuName="Programa" 
           menuAlt="Programa"
           menuToolTip="PROGRAMAS"
           redirectTo="programs"
-        />
+        />*/}
 
-        <MenuItem 
-          menuName="Proyecto" 
-          menuAlt="Proyecto"
-          menuToolTip="PROYECTOS"
-          redirectTo="projects"
-        />
+        {localStorage.getItem("modo") === "Profesional" && (
+          <MenuItem
+            menuName="Proyecto"
+            menuAlt="Proyecto"
+            menuToolTip="PROYECTOS"
+            redirectTo="projects"
+          />
+        )}
         <MenuItem
           menuName="Portafolio"
           menuAlt="Actividades"

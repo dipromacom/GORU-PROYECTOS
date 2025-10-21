@@ -47,10 +47,12 @@ const getAllProyecto = async (usuarioId) => {
     ],
     order: [
       [literal(`CASE 
-        WHEN estado = 'S' THEN 1
-        WHEN estado = 'C' THEN 2
-        WHEN estado = 'E' THEN 3
-        ELSE 4 END`), 'ASC']
+        WHEN estado = 'X' THEN 1
+        WHEN estado = 'P' THEN 2
+        WHEN estado = 'S' THEN 3
+        WHEN estado = 'C' THEN 4
+        WHEN estado = 'E' THEN 5
+        ELSE 6 END`), 'ASC']
     ]
   });
   return items;
@@ -478,10 +480,12 @@ const getFilteredProjects = async (query, usuarioId) => {
     where: filter,
     order: [
       [literal(`CASE 
-        WHEN estado = 'S' THEN 1
-        WHEN estado = 'C' THEN 2
-        WHEN estado = 'E' THEN 3
-        ELSE 4 END`), 'ASC']
+        WHEN estado = 'X' THEN 1
+        WHEN estado = 'P' THEN 2
+        WHEN estado = 'S' THEN 3
+        WHEN estado = 'C' THEN 4
+        WHEN estado = 'E' THEN 5
+        ELSE 6 END`), 'ASC']
     ]
   });
 

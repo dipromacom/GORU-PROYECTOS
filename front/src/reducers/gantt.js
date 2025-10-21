@@ -19,7 +19,21 @@ export const types = {
 };
 
 export const actions = {
-    createTask: ({ id, name, description, start, end, progress, projectId, dependencies = [], interesados_id = [] }) => ({
+    createTask: ({
+        id,
+        name,
+        description,
+        start,
+        end,
+        progress,
+        projectId,
+        dependencies = [],
+        interesados_id = [],
+        type = "task",
+        parent_id = null,
+        is_critical = false,
+        duration = 0,
+    }) => ({
         type: types.CREATE_TASK,
         id: id || uuidv4(),
         name,
@@ -30,9 +44,26 @@ export const actions = {
         projectId,
         dependencies,
         interesados_id,
+        gantt_type: type,
+        parent_id,
+        is_critical,
+        duration,
     }),
 
-    editTask: ({ id, name, description, start, end, progress, dependencies = [], interesados_id = [] }) => ({
+    editTask: ({
+        id,
+        name,
+        description,
+        start,
+        end,
+        progress,
+        dependencies = [],
+        interesados_id = [],
+        type,
+        parent_id,
+        is_critical,
+        duration,
+    }) => ({
         type: types.EDIT_TASK,
         id,
         name,
@@ -42,6 +73,10 @@ export const actions = {
         progress,
         dependencies,
         interesados_id,
+        gantt_type: type,
+        parent_id,
+        is_critical,
+        duration,
     }),
 
     deleteTask: ({ id, projectId }) => ({
@@ -88,6 +123,7 @@ export const selectors = {
 };
 
 const ganttReducer = (state = defaultState, action = {}) => {
+    //console.log("Reducer action:", action.type, action); 
     const {
         id,
         name,
@@ -98,21 +134,27 @@ const ganttReducer = (state = defaultState, action = {}) => {
         tasks,
         dependencies,
         interesados_id,
+        gantt_type,
+        parent_id,
+        is_critical,
+        duration,
     } = action;
 
     switch (action.type) {
-
         case types.CREATE_TASK: {
-            const uuid = uuidv4();
             const newTask = {
-                id: id,
+                id,
                 name: name || "Nueva tarea",
-                description: description,
+                description,
                 start_date: start,
                 end_date: end,
                 progress: progress || 0,
                 dependencies: dependencies || [],
                 interesados_id: interesados_id || [],
+                type: gantt_type || "task",
+                parent_id: parent_id || null,
+                is_critical: !!is_critical,
+                duration: duration || 0,
                 status: "pending",
             };
 
@@ -140,6 +182,16 @@ const ganttReducer = (state = defaultState, action = {}) => {
                             dependencies: dependencies ?? t.dependencies ?? [],
                             interesados_id:
                                 interesados_id ?? t.interesados_id ?? [],
+                            type: gantt_type ?? t.type ?? "task",
+                            parent_id:
+                                parent_id !== undefined
+                                    ? parent_id
+                                    : t.parent_id ?? null,
+                            is_critical:
+                                is_critical !== undefined
+                                    ? is_critical
+                                    : t.is_critical ?? false,
+                            duration: duration ?? t.duration ?? 0,
                         }
                         : t
                 ),
@@ -149,7 +201,9 @@ const ganttReducer = (state = defaultState, action = {}) => {
         case types.DELETE_TASK: {
             return {
                 ...state,
-                tasks: state.tasks.filter((t) => t.id !== id),
+                tasks: state.tasks.filter(
+                    (t) => t.id !== id && t.parent_id !== id // elimina también subtareas si se borra un grupo
+                ),
             };
         }
 
@@ -175,11 +229,16 @@ const ganttReducer = (state = defaultState, action = {}) => {
 
             return {
                 ...state,
-                tasks: normalized,
+                tasks: normalized.map((t) => ({
+                    ...t,
+                    type: t.type || "task",
+                    parent_id: t.parent_id || null,
+                    is_critical: !!t.is_critical,
+                    duration: t.duration || 0,
+                })),
             };
         }
 
-        /* 🧹 Limpiar estado */
         case types.CLEAN:
             return defaultState;
 

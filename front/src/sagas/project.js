@@ -9,6 +9,7 @@ import moment from "moment";
 const sagas = [
     takeLatest(types.START_PROJECT_REQUEST, handleStartProject),
     takeLatest(types.CLOSE_PROJECT_REQUEST, handleCloseProject),
+    takeLatest(types.STATUS_PROJECT_REQUEST, handleStatusProject),
     takeLatest(types.GET_PROJECTS_FILTERED_REQUEST, handleFilteredProjects),
     takeLatest(types.CREATE_PROJECT_REQUEST, handleCreateProject),
     takeLatest(types.CREATE_PROJECT_GENERAL_DATA_REQUEST, handleCreateGeneralDataProject),
@@ -91,6 +92,27 @@ function* handleCloseProject({ projectId, modo, fecha_cierre, filter = false }) 
     } catch (e) {
         onError(e);
         yield put({ type: types.CLOSE_PROJECT_ERROR })
+    }
+}
+
+function* handleStatusProject({ projectId, modo, estado, filter = false }) {
+    try {
+        const payload = { projectId, estado }
+        const response = yield call(Api.cambiarEstadoProyecto, payload)
+        const { success } = response.data;
+
+        if (success) {
+            yield put({ type: types.STATUS_PROJECT_SUCCESS, success });
+
+            if (filter) {
+                yield put(push(`/projects?id=${projectId}`));
+            } else {
+                yield call(handleFilteredProjects, { filter: { id: null, modo: modo } })
+            }
+        }
+    } catch (e) {
+        onError(e);
+        yield put({ type: types.STATUS_PROJECT_ERROR })
     }
 }
 
