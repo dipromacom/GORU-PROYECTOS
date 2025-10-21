@@ -8,11 +8,19 @@ const sagas = [
   takeLatest(types.SET_MEMBRESIA_REQUEST, setMembresia),
 ];
 
-function* setMembresia({ usuarioId }) {
+function* setMembresia({ usuarioId, value }) {
   try {
     yield call(Api.setMembresia, { usuarioId })
     yield put({ type: types.SET_MEMBRESIA_SUCCESS});
-    yield put(push("/projects"));
+    if (value == "Profesional") {
+      localStorage.setItem("modo", "Profesional")
+      yield put(push("/projects")); 
+    }    
+    if (value == "Demo") {
+      localStorage.setItem("modo", "Demo")
+      yield put(push("/activities"));
+    }
+
   } catch (e) {
     onError(e);
     yield put({ type: types.SET_MEMBRESIA_ERROR });

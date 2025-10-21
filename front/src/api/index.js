@@ -79,6 +79,9 @@ export const activarProyecto = (payload) => apiWithToken.post(`/proyecto/activat
 //Se agrega endpoint para cerrar proyecto
 export const cerrarProyecto = (payload) => apiWithToken.post(`/proyecto/cerrar`, payload)
 
+//Se agrega endpoint para cambiar estado planificado o ejecutado
+export const cambiarEstadoProyecto = (payload) => apiWithToken.post(`/proyecto/estado`, payload)
+
 //se agrega endpoint para obtener proyecto por ID
 export const getProyectoByID = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}`)
 
@@ -118,26 +121,30 @@ export const getTasks = (idProject, page = 1, limit = 10, done) => {
 export const syncKanban = ({status, tasks, projectId}) => apiWithToken.post(`/proyecto/${projectId}/kanban`,{status, tasks})
 export const fetchKanban = ({projectId}) => apiWithToken.get(`/proyecto/${projectId}/kanban`)
 
-//gantt
-// 🟢 Obtener tareas del proyecto
 export const fetchGantt = ({ projectId }) =>
   apiWithToken.get(`/proyecto/${projectId}/gantt`);
 
-// 🟢 Sincronizar tareas con backend
 export const syncGantt = ({ tasks, projectId }) => {
   if (!projectId) throw new Error("projectId is required for syncGantt");
 
-  // Compatibilidad: convierte start → start_date y end → end_date si existen
   const formattedTasks = Array.isArray(tasks)
     ? tasks.map(t => ({
       ...t,
       start_date: t.start_date || t.start,
       end_date: t.end_date || t.end,
+      parent: t.parent || null,           // jerarquía
+      group: t.group || null,             // agrupación
+      level: t.level || 0,                // nivel jerárquico
+      is_critical: t.is_critical || false, // tarea crítica
     }))
     : {
       ...tasks,
       start_date: tasks.start_date || tasks.start,
       end_date: tasks.end_date || tasks.end,
+      parent: tasks.parent || null,
+      group: tasks.group || null,
+      level: tasks.level || 0,
+      is_critical: tasks.is_critical || false,
     };
 
   return apiWithToken.post(`/proyecto/${projectId}/gantt`, {
@@ -154,9 +161,16 @@ export const createTask = ({
   projectId,
   description = "",
   interesados_id = [],
-  dependencies = []
+  dependencies = [],
+  parent = null,
+  group = null,
+  level = 0,
+  is_critical = false,
+  duration,
 }) => {
+  console.log(start_date + dependencies);
   if (!projectId) return Promise.reject("Missing projectId");
+
   return apiWithToken.post(`/proyecto/${projectId}/gantt`, {
     task: {
       id,
@@ -169,12 +183,15 @@ export const createTask = ({
       status: "pending",
       dependencies,
       interesados_id,
+      parent,
+      group,
+      level,
+      is_critical,
+      duration
     },
   });
 };
 
-
-// Editar tarea
 export const editTask = ({
   id,
   name,
@@ -186,6 +203,11 @@ export const editTask = ({
   interesados_id = [],
   dependencies = [],
   status = "in-progress",
+  parent = null,
+  group = null,
+  level = 0,
+  is_critical = false,
+  duration,
 }) => {
   if (!projectId || !id)
     return Promise.reject("Missing projectId or task id");
@@ -202,20 +224,21 @@ export const editTask = ({
       status,
       dependencies,
       interesados_id,
+      parent,
+      group,
+      level,
+      is_critical,
+      duration,
     },
   });
 };
 
+export const moveTask = ({ id, newStart, newEnd, projectId }) =>
+  editTask({ id, start_date: newStart, end_date: newEnd, projectId });
 
-// Mover tarea (fechas)
-export const moveTask = ({ id, newStart, newEnd, projectId }) => {
-  return editTask({ id, start_date: newStart, end_date: newEnd, projectId });
-};
-
-// Eliminar tarea
 export const deleteTask = ({ id, projectId }) => {
   if (!projectId || !id) return Promise.reject("Missing projectId or task id");
   return apiWithToken.delete(`/proyecto/${projectId}/gantt/${id}`);
 };
 
-export const getTipoProyecto = () => apiWithToken.get(`/tipo-proyecto`)
+export const getTipoProyecto = () => apiWithToken.get(`/tipo-proyecto`);

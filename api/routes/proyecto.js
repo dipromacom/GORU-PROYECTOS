@@ -12,6 +12,7 @@ router.post('/proyecto', ProyectoController.createProyecto);
 router.post('/proyecto/generalData', ProyectoController.createProyectoGeneralData);
 router.post('/proyecto/activate', ProyectoController.activarProyecto);
 router.post('/proyecto/cerrar', ProyectoController.cerrarProyecto);
+router.post('/proyecto/estado', ProyectoController.updateEstadoProyecto);
 router.put('/proyecto/:id', ProyectoController.updateProyecto)
 router.put('/proyecto/:id/generalData', ProyectoController.updateProyectoGeneralData)
 router.post('/proyecto/:id/kanban', KabanController.setKanban)

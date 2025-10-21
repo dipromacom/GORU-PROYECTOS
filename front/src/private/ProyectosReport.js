@@ -191,6 +191,14 @@ const styles = StyleSheet.create({
         width: "100%",
         borderBottomColor: blueColor,
         borderBottomWidth: 1
+    },
+    mainTitle: {
+        flexDirection: 'column',
+        marginTop: 6,
+        fontFamily: 'Helvetica-Bold',
+        fontSize: 18,
+        width: "100%",
+        textAlign: 'center',
     }
 
 });
@@ -307,9 +315,17 @@ export const ProyectoPdf = ({ proyecto }) => {
                     <Text style={styles.reportTitle}>{nombre}</Text>
                 </View>
                 <View>
-                    <Text style={styles.info}>
-                        <Text style={styles.subtitle}>Pendiente de Asignación:</Text> {pendiente_asignacion ? 'Sí' : 'No'}
-                    </Text>
+                    <Text style={styles.mainTitle}>DATOS GENERALES</Text>
+
+                    {DirectorProyecto?.Persona?.nombre ? <Text style={styles.info}>
+                        <Text style={styles.subtitle}>Director del proyecto:</Text> {DirectorProyecto.Persona.nombre} {DirectorProyecto.Persona.apellido || ""}
+                    </Text> : <></>}
+                    {Patrocinador?.Persona?.nombre ? <Text style={styles.info}>
+                        <Text style={styles.subtitle}>Patrocinador del Proyecto:</Text> {Patrocinador.Persona.nombre} {Patrocinador.Persona.apellido || ""}
+                    </Text> : <></>}
+                    {Departamento?.nombre ? <Text style={styles.info}>
+                        <Text style={styles.subtitle}>Departamento:</Text> {Departamento.nombre}
+                    </Text> : <></>}
                     {informacion ? <Text style={styles.info}>
                         <Text style={styles.subtitle}>Información:</Text> {informacion}
                     </Text> : <></>}
@@ -319,6 +335,26 @@ export const ProyectoPdf = ({ proyecto }) => {
                     {fecha_inicio ? <Text style={styles.info}>
                         <Text style={styles.subtitle}>Fecha de Inicio:</Text> {moment(fecha_inicio).format('DD/MM/YYYY')}
                     </Text> : <></>}
+                    {TipoProyecto?.nombre ? <Text style={styles.info}>
+                        <Text style={styles.subtitle}>Tipo de Proyecto:</Text> {TipoProyecto.nombre}
+                    </Text> : <></>}
+                    {/* 🔹 Salto de página */}
+                    <View style={{ marginTop: 20 }} break />
+                    
+                    <Text style={styles.mainTitle}>ACTA CONSITITUCIÓN</Text>
+                    
+                    <Text style={styles.info}>
+                        <Text style={styles.subtitle}>Pendiente de Asignación:</Text> {pendiente_asignacion ? 'Sí' : 'No'}
+                    </Text>
+                    {/*{informacion ? <Text style={styles.info}>
+                        <Text style={styles.subtitle}>Información:</Text> {informacion}
+                    </Text> : <></>}
+                    {fecha_creacion ? <Text style={styles.info}>
+                        <Text style={styles.subtitle}>Fecha de Creación:</Text> {moment(fecha_creacion).format('DD/MM/YYYY')}
+                    </Text> : <></>}
+                    {fecha_inicio ? <Text style={styles.info}>
+                        <Text style={styles.subtitle}>Fecha de Inicio:</Text> {moment(fecha_inicio).format('DD/MM/YYYY')}
+                    </Text> : <></>}*/}
                     {documentacion_adjunta ? <Text style={styles.info}>
                         <Text style={styles.subtitle}>Documentación Adjunta: </Text> <Link src={documentacion_adjunta}>{documentacion_adjunta}</Link>
                     </Text> : <></>}

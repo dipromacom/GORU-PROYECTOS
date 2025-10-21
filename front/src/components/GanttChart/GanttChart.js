@@ -8,6 +8,7 @@ import { v4 as uuidv4 } from "uuid";
 import InteresadosMultiSelect from "./InteresadosMultiSelect";
 import { actions as ganttActions, selectors as ganttSelectors } from "../../reducers/gantt";
 import "./GanttChart.css";
+import { duration } from "moment";
 
 const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) => {
     const safeProjectId = projectId ?? null;
@@ -18,6 +19,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
         : Array.isArray(rawTasks?.tasks)
             ? rawTasks.tasks
             : [];
+
+    console.log(tasks);
 
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState("create");
@@ -32,6 +35,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
         dependencies: [],
         interesados_id: [],
         status: "pending",
+        type: "task",
+        parent_id: "",
+        duration: 0,
     });
 
     const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -56,31 +62,139 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
         };
     };
 
+
+    // --- 🔹 Recalcula fechas de grupos (padres) según sus subtareas
+    const recalculateGroupDates = (tasks) => {
+        const updated = [...tasks];
+        const groups = updated.filter((t) => t.type === "group");
+
+        for (const group of groups) {
+            const children = updated.filter((t) => t.parent_id === group.id);
+            if (children.length === 0) continue;
+
+            const minStart = new Date(Math.min(...children.map((c) => new Date(c.start_date || c.start))));
+            const maxEnd = new Date(Math.max(...children.map((c) => new Date(c.end_date || c.end))));
+
+            group.start_date = minStart.toISOString();
+            group.end_date = maxEnd.toISOString();
+        }
+
+        return updated;
+    };
+
+    // --- 🔹 Detecta ruta crítica (camino más largo de dependencias)
+    const findCriticalPath = (tasks) => {
+        const taskMap = Object.fromEntries(tasks.map((t) => [t.id, t]));
+        const memo = {};
+
+        const dfs = (taskId) => {
+            if (memo[taskId]) return memo[taskId];
+            const task = taskMap[taskId];
+            if (!task) return 0;
+            if (!task.dependencies || task.dependencies.length === 0) {
+                memo[taskId] = (new Date(task.end_date) - new Date(task.start_date)) / (1000 * 3600 * 24);
+                return memo[taskId];
+            }
+
+            const maxDep = Math.max(...task.dependencies.map(dfs));
+            const duration = (new Date(task.end_date) - new Date(task.start_date)) / (1000 * 3600 * 24);
+            memo[taskId] = maxDep + duration;
+            return memo[taskId];
+        };
+
+        let maxPath = 0;
+        let criticalEndTask = null;
+
+        for (const t of tasks) {
+            const val = dfs(t.id);
+            if (val > maxPath) {
+                maxPath = val;
+                criticalEndTask = t.id;
+            }
+        }
+
+        // Reconstruir camino
+        const criticalTasks = new Set();
+        const backtrack = (taskId) => {
+            const t = taskMap[taskId];
+            if (!t) return;
+            criticalTasks.add(taskId);
+            if (!t.dependencies || t.dependencies.length === 0) return;
+            let maxDep = null;
+            let maxVal = -Infinity;
+            for (const dep of t.dependencies) {
+                const val = memo[dep];
+                if (val > maxVal) {
+                    maxVal = val;
+                    maxDep = dep;
+                }
+            }
+            if (maxDep) backtrack(maxDep);
+        };
+
+        if (criticalEndTask) backtrack(criticalEndTask);
+
+        return [...criticalTasks];
+    };
+
     const ganttTasks = useMemo(() => {
-        return tasks.map((t) => {
+        // 🔸 1. Recalcular fechas de grupos
+        const recalculatedTasks = recalculateGroupDates(tasks);
+
+        // 🔸 2. Calcular ruta crítica
+        const criticalIds = findCriticalPath(recalculatedTasks);
+
+        // 🔸 3. Ordenar: grupos primero (por fecha más reciente)
+        const orderedTasks = [...recalculatedTasks].sort((a, b) => {
+            // Prioriza los de tipo grupo
+            if (a.type === "group" && b.type !== "group") return -1;
+            if (a.type !== "group" && b.type === "group") return 1;
+
+            // Entre grupos, mostrar el más reciente primero
+            if (a.type === "group" && b.type === "group") {
+                const endA = new Date(a.end_date).getTime();
+                const endB = new Date(b.end_date).getTime();
+                return endA - endB; // Más reciente primero
+            }
+
+            // Para tareas normales, mantener orden actual
+            return 0;
+        });
+
+        // 🔸 4. Mapear a formato del Gantt
+        return orderedTasks.map((t) => {
             const nt = normalizeTaskForGantt(t);
             const interesadosNames = (nt.interesados_id || []).map((iid) => {
                 const found = interesados.find((x) => String(x.id) === String(iid));
                 return found ? found.nombre_interesado : iid;
             });
 
+            const isCritical = criticalIds.includes(nt.id);
+
             return {
                 id: nt.id,
                 name: nt.name,
                 start: nt.start,
                 end: nt.end,
-                type: "task",
-                progress: nt.progress,
+                type: nt.type === "group" ? "project" : "task",
+                progress: Number(nt.progress),
                 isDisabled: false,
                 dependencies: nt.dependencies || [],
+                styles: {
+                    backgroundColor: isCritical ? "#d9534f" : "#8cbcf5",
+                    progressColor: isCritical ? "#c9302c" : "#2e86de",
+                    progressSelectedColor: isCritical ? "#b52b27" : "#145a9e",
+                },
                 _meta: {
                     description: nt.description || "",
                     interesadosNames,
                     interesadosIds: nt.interesados_id || [],
+                    isCritical,
                 },
             };
         });
     }, [tasks, interesados]);
+
 
     // --- Dependencias inversas
     const dependencyMap = useMemo(() => {
@@ -106,6 +220,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
             dependencies: [],
             interesados_id: [],
             status: "pending",
+            type: "task",
+            parent_id: "",
+            duration: 0,
         });
         setModalMode("create");
         setEditingId(null);
@@ -127,6 +244,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
             dependencies: t.dependencies ? [...t.dependencies] : [],
             interesados_id: t.interesados_id ? t.interesados_id.map(String) : [],
             status: t.status ?? "pending",
+            type: t.type || "task",
+            parent_id: t.parent_id || "",
+            duration: t.duration || 0,
         });
 
         setModalMode("edit");
@@ -172,12 +292,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
             project_id: safeProjectId,
             name: form.name,
             description: form.description,
+            type: form.type || "task",
             start: new Date(form.start_date).toISOString(),
             end: new Date(form.end_date).toISOString(),
             progress: Number(form.progress || 0),
             dependencies: form.dependencies || [],
             interesados_id: interesadosUUID,
+            parent_id: form.parent_id || null,
             status: form.status,
+            is_critical: false, // se marcará luego por lógica de ruta crítica
         };
         console.log(payload);
         if (modalMode === "create") {
@@ -216,7 +339,10 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
         const meta = ganttTask._meta || {};
         const interesadosNames = meta.interesadosNames || [];
         return (
-            <div className="gantt-task-custom" title={ganttTask.name}>
+            <div
+                className={`gantt-task-custom ${ganttTask._meta?.isCritical ? "critical" : ""}`}
+                title={ganttTask.name}
+            >
                 <div className="gantt-task-name">{ganttTask.name}</div>
                 <div className="gantt-task-interesados">
                     {interesadosNames.length > 0
@@ -231,62 +357,323 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
         );
     };
 
-    // --- Lista lateral ---
-    const renderLeftList = () => (
-        <div className="gantt-left">
-            <div className="gantt-left-header">
-                <h5>Actividades</h5>
-                <Button size="sm" variant="outline-primary" onClick={openCreate}>
-                    + Nueva
-                </Button>
-            </div>
-            <ListGroup variant="flush" className="gantt-left-list">
-                {tasks.length === 0 && <div className="gantt-empty">No hay actividades</div>}
-                {tasks.map((t) => {
-                    const interesadosNames = (t.interesados_id || []).map((iid) => {
-                        const found = interesados.find((x) => String(x.id) === String(iid));
-                        return found ? found.nombre_interesado : iid;
-                    });
-                    return (
-                        <ListGroup.Item key={t.id} className="gantt-list-item">
-                            <div className="gantt-item-info">
-                                <div className="gantt-item-title">{t.name}</div>
-                                <div className="gantt-item-dates">
-                                    {(t.start_date ?? t.start)
-                                        ? `${new Date(t.start_date ?? t.start).toLocaleDateString()} → ${new Date(
-                                            t.end_date ?? t.end
-                                        ).toLocaleDateString()}`
-                                        : "Sin fechas"}
-                                </div>
-                                <div className="gantt-item-badges">
-                                    {(interesadosNames || []).slice(0, 3).map((n, i) => (
-                                        <Badge key={i} bg="secondary" className="gantt-mini-badge">
-                                            {n}
-                                        </Badge>
-                                    ))}
-                                </div>
-                            </div>
-                            <div className="gantt-item-actions">
-                                <Button size="sm" variant="outline-secondary" onClick={() => openEdit(t.id)}>
-                                    ✏️
-                                </Button>
-                                <Button size="sm" variant="outline-danger" onClick={() => confirmDeleteTask(t.id)}>
-                                    🗑️
-                                </Button>
-                            </div>
-                        </ListGroup.Item>
-                    );
-                })}
-            </ListGroup>
-        </div>
-    );
 
-    console.log("✅ Gantt debug:", {
-        safeProjectId,
-        rawTasks,
-        tasks,
-        tasksLength: tasks?.length,
-    });
+    const [expandedGroups, setExpandedGroups] = useState({});
+
+    const toggleGroup = (groupId) => {
+        setExpandedGroups((prev) => ({
+            ...prev,
+            [groupId]: !prev[groupId],
+        }));
+    };
+
+
+    const projectSummary = useMemo(() => {
+        if (!tasks || tasks.length === 0) return null;
+
+        const startDates = tasks.map(t => new Date(t.start_date || t.start));
+        const endDates = tasks.map(t => new Date(t.end_date || t.end));
+
+        const projectStart = new Date(Math.min(...startDates));
+        const projectEnd = new Date(Math.max(...endDates));
+
+        const totalDays = (projectEnd - projectStart) / (1000 * 3600 * 24);
+        const totalHours = totalDays * 8;
+
+        const avgProgress = tasks.reduce((acc, t) => acc + (t.progress || 0), 0) / tasks.length;
+
+        const totalTasks = tasks.filter(t => t.gantt_type !== "group").length;
+        const totalGroups = tasks.filter(t => t.gantt_type === "group").length;
+
+        const criticalIds = findCriticalPath(tasks);
+        const criticalTasks = tasks.filter(t => criticalIds.includes(t.id));
+        const criticalDays = criticalTasks.reduce((acc, t) => {
+            const start = new Date(t.start_date);
+            const end = new Date(t.end_date);
+            return acc + (end - start) / (1000 * 3600 * 24);
+        }, 0);
+
+        return {
+            start: projectStart.toLocaleDateString(),
+            end: projectEnd.toLocaleDateString(),
+            totalDays: Math.round(totalDays),
+            totalHours: Math.round(totalHours),
+            avgProgress: Math.round(avgProgress),
+            totalTasks,
+            totalGroups,
+            criticalDays: Math.round(criticalDays)
+        };
+    }, [tasks]);
+
+    // --- 🔹 Sección resumen general ---
+    const renderProjectSummary = () => {
+        if (!projectSummary) return null;
+
+        return (
+            <div className="gantt-summary">
+                <h5 className="gantt-summary-title">Resumen del Proyecto</h5>
+                <Row className="gantt-summary-row">
+                    <Col md={6} lg={4}>
+                        <div className="gantt-summary-item">
+                            <strong>Inicio:</strong> {projectSummary.start}
+                        </div>
+                        <div className="gantt-summary-item">
+                            <strong>Fin:</strong> {projectSummary.end}
+                        </div>
+                    </Col>
+                    <Col md={6} lg={4}>
+                        <div className="gantt-summary-item">
+                            <strong>Total días:</strong> {projectSummary.totalDays}
+                        </div>
+                        <div className="gantt-summary-item">
+                            <strong>Total horas:</strong> {projectSummary.totalHours}
+                        </div>
+                    </Col>
+                    <Col md={6} lg={4}>
+                        <div className="gantt-summary-item">
+                            <strong>Ruta crítica:</strong> {projectSummary.criticalDays} días
+                        </div>
+                        <div className="gantt-summary-item">
+                            <strong>Avance total:</strong> {projectSummary.avgProgress}%
+                        </div>
+                    </Col>
+                </Row>
+                <div className="gantt-summary-footer">
+                    <Badge bg="primary">Tareas: {projectSummary.totalTasks}</Badge>{" "}
+                    <Badge bg="secondary">Grupos: {projectSummary.totalGroups}</Badge>
+                </div>
+            </div>
+        );
+    };
+
+    // --- Lista lateral ---
+    const renderLeftList = () => {
+        // 🔹 Agrupar tareas por parent_id
+        const groups = tasks.filter((t) => t.type === "group");
+        const normalTasks = tasks.filter((t) => t.type !== "group");
+
+        const groupedTasks = groups.map((group) => ({
+            ...group,
+            children: normalTasks.filter((t) => t.parent_id === group.id),
+        }));
+
+        // 🔹 Render auxiliar para dependencias
+        const renderDependencies = (deps) => {
+            if (!deps || deps.length === 0)
+                return <span className="gantt-task-none">Sin dependencias</span>;
+            return deps.map((depId, i) => {
+                const depTask = tasks.find((x) => String(x.id) === String(depId));
+                return (
+                    <Badge key={i} bg="info" className="gantt-mini-badge">
+                        {depTask ? depTask.name : depId}
+                    </Badge>
+                );
+            });
+        };
+
+        // 🔹 Render auxiliar para interesados
+        const renderInteresados = (ids) => {
+            if (!ids || ids.length === 0)
+                return <span className="gantt-task-none">Sin interesados</span>;
+            return ids.slice(0, 3).map((iid, i) => {
+                const found = interesados.find((x) => String(x.id) === String(iid));
+                return (
+                    <Badge key={i} bg="secondary" className="gantt-mini-badge">
+                        {found ? found.nombre_interesado : iid}
+                    </Badge>
+                );
+            });
+        };
+
+        return (
+            <>
+                { renderProjectSummary() }
+                <div className="gantt-left">
+                    <div className="gantt-left-header">
+                        <h5>Actividades</h5>
+                        <Button size="sm" variant="outline-primary" onClick={openCreate}>
+                            + Nueva
+                        </Button>
+                    </div>
+
+                    <ListGroup variant="flush" className="gantt-left-list">
+                        {tasks.length === 0 && (
+                            <div className="gantt-empty">No hay actividades</div>
+                        )}
+
+                        {/* 🔹 Render grupos */}
+                        {groupedTasks.map((group) => (
+                            <React.Fragment key={group.id}>
+                                <ListGroup.Item className="gantt-list-item gantt-group-item">
+                                    <div className="gantt-item-info">
+                                        <div
+                                            className="gantt-item-title gantt-group-title"
+                                            onClick={() => toggleGroup(group.id)}
+                                        >
+                                            <span className="gantt-arrow">
+                                                {expandedGroups[group.id] ? "▼" : "▶"}
+                                            </span>
+                                            {group.name}
+                                        </div>
+                                        <div className="gantt-item-dates">
+                                            {group.start_date
+                                                ? `${new Date(
+                                                    group.start_date
+                                                ).toLocaleDateString()} → ${new Date(
+                                                    group.end_date
+                                                ).toLocaleDateString()}`
+                                                : "Sin fechas"}
+                                        </div>
+                                        <div className="gantt-item-extra">
+                                            <div>
+                                                <strong>Duración:</strong>{" "}
+                                                {group.duration ?? "-"} días
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="gantt-item-actions">
+                                        <Button
+                                            size="sm"
+                                            variant="outline-secondary"
+                                            onClick={() => openEdit(group.id)}
+                                        >
+                                            ✏️
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline-danger"
+                                            onClick={() =>
+                                                confirmDeleteTask(group.id)
+                                            }
+                                        >
+                                            🗑️
+                                        </Button>
+                                    </div>
+                                </ListGroup.Item>
+
+                                {/* 🔹 Render tareas hijas */}
+                                {expandedGroups[group.id] &&
+                                    group.children.map((t) => (
+                                        <ListGroup.Item
+                                            key={t.id}
+                                            className="gantt-list-item gantt-child-item"
+                                        >
+                                            <div className="gantt-item-info">
+                                                <div className="gantt-item-title">
+                                                    {t.name}
+                                                </div>
+                                                <div className="gantt-item-dates">
+                                                    {t.start_date
+                                                        ? `${new Date(
+                                                            t.start_date
+                                                        ).toLocaleDateString()} → ${new Date(
+                                                            t.end_date
+                                                        ).toLocaleDateString()}`
+                                                        : "Sin fechas"}
+                                                </div>
+                                                <div className="gantt-item-extra">
+                                                    <div>
+                                                        <strong>Duración:</strong>{" "}
+                                                        {t.duration ?? "-"} días
+                                                    </div>
+                                                    <div>
+                                                        <strong>Dependencias:</strong>{" "}
+                                                        {renderDependencies(
+                                                            t.dependencies
+                                                        )}
+                                                    </div>
+                                                    <div>
+                                                        <strong>Interesados:</strong>{" "}
+                                                        {renderInteresados(
+                                                            t.interesados_id
+                                                        )}
+                                                    </div>
+                                                </div>
+                                            </div>
+                                            <div className="gantt-item-actions">
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline-secondary"
+                                                    onClick={() => openEdit(t.id)}
+                                                >
+                                                    ✏️
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline-danger"
+                                                    onClick={() =>
+                                                        confirmDeleteTask(t.id)
+                                                    }
+                                                >
+                                                    🗑️
+                                                </Button>
+                                            </div>
+                                        </ListGroup.Item>
+                                    ))}
+                            </React.Fragment>
+                        ))}
+
+                        {/* 🔹 Render tareas sin grupo */}
+                        {normalTasks
+                            .filter((t) => !t.parent_id)
+                            .map((t) => (
+                                <ListGroup.Item
+                                    key={t.id}
+                                    className="gantt-list-item"
+                                >
+                                    <div className="gantt-item-info">
+                                        <div className="gantt-item-title">{t.name}</div>
+                                        <div className="gantt-item-dates">
+                                            {t.start_date
+                                                ? `${new Date(
+                                                    t.start_date
+                                                ).toLocaleDateString()} → ${new Date(
+                                                    t.end_date
+                                                ).toLocaleDateString()}`
+                                                : "Sin fechas"}
+                                        </div>
+                                        <div className="gantt-item-extra">
+                                            <div>
+                                                <strong>Duración:</strong>{" "}
+                                                {t.duration ?? "-"} días
+                                            </div>
+                                            <div>
+                                                <strong>Dependencias:</strong>{" "}
+                                                {renderDependencies(t.dependencies)}
+                                            </div>
+                                            <div>
+                                                <strong>Interesados:</strong>{" "}
+                                                {renderInteresados(t.interesados_id)}
+                                            </div>
+                                        </div>
+                                    </div>
+                                    <div className="gantt-item-actions">
+                                        <Button
+                                            size="sm"
+                                            variant="outline-secondary"
+                                            onClick={() => openEdit(t.id)}
+                                        >
+                                            ✏️
+                                        </Button>
+                                        <Button
+                                            size="sm"
+                                            variant="outline-danger"
+                                            onClick={() =>
+                                                confirmDeleteTask(t.id)
+                                            }
+                                        >
+                                            🗑️
+                                        </Button>
+                                    </div>
+                                </ListGroup.Item>
+                            ))}
+                    </ListGroup>
+                </div>
+            </>
+        );
+            
+    };
+
 
     return (
         <>
@@ -339,7 +726,25 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                                 <Form.Control
                                     type="date"
                                     value={form.start_date}
-                                    onChange={(e) => setForm({ ...form, start_date: e.target.value })}
+                                    onChange={(e) => {
+                                        const newStart = e.target.value;
+
+                                        // Si la fecha de fin es menor o igual a la nueva fecha de inicio
+                                        if (form.end_date <= newStart) {
+                                            // Crear una nueva fecha end_date = start_date + 1 día
+                                            const nextDay = new Date(newStart);
+                                            nextDay.setDate(nextDay.getDate() + 1);
+
+                                            // Convertir a formato YYYY-MM-DD
+                                            const nextDayFormatted = nextDay.toISOString().split("T")[0];
+
+                                            // Actualizar ambos campos
+                                            setForm({ ...form, start_date: newStart, end_date: nextDayFormatted });
+                                        } else {
+                                            // Solo actualizar la fecha de inicio
+                                            setForm({ ...form, start_date: newStart });
+                                        }
+                                    }}
                                 />
                                 <Form.Control
                                     type="date"
@@ -355,6 +760,39 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                                 />
                             </div>
                         </Form.Group>
+
+                        <Form.Group className="mb-3">
+                            <Form.Label>Tipo</Form.Label>
+                            <Form.Control
+                                as="select"
+                                value={form.type || "task"}
+                                onChange={(e) => setForm({ ...form, type: e.target.value })}
+                            >
+                                <option value="task">Tarea</option>
+                                <option value="group">Grupo</option>
+                            </Form.Control>
+                        </Form.Group>
+
+                        {form.type === "task" && (
+                            <Form.Group className="mb-3">
+                                <Form.Label>Grupo Padre</Form.Label>
+                                <Form.Control
+                                    as="select"
+                                    value={form.parent_id || ""}
+                                    onChange={(e) => setForm({ ...form, parent_id: e.target.value || null })}
+                                >
+                                    <option value="">Sin grupo</option>
+                                    {tasks
+                                        .filter((t) => t.type === "group")
+                                        .map((g) => (
+                                            <option key={g.id} value={g.id}>
+                                                {g.name}
+                                            </option>
+                                        ))}
+                                </Form.Control>
+                            </Form.Group>
+                        )}                
+
                         <Form.Group className="mb-3">
                             <Form.Label>Interesados</Form.Label>
                             <InteresadosMultiSelect
@@ -389,13 +827,13 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                                                 {t.name ?? `Actividad ${t.id}`}
                                             </option>
                                         ))
-                                        
+
                                 ) : (
                                     <option value="">No hay otras actividades disponibles</option>
-                                )} 
+                                )}
                                 {/* Opción para quitar dependencias */}
                                 <option value="">Ninguna dependencia</option>
-                                
+
                             </Form.Control>
 
                             <Form.Text className="text-muted">

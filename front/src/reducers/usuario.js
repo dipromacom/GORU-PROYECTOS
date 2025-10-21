@@ -5,9 +5,9 @@ export const types = {
 };
 
 export const actions = {
-  setMembresia: (usuarioId) => ({
+  setMembresia: (usuarioId, value) => ({
     type: types.SET_MEMBRESIA_REQUEST,
-    usuarioId
+    usuarioId, value
   })
 };
 

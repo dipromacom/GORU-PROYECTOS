@@ -15,7 +15,7 @@ const sagas = [
 export default sagas;
 
 /* ================================================================
-   📥 FETCH GANTT (Obtener todas las actividades del proyecto)
+   📥 FETCH GANTT
 ================================================================ */
 function* handleFetchGantt({ projectId }) {
     try {
@@ -34,19 +34,23 @@ function* handleFetchGantt({ projectId }) {
 }
 
 /* ================================================================
-   🔄 SYNC GANTT (Sincroniza el estado actual del Gantt con la BD)
+   🔄 SYNC GANTT
 ================================================================ */
 function* handleSyncGantt({ projectId }) {
+    console.log("entra a sync: " + projectId)
     try {
         const { tasks } = yield select(selectors.getState);
         if (!Array.isArray(tasks)) return;
 
-        // Normalizamos datos antes de enviar
         const normalizedTasks = tasks.map((t) => ({
             ...t,
-            project_id: t.project_id || projectId,  // ✅ Añadimos project_id
-            start_date: t.start || t.start_date,
-            end_date: t.end || t.end_date,
+            project_id: t.project_id || projectId,
+            start_date: t.start_date,
+            end_date: t.end_date,
+            type: t.type || "task",
+            parent_id: t.parent_id || null,
+            is_critical: !!t.is_critical,
+            duration: t.duration || 0,
         }));
 
         const response = yield call(Api.syncGantt, {
@@ -66,9 +70,8 @@ function* handleSyncGantt({ projectId }) {
     }
 }
 
-
 /* ================================================================
-   ➕ CREATE TASK (Crea una nueva tarea)
+   ➕ CREATE TASK
 ================================================================ */
 function* handleCreateTask({
     id,
@@ -80,8 +83,13 @@ function* handleCreateTask({
     projectId,
     dependencies,
     interesados_id,
+    type,
+    parent_id,
+    is_critical,
+    duration,
 }) {
     try {
+        console.log("entra a handleCreateTask: "+ projectId);
         const response = yield call(Api.createTask, {
             id,
             name,
@@ -92,11 +100,14 @@ function* handleCreateTask({
             project_id: projectId,
             dependencies,
             interesados_id,
+            type,
+            parent: parent_id,
+            is_critical,
+            duration,
         });
 
         const { success } = response.data;
         if (success) {
-            // recarga el Gantt tras crear
             const fetchResponse = yield call(Api.fetchGantt, { projectId });
             const { tasks } = fetchResponse.data;
             yield put({ type: types.SET_TASKS, tasks });
@@ -107,7 +118,7 @@ function* handleCreateTask({
 }
 
 /* ================================================================
-   ✏️ EDIT TASK (Editar tarea existente)
+   ✏️ EDIT TASK
 ================================================================ */
 function* handleEditTask({
     id,
@@ -118,6 +129,10 @@ function* handleEditTask({
     progress,
     dependencies,
     interesados_id,
+    type,
+    parent_id,
+    is_critical,
+    duration,
 }) {
     try {
         const { tasks } = yield select(selectors.getState);
@@ -128,12 +143,16 @@ function* handleEditTask({
             id,
             name,
             description,
-            start_date: start,
-            end_date: end,
-            progress,
+            start_date: start ?? task.start_date,
+            end_date: end ?? task.end_date,
+            progress: progress ?? task.progress,
+            dependencies: dependencies ?? task.dependencies,
+            interesados_id: interesados_id ?? task.interesados_id,
+            type: type ?? task.type,
+            parent: parent_id ?? task.parent_id,
+            is_critical: is_critical ?? task.is_critical,
+            duration: duration ?? task.duration,
             projectId: task.projectId,
-            dependencies,
-            interesados_id,
         });
     } catch (e) {
         onError(e);
@@ -141,7 +160,7 @@ function* handleEditTask({
 }
 
 /* ================================================================
-   🚮 DELETE TASK (Eliminar tarea)
+   🚮 DELETE TASK
 ================================================================ */
 function* handleDeleteTask({ id, projectId }) {
     try {
@@ -152,7 +171,7 @@ function* handleDeleteTask({ id, projectId }) {
 }
 
 /* ================================================================
-   📆 MOVE TASK (Mover o cambiar fechas de tarea)
+   📆 MOVE TASK
 ================================================================ */
 function* handleMoveTask({ id, newStart, newEnd, projectId }) {
     try {

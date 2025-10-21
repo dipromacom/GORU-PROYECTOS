@@ -7,6 +7,7 @@ import LoaderButton from "../components/loaderButton/LoaderButton";
 import { Form, Col, Row, InputGroup, Button, DropdownButton, Dropdown } from "react-bootstrap";
 import "./ProyectoNew.css"
 import { actions, selectors } from "../reducers/project";
+import { actions as routesActions } from "../reducers/routes";
 import { actions as tipoProyectoAction, selectors as tipoProyectoSelector } from "../reducers/tipoProyecto";
 import { selectors as batchSelectors } from "../reducers/batch";
 import Nav from 'react-bootstrap/Nav';
@@ -51,12 +52,19 @@ import GanttChart from "../components/GanttChart/GanttChart";
 
 function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado }) {
     const routeParams = useParams();
-    const [activeKey, setActiveKey] = useState('Matriz-Interesados');
+    const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
     const [taskFilter, setTaskFilter] = useState("");
     const esActividad = projectDetail?.modo === "A";
     const disableEdit = projectDetail?.estado === "E";
+    const iniciado = projectDetail?.estado === "S";
+    const planificado = projectDetail?.estado === "P";
+    const ejecutado = projectDetail?.estado === "X";
     const [projectId, setProjectId] = useState(null) 
+
+    if (localStorage.getItem("modo") === "Demo" && !esActividad) {
+        dispatch(routesActions.goTo(`membership`));
+    }
 
 
     const [editMode, setEditMode] = useState(false)
@@ -92,6 +100,47 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
 
     const TIPO_PROYECTO_AGIL = "1"
+    const TIPO_PROYECTO_PREDICTIVO = "2"
+    const TIPO_PROYECTO_HIBRIDO = "3"
+
+    const clearConstitutionFields = () => {
+        // Booleans
+        setPendienteAsignacion(false);
+        setAutorizadoFirmasExternas(false);
+        setAutoridadControlCambios(false);
+
+        // Enlaces de Google Docs
+        setDocumentacionAdjunta("");
+        setContrato("");
+        setCasoNegocio("");
+        setEnunciadoTrabajo("");
+
+        // Campos de texto simples
+        setPrograma("");
+        setJustificacion("");
+        setDescripcion("");
+        setAnalisisViabilidad("");
+        setObjetivoDescripcion("");
+        setRecursosRequeridos("");
+        setSupuestos("");
+        setRestricciones("");
+        setTareasFunciones("");
+        setIncentivo("");
+
+        // Campos numéricos o validados con regex
+        setMaxDesvioPresupuesto("");
+        setMaxDesvioTiempo("");
+
+        // Selects / dropdowns relacionados
+        setMaxDesviacionPeriodo(""); // asegúrate de usar el mismo nombre exacto del estado
+        setPlazoPeriodo("");
+
+        // Si usas flags para los collapses
+        setOpenPrimeraParte(false);
+        setOpenSegundaParte(false);
+        setOpenQuintaParte(false);
+        setOpenSextaParte(false);
+    };
 
     const loadFromDetail = () => {
         setProjectId(projectDetail?.id)
@@ -151,16 +200,18 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
 
     useEffect(() => {
-        const onLoad = async (idProject) => {
-            dispatch(actions.getProjectDetailRequest(idProject))
+        if (routeParams.id) {
+            clearConstitutionFields(); // limpia primero
+            dispatch(actions.getProjectDetailRequest(routeParams.id)); // luego pide los nuevos
         }
-        onLoad(routeParams.id)
-    }
-    , [routeParams])
+    }, [routeParams.id, dispatch]);
 
     useEffect(() => {
-        loadFromDetail()
-    }, [projectDetail])
+        console.log(projectDetail);
+        if (projectDetail && projectDetail.id === parseInt(routeParams.id)) {
+            loadFromDetail();
+        }
+    }, [projectDetail, routeParams.id]);
 
     useEffect(() => {
         dispatch(tipoProyectoAction.getTipoProyecto())
@@ -527,50 +578,51 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             activeKey={activeKey}
                             className="nav-tabs blue"
                             onSelect={handleChangeTab}
-                        >
+                        >   
                             <Nav.Item>
                                 <Nav.Link eventKey="general">Datos Generales</Nav.Link>
                             </Nav.Item>
                             <Nav.Item>
                                 <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
                             </Nav.Item>
-                            <Nav.Item>
-                                <Nav.Link eventKey="Matriz-Interesados">Interesados </Nav.Link>
-                            </Nav.Item>
-
-                            {!esActividad && (
+                            {(planificado || ejecutado) && (
                                 <>
-                                <Nav.Item>
-                                    <Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link>
-                                </Nav.Item>
-                                <Nav.Item>
-                                    <Nav.Link eventKey="alcance">Alcance</Nav.Link>
-                                </Nav.Item>
-                                <Nav.Item>
-                                    <Nav.Link eventKey="hitos">Hitos</Nav.Link>
-                                </Nav.Item>
-                                <Nav.Item>
-                                    <Nav.Link eventKey="costos">Costos</Nav.Link>
-                                </Nav.Item>
-                                <Nav.Item>
-                                    <Nav.Link eventKey="calidad">Calidad</Nav.Link>
-                                </Nav.Item>
-                                <Nav.Item>
-                                    <Nav.Link eventKey="riesgos">Riesgos</Nav.Link>
-                                </Nav.Item>
+                                    <Nav.Item>
+                                        <Nav.Link eventKey="Matriz-Interesados">Interesados </Nav.Link>
+                                    </Nav.Item>
+                                    {!esActividad && (
+                                        <>
+                                        <Nav.Item>
+                                            <Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link>
+                                        </Nav.Item>
+                                        <Nav.Item>
+                                            <Nav.Link eventKey="alcance">Alcance</Nav.Link>
+                                        </Nav.Item>
+                                        <Nav.Item>
+                                            <Nav.Link eventKey="hitos">Hitos</Nav.Link>
+                                        </Nav.Item>
+                                        <Nav.Item>
+                                            <Nav.Link eventKey="costos">Costos</Nav.Link>
+                                        </Nav.Item>
+                                        <Nav.Item>
+                                            <Nav.Link eventKey="calidad">Calidad</Nav.Link>
+                                        </Nav.Item>
+                                        <Nav.Item>
+                                            <Nav.Link eventKey="riesgos">Riesgos</Nav.Link>
+                                        </Nav.Item>
+                                        </>
+                                    )}
+                                    <Nav.Item>
+                                        <Nav.Link eventKey="to-do" >To Do</Nav.Link>
+                                    </Nav.Item>
+                                    <Nav.Item>
+                                        <Nav.Link eventKey="project-management">Kanban</Nav.Link>
+                                    </Nav.Item>
+                                    <Nav.Item>
+                                        <Nav.Link eventKey="gantt">Gantt</Nav.Link>
+                                    </Nav.Item>
                                 </>
                             )}
-                            <Nav.Item>
-                                <Nav.Link eventKey="to-do" >To Do</Nav.Link>
-                            </Nav.Item>
-                            <Nav.Item>
-                                <Nav.Link eventKey="project-management">Kanban</Nav.Link>
-                            </Nav.Item>
-                            <Nav.Item>
-                                <Nav.Link eventKey="gantt">Gantt</Nav.Link>
-                            </Nav.Item>
-                            
-                            
                             
                             
                         </Nav>
@@ -679,6 +731,20 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             <Form.Group>
                                 <Form.Check inline label="Pendiente Asignacion" checked={pendienteAsignacion} value={pendienteAsignacion} onChange={e => setPendienteAsignacion(e.target.checked)} disabled={!editMode} />
                             </Form.Group>
+                            <Row>
+                                <Col>
+                                    <Form.Group>
+                                        <Form.Label>Director del Proyecto</Form.Label>
+                                        <Form.Control type="text" value={directorProyecto} disabled />
+                                    </Form.Group>
+                                </Col>
+                                <Col>
+                                    <Form.Group>
+                                        <Form.Label>Patrocinador del Proyecto</Form.Label>
+                                        <Form.Control type="text" value={patrocinadorProyecto} disabled />
+                                    </Form.Group>
+                                </Col>
+                            </Row>
                             <Row>
                                 <Col>
                                     <Form.Group>
@@ -1086,7 +1152,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             <TodoList toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)}></TodoList>
                         </Tab.Pane>
                         <Tab.Pane eventKey="project-management">
-                            {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_AGIL
+                            {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_AGIL || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
                                 ? <Kanban interesados={interesado} />
                                 : <p>El tipo de proyecto no es apto para usar el Kanban</p>
                             }    
@@ -1233,10 +1299,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                         </Tab.Pane>
                     </Tab.Content>
                     <Tab.Pane eventKey="gantt">
-                        <GanttChart 
-                            projectId={projectId}
-                            interesados={interesado}
-                        />
+                        {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
+                            ? <GanttChart
+                                projectId={projectId}
+                                interesados={interesado}
+                              />
+                            : <p>El tipo de proyecto no es apto para usar el Gantt</p>
+                        }
+                        
                     </Tab.Pane>  
                 </div>
             </Tab.Container>

@@ -54,6 +54,9 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
         if (location.pathname.includes("/activities")) {
           queryParams = { ...queryParams, modo: "A" };
         } else {
+          if (localStorage.getItem("modo") === "Demo") {
+            dispatch(routesActions.goTo(`membership`));
+          }
           queryParams = { ...queryParams, modo: "P" };
         }
 
@@ -117,6 +120,16 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
     setShowCerrarModal(false);
   };
 
+  const handleConfirmCambiarEstadoProyecto = (id, estado) => {
+    let modo = "P"
+    if (location.pathname.includes("/activities")) {
+      modo = "A"
+    }
+    console.log("entro la balubi")
+    dispatch(actions.statusProject(id, modo, estado));
+    setShowCerrarModal(false);
+  };
+
   const columns = useMemo(
     () => [
       {
@@ -164,13 +177,24 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
           //estado: <span className={`indicator ${proyecto.estado === 'S' ? 'iniciado' : ''}`}>{proyecto.estado === 'S' ? 'Iniciado' : 'Creado'}</span>,
 
           estado: (
-            <span className={`indicator ${proyecto.estado === 'S' ? 'iniciado' : proyecto.estado === 'E' ? 'cerrado' : ''}`}>
+            <span
+              className={`indicator 
+                ${proyecto.estado === 'S' ? 'iniciado' :
+                  proyecto.estado === 'P' ? 'planificado' :
+                    proyecto.estado === 'X' ? 'ejecutado' :
+                      proyecto.estado === 'E' ? 'cerrado' : ''}`}
+            >
               {proyecto.estado === 'S'
                 ? 'Iniciado'
-                : proyecto.estado === 'E'
-                  ? 'Cerrado'
-                  : 'Creado'}
+                : proyecto.estado === 'P'
+                  ? 'Planificado'
+                  : proyecto.estado === 'X'
+                    ? 'Ejecutado'
+                    : proyecto.estado === 'E'
+                      ? 'Cerrado'
+                      : 'Creado'}
             </span>
+
           ),
 
           fecha_inicio: dateCmp,
@@ -184,45 +208,83 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
                   }
           }}><FaPlay size={16} /></a>,*/
           acciones:
-            proyecto.estado === 'E'
-              ? (
-                <div style={{ display: "flex", gap: "6px" }}>
-                  {/* flecha para editar */}
-                  <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
-                    <FaArrowRight size={16} />
-                  </a>
-                </div>
-              )
-              : proyecto.estado === 'S'
-                ? (
-                  <div style={{ display: "flex", gap: "6px" }}>
-                    {/* flecha para editar */}
-                    <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
-                      <FaArrowRight size={16} />
-                    </a>
-                    {/* botón cerrar proyecto */}
-                    <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
-                      <FaLock size={16} />
-                    </a>
-                  </div>
-                )
-                : (
-                  <a
-                    className="btn success"
-                    onClick={() => {
-                      const confirmResult = window.confirm("¿Está seguro de dar inicio al proyecto?");
-                      let modo="P"
-                      if (location.pathname.includes("/activities")) {
-                        modo = "A"
-                      }
-                      if (confirmResult) {
-                        dispatch(actions.startProject(proyecto.id, modo, false));
-                      }
-                    }}
-                  >
-                    <FaPlay size={16} />
-                  </a>
-                ),
+            proyecto.estado === 'E' ? (
+              // 🔒 Cerrado
+              <div style={{ display: "flex", gap: "6px" }}>
+                <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
+                  <FaArrowRight size={16} />
+                </a>
+              </div>
+            ) : proyecto.estado === 'X' ? (
+              // ✅ Ejecutado (solo permite cerrar)
+              <div style={{ display: "flex", gap: "6px" }}>
+                <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
+                  <FaArrowRight size={16} />
+                </a>
+                <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
+                  <FaLock size={16} />
+                </a>
+              </div>
+            ) : proyecto.estado === 'P' ? (
+              // 📦 Planificado → Ejecutado
+              <div style={{ display: "flex", gap: "6px" }}>
+                <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
+                  <FaArrowRight size={16} />
+                </a>
+                <a
+                  className="btn warning"
+                  onClick={() => {
+                    const confirmResult = window.confirm("¿Desea cambiar el estado del proyecto a 'Ejecutado'?");
+                    if (confirmResult) {
+                      handleConfirmCambiarEstadoProyecto(proyecto.id, "X");
+                    }
+                  }}
+                >
+                  <MdOutlineDoNotDisturbOn size={16} />
+                </a>
+                <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
+                  <FaLock size={16} />
+                </a>
+              </div>
+            ) : proyecto.estado === 'S' ? (
+              // ▶️ Iniciado → Planificado
+              <div style={{ display: "flex", gap: "6px" }}>
+                <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
+                  <FaArrowRight size={16} />
+                </a>
+                <a
+                  className="btn warning"
+                  onClick={() => {
+                    const confirmResult = window.confirm("¿Desea cambiar el estado del proyecto a 'Planificado'?");
+                    if (confirmResult) {
+                      handleConfirmCambiarEstadoProyecto(proyecto.id, "P");
+                    }
+                  }}
+                >
+                  <MdOutlineDoNotDisturbOn size={16} />
+                </a>
+                <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
+                  <FaLock size={16} />
+                </a>
+              </div>
+            ) : (
+              // 🟢 Creado → Iniciado
+              <a
+                className="btn success"
+                onClick={() => {
+                  const confirmResult = window.confirm("¿Está seguro de dar inicio al proyecto?");
+                  let modo = "P";
+                  if (location.pathname.includes("/activities")) {
+                    modo = "A";
+                  }
+                  if (confirmResult) {
+                    dispatch(actions.startProject(proyecto.id, modo, false));
+                  }
+                }}
+              >
+                <FaPlay size={16} />
+              </a>
+            ),
           props: {
             className: "none",
             onClick: (event) => {
@@ -401,6 +463,8 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
                       <option value="">Estado</option>
                       <option value="C">Creado</option>
                       <option value="S">Iniciado</option>
+                      <option value="P">Planificado</option>
+                      <option value="X">Ejecutado</option>
                       <option value="E">Cerrado</option>
                     </Form.Control>
                   </Form.Group>

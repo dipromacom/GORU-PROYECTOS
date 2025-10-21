@@ -53,8 +53,12 @@ const getGantt = async (req, res) => {
                 end_date: task.end_date,
                 progress: task.progress,
                 status: task.status,
+                type: task.type,
+                parent_id: task.parent_id,
                 dependencies: task.dependencies || [],
-                interesados_id: task.interesados_id || []
+                interesados_id: task.interesados_id || [],
+                is_critical: task.is_critical,
+                duration: task.duration
             }
         }
 

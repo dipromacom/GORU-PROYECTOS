@@ -115,6 +115,23 @@ const cerrarProyecto = async (req, res) => {
   }
 };
 
+const updateEstadoProyecto = async (req, res) => {
+  try {
+    const { projectId, estado } = req.body; // 👈 recibimos ambos del body
+
+    const proyecto = await ProyectoUtils.updateProyecto(
+      {
+        estado: estado,
+      },
+      projectId
+    );
+
+    return res.status(200).json({ success: true, data: proyecto });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 const updateProyecto = async (req, res) => {
   try {
     const projectId = req.params.id;
@@ -145,6 +162,7 @@ module.exports = {
   createProyectoGeneralData,
   activarProyecto,
   cerrarProyecto,
+  updateEstadoProyecto,
   updateProyecto,
   updateProyectoGeneralData
 };

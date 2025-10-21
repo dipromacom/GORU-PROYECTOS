@@ -8,6 +8,9 @@ export const types = {
     CLOSE_PROJECT_REQUEST: "project/CLOSE_PROJECT_REQUEST",
     CLOSE_PROJECT_SUCCESS: "project/CLOSE_PROJECT_SUCCESS",
     CLOSE_PROJECT_ERROR: "project/CLOSE_PROJECT_ERROR",
+    STATUS_PROJECT_REQUEST: "project/STATUS_PROJECT_REQUEST",
+    STATUS_PROJECT_SUCCESS: "project/STATUS_PROJECT_SUCCESS",
+    STATUS_PROJECT_ERROR: "project/STATUS_PROJECT_ERROR",
     CREATE_PROJECT_REQUEST: "project/CREATE_PROJECT_REQUEST",
     CREATE_PROJECT_SUCCESS: "project/CREATE_PROJECT_SUCCESS",
     CREATE_PROJECT_ERROR: "project/CREATE_PROJECT_ERROR",
@@ -98,6 +101,13 @@ export const actions = {
         projectId,
         modo,
         fecha_cierre,
+        filter
+    }),
+    statusProject: (projectId, modo, estado, filter = false) => ({
+        type: types.STATUS_PROJECT_REQUEST,
+        projectId,
+        modo,
+        estado,
         filter
     }),
     getProjectsByFilter: (filter = {}) => ({
@@ -277,6 +287,27 @@ const projectReducer = (state = defaultState, action = {}) => {
                 ...state,
                 isLoading: false
             }
+        case types.STATUS_PROJECT_REQUEST:
+            return {
+                ...state,
+                isLoading: true
+            }
+        case types.STATUS_PROJECT_SUCCESS:
+            return {
+                ...state,
+                isLoading: false,
+                // si necesitas actualizar el estado del proyecto en la lista:
+                projectList: state.projectList.map(p =>
+                    p.id === action.projectId
+                        ? { ...p, estado: action.estado }
+                        : p
+                )
+            }
+        case types.STATUS_PROJECT_ERROR:
+            return {
+                ...state,
+                isLoading: false
+            } 
         case types.GET_PROJECTS_FILTERED_SUCCESS:
             return {
                 ...state,
