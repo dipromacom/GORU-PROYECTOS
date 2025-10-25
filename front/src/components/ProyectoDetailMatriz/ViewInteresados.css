@@ -28,7 +28,7 @@
 }
 
 .indicator.iniciado:before {
-    background-color: #198754 !important;
+    background-color: #e6d11c !important;
     /* color del indicador cuando está activo */
 }
 

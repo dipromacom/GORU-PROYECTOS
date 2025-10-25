@@ -15,9 +15,11 @@ const apiPort = process.env.HTTP_PORT;
 const secureApiPort = process.env.HTTPS_PORT;
 
 app.use(helmet());
-app.use(bodyParser.urlencoded({ extended: true }));
+//app.use(bodyParser.urlencoded({ extended: true }));
+app.use(bodyParser.urlencoded({ limit: "50mb", extended: true }));
 app.use(cors());
-app.use(bodyParser.json());
+//app.use(bodyParser.json());
+app.use(bodyParser.json({ limit: "50mb" }));
 
 const TipoTelefonoRouter = require('./routes/tipo-telefono');
 const TipoDireccionRouter = require('./routes/tipo-direccion');

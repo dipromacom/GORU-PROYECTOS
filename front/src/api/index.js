@@ -242,3 +242,24 @@ export const deleteTask = ({ id, projectId }) => {
 };
 
 export const getTipoProyecto = () => apiWithToken.get(`/tipo-proyecto`);
+
+// Pizarra
+
+export const fetchWhiteboard = ({ projectId }) => {
+  if (!projectId) throw new Error("projectId is required");
+  return apiWithToken.get(`/proyecto/${projectId}/whiteboard`);
+};
+
+export const syncWhiteboard = ({ projectId, content, title }) => {
+  if (!projectId) throw new Error("projectId is required");
+  return apiWithToken.post(`/proyecto/${projectId}/whiteboard`, {
+    title: title || "Pizarra del proyecto",
+    content,
+  });
+};
+
+export const deleteWhiteboard = ({ projectId }) => {
+  if (!projectId) throw new Error("projectId is required");
+  return apiWithToken.delete(`/proyecto/${projectId}/whiteboard`);
+};
+

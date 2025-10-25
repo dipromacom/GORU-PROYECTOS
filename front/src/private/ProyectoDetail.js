@@ -49,6 +49,9 @@ import InputCalidadList from "../components/inputList/InputCalidadList";
 //gantt
 import GanttChart from "../components/GanttChart/GanttChart";
 
+//pizarra
+import Whiteboard from "../components/pizarra/Whiteboard";
+
 
 function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado }) {
     const routeParams = useParams();
@@ -620,6 +623,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     </Nav.Item>
                                     <Nav.Item>
                                         <Nav.Link eventKey="gantt">Gantt</Nav.Link>
+                                    </Nav.Item>
+                                    <Nav.Item>
+                                        <Nav.Link eventKey="pizarra">Pizarra</Nav.Link>
                                     </Nav.Item>
                                 </>
                             )}
@@ -1297,17 +1303,22 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             </div>
 
                         </Tab.Pane>
-                    </Tab.Content>
-                    <Tab.Pane eventKey="gantt">
-                        {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
-                            ? <GanttChart
+                        <Tab.Pane eventKey="gantt">
+                            {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
+                                ? <GanttChart
+                                    projectId={projectId}
+                                    interesados={interesado}
+                                />
+                                : <p>El tipo de proyecto no es apto para usar el Gantt</p>
+                            }
+
+                        </Tab.Pane>
+                        <Tab.Pane eventKey="pizarra">
+                            <Whiteboard key={projectId}
                                 projectId={projectId}
-                                interesados={interesado}
-                              />
-                            : <p>El tipo de proyecto no es apto para usar el Gantt</p>
-                        }
-                        
-                    </Tab.Pane>  
+                            />
+                        </Tab.Pane>  
+                    </Tab.Content>
                 </div>
             </Tab.Container>
         </div>
