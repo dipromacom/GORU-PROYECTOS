@@ -37,6 +37,7 @@ const models = {
   KanbanStatus: require('./kanbanStatus')(db, Sequelize),
   KanbanTask: require('./kanbanTask')(db, Sequelize),
   GanttTask: require('./ganttTask')(db, Sequelize),
+  Whiteboard: require('./whiteboard')(db, Sequelize),
   RespuestaAnalisis: require('./resultado-analisis') (db, Sequelize)
 };
 

@@ -2,6 +2,7 @@ const express = require('express');
 const ProyectoController = require('../controllers/proyecto');
 const KabanController = require('../controllers/kanban');
 const GanttController = require('../controllers/gantt');
+const WhiteBoartController = require('../controllers/whiteboard');
 
 const router = express.Router();
 
@@ -20,5 +21,8 @@ router.get('/proyecto/:id/kanban', KabanController.getKanban)
 router.post('/proyecto/:id/gantt', GanttController.setGantt)
 router.get('/proyecto/:id/gantt', GanttController.getGantt)
 router.delete('/proyecto/:id/gantt/:taskId', GanttController.deleteGantt)
+router.post('/proyecto/:id/whiteboard', WhiteBoartController.setWhiteboard);
+router.get('/proyecto/:id/whiteboard', WhiteBoartController.getWhiteboard);
+router.delete('/proyecto/:id/whiteboard', WhiteBoartController.deleteWhiteboard);
 
 module.exports = router;
