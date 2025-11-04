@@ -37,6 +37,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   const [showCerrarModal, setShowCerrarModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [fechaCierre, setFechaCierre] = useState(moment().format("YYYY-MM-DD"));
+  const [demo, setDemo] = useState(false)
 
   const getFilter = () => {
     const searchParams = new URLSearchParams(location.search);
@@ -49,15 +50,20 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
 
   useEffect(() => {
     async function onLoad() {
+      if (!localStorage.getItem("modo")) {
+        dispatch(routesActions.goTo(`membership`));
+      }
       try {
         let queryParams = getFilter();
         if (location.pathname.includes("/activities")) {
           queryParams = { ...queryParams, modo: "A" };
-        } else {
-          if (localStorage.getItem("modo") === "Demo") {
-            dispatch(routesActions.goTo(`membership`));
-          }
+        } 
+        else if (location.pathname.includes("/projects")) {
           queryParams = { ...queryParams, modo: "P" };
+          if (localStorage.getItem("modo") === "Demo") {           
+            //dispatch(routesActions.goTo(`membership`));
+            setDemo(true);
+          }
         }
 
 
@@ -333,7 +339,12 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
     if (responsable || null)
       search = { ...search, responsable }
     const searchUrl = new URLSearchParams(search)
-    dispatch(routesActions.goTo(`projects?${searchUrl.toString()}`))
+    if(location.pathname.includes("/projects")) {
+      dispatch(routesActions.goTo(`projects?${searchUrl.toString()}`))
+    }
+    else if (location.pathname.includes("/activities")) {
+      dispatch(routesActions.goTo(`activities?${searchUrl.toString()}`))
+    }
     //dispatch(actions.getProjectsByFilter(getFilter()))
 
   }
@@ -348,180 +359,191 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
 
   return (
     <div className="page-menu-container">
-      <SubMenu
-        title={location.pathname.includes("/activities") ? "Actividades" : "Proyectos"}
-        newLabel={location.pathname.includes("/activities") ? "Nueva Actividad" : "Nuevo Proyecto"}
-        total={projectList.length}
-        newButtonAction={() => handleClickNewProyect()}
-        DashboardButtonAction={() => handleClickDashboard()}
-      />
+      {demo && location.pathname.includes("/projects") ? (
+        <>
+          <br /><br /><br /><br />
+          <div className="center">
+            <p className="green">Ops!, no tiene permiso para acceder a está opción</p>
+          </div>
+        </>
+      ) :
+      (
+        <>
+          <SubMenu
+            title={location.pathname.includes("/activities") ? "Actividades" : "Proyectos"}
+            newLabel={location.pathname.includes("/activities") ? "Nueva Actividad" : "Nuevo Proyecto"}
+            total={projectList.length}
+            newButtonAction={() => handleClickNewProyect()}
+            //DashboardButtonAction={() => handleClickDashboard()}
+          />
 
-      {/* <SubMenu
-        title="Dashboard"
-        newLabel="Ver Dashboard"
-        // total={dashboardList.length}  // Definir bien dashboardList
-        newButtonAction={() => handleClickDashboard()}  // envia a ver el Dashboard
-      /> */}
+          {/* <SubMenu
+            title="Dashboard"
+            newLabel="Ver Dashboard"
+            // total={dashboardList.length}  // Definir bien dashboardList
+            newButtonAction={() => handleClickDashboard()}  // envia a ver el Dashboard
+          /> */}
 
-      <div className="proyectos-form">
-        <div className="d-flex icons-container">
-          {/* <div className="float-left icon">
-            <img src="icons/Download.svg" />
-          </div> */}
-          <div className="d-inline mr-2">
-            <Dropdown>
-              <Dropdown.Toggle variant="outline-primary" id="download-button">
-                Descargar
-              </Dropdown.Toggle>
-              <Dropdown.Menu>
-                <Dropdown.Item>
-                  <DownloadPdfButton pdfReport={<ProyectoListPDF proyectosList={projectList} />} reportPrefix="Proyectos" >
-                    <p>PDF <i className="bi bi-filetype-pdf"></i></p>
-                  </DownloadPdfButton>
-                </Dropdown.Item>
-                <CSVLink data={convertToCsvData(projectList)} filename={`Proyectos_${moment().format('YYYYMMDDHHmmss')}.csv`}
-                  target="_blank"
-                  separator=";"
-                  quote="'"
-                  encoding="UTF-8"
-                  blob="true"
-                  className="dropdown-item"
-                  headers={csvHeader}
-                >
-                  CSV <i className="bi bi-filetype-csv"></i>
-                </CSVLink>
-
-                {/* <Dropdown.Item>
-                  <div>
-                    <CSVLink data={projectList} filename="example.csv"
+          <div className="proyectos-form">
+            <div className="d-flex icons-container">
+              {/* <div className="float-left icon">
+                <img src="icons/Download.svg" />
+              </div> */}
+              <div className="d-inline mr-2">
+                <Dropdown>
+                  <Dropdown.Toggle variant="outline-primary" id="download-button">
+                    Descargar
+                  </Dropdown.Toggle>
+                  <Dropdown.Menu>
+                    <Dropdown.Item>
+                      <DownloadPdfButton pdfReport={<ProyectoListPDF proyectosList={projectList} />} reportPrefix="Proyectos" >
+                        <p>PDF <i className="bi bi-filetype-pdf"></i></p>
+                      </DownloadPdfButton>
+                    </Dropdown.Item>
+                    <CSVLink data={convertToCsvData(projectList)} filename={`Proyectos_${moment().format('YYYYMMDDHHmmss')}.csv`}
                       target="_blank"
                       separator=";"
                       quote="'"
                       encoding="UTF-8"
                       blob="true"
-                      onError={(err) => console.error('Error generating CSV:', err)}>
+                      className="dropdown-item"
+                      headers={csvHeader}
+                    >
                       CSV <i className="bi bi-filetype-csv"></i>
                     </CSVLink>
-                  </div>
-                </Dropdown.Item> */}
-              </Dropdown.Menu>
-            </Dropdown>
-          </div>
-          <div className="d-inline">
-            {/* <Button><i className="bi bi-printer"></i></Button> */}
-          </div>
 
-          {/* <div className="float-left icon">
-            <img src="icons/Imprimir.svg" />
-          </div> */}
-        </div>
-        <div>
-          <div>
-            <Button variant="outline-primary" onClick={() => { handleExpandFilters() }}><i className={`bi ${filtersExpanded ? 'bi-caret-up-fill' : 'bi-caret-down-fill'}`}></i>&nbsp;Filtros</Button>
-            <Collapse in={filtersExpanded}>
-              <div className="pull-down">
-                <Form inline>
-                  <Form.Group>
-                    <Form.Control type="text" placeholder="Nombre" value={nombreProyecto} onChange={e => setNombreProyecto(e.target.value)}></Form.Control>
-                  </Form.Group>
-                  &nbsp; &nbsp;
-                  <Form.Group>
-                    <Form.Control type="text" placeholder="Responsable" value={responsable} onChange={e => setResponsable(e.target.value)}></Form.Control>
-                  </Form.Group>
-                  &nbsp; &nbsp;
-                  <div className="form-group">
-                    {/* <label className="form-label">Fechas</label> */}
-                    <DateRangePicker // momentPropTypes.momentObj or null,
-                      startDate={moment(startDate).isValid() ? moment(startDate) : null}
-                      startDateId="startDate"
-                      endDate={moment(endDate).isValid() ? moment(endDate) : null}
-                      endDateId="endDate"
-                      onDatesChange={({ startDate, endDate }) => {
-                        handleDateFilterEndChange(endDate)
-                        handleDateFilterStartChange(startDate)
-                      }}
-                      theme={customTheme}
-                      focusedInput={dateFilterInput}
-                      onFocusChange={(focused) => { handleDateInputFocus(focused) }}
-                      showDefaultInputIcon // show the calendar icon
-                      showClearDates // show the clear dates button
-                      /*handleClearDateFilter={() => {
-                        handleDateFilterEndChange(null)
-                        handleDateFilterStartChange(null)
-                      }}*/
-                      startDatePlaceholderText="Fecha Inicial"
-                      endDatePlaceholderText="Fecha Final"
-                      numberOfMonths={2} // number of months to display
-                      isOutsideRange={() => false}
-                      small={true}
-
-                    />
-                  </div>
-                  &nbsp; &nbsp;
-                  <Form.Group>
-                    <Form.Control as="select" placeholder="Estado" value={estado} onChange={e => setEstado(e.target.value)}>
-                      <option value="">Estado</option>
-                      <option value="C">Creado</option>
-                      <option value="S">Iniciado</option>
-                      <option value="P">Planificado</option>
-                      <option value="X">Ejecutado</option>
-                      <option value="E">Cerrado</option>
-                    </Form.Control>
-                  </Form.Group>
-                  &nbsp;&nbsp;
-                  <Form.Group>
-                    <Button type="submit" onClick={e => handleApplyFilter(e)}>Aplicar</Button>
-                  </Form.Group>
-                  &nbsp;&nbsp;
-                  <Form.Group>
-                    <Button type="submit" variant="outline-secondary" onClick={e => handelCleanInput(e)}><i className="bi-x-circle"></i></Button>
-                  </Form.Group>
-                </Form>
+                    {/* <Dropdown.Item>
+                      <div>
+                        <CSVLink data={projectList} filename="example.csv"
+                          target="_blank"
+                          separator=";"
+                          quote="'"
+                          encoding="UTF-8"
+                          blob="true"
+                          onError={(err) => console.error('Error generating CSV:', err)}>
+                          CSV <i className="bi bi-filetype-csv"></i>
+                        </CSVLink>
+                      </div>
+                    </Dropdown.Item> */}
+                  </Dropdown.Menu>
+                </Dropdown>
               </div>
-            </Collapse>
+              <div className="d-inline">
+                {/* <Button><i className="bi bi-printer"></i></Button> */}
+              </div>
 
+              {/* <div className="float-left icon">
+                <img src="icons/Imprimir.svg" />
+              </div> */}
+            </div>
+            <div>
+              <div>
+                <Button variant="outline-primary" onClick={() => { handleExpandFilters() }}><i className={`bi ${filtersExpanded ? 'bi-caret-up-fill' : 'bi-caret-down-fill'}`}></i>&nbsp;Filtros</Button>
+                <Collapse in={filtersExpanded}>
+                  <div className="pull-down">
+                    <Form inline>
+                      <Form.Group>
+                        <Form.Control type="text" placeholder="Nombre" value={nombreProyecto} onChange={e => setNombreProyecto(e.target.value)}></Form.Control>
+                      </Form.Group>
+                      &nbsp; &nbsp;
+                      <Form.Group>
+                        <Form.Control type="text" placeholder="Responsable" value={responsable} onChange={e => setResponsable(e.target.value)}></Form.Control>
+                      </Form.Group>
+                      &nbsp; &nbsp;
+                      <div className="form-group">
+                        {/* <label className="form-label">Fechas</label> */}
+                        <DateRangePicker // momentPropTypes.momentObj or null,
+                          startDate={moment(startDate).isValid() ? moment(startDate) : null}
+                          startDateId="startDate"
+                          endDate={moment(endDate).isValid() ? moment(endDate) : null}
+                          endDateId="endDate"
+                          onDatesChange={({ startDate, endDate }) => {
+                            handleDateFilterEndChange(endDate)
+                            handleDateFilterStartChange(startDate)
+                          }}
+                          theme={customTheme}
+                          focusedInput={dateFilterInput}
+                          onFocusChange={(focused) => { handleDateInputFocus(focused) }}
+                          showDefaultInputIcon // show the calendar icon
+                          showClearDates // show the clear dates button
+                          /*handleClearDateFilter={() => {
+                            handleDateFilterEndChange(null)
+                            handleDateFilterStartChange(null)
+                          }}*/
+                          startDatePlaceholderText="Fecha Inicial"
+                          endDatePlaceholderText="Fecha Final"
+                          numberOfMonths={2} // number of months to display
+                          isOutsideRange={() => false}
+                          small={true}
+
+                        />
+                      </div>
+                      &nbsp; &nbsp;
+                      <Form.Group>
+                        <Form.Control as="select" placeholder="Estado" value={estado} onChange={e => setEstado(e.target.value)}>
+                          <option value="">Estado</option>
+                          <option value="C">Creado</option>
+                          <option value="S">Iniciado</option>
+                          <option value="P">Planificado</option>
+                          <option value="X">Ejecutado</option>
+                          <option value="E">Cerrado</option>
+                        </Form.Control>
+                      </Form.Group>
+                      &nbsp;&nbsp;
+                      <Form.Group>
+                        <Button type="submit" onClick={e => handleApplyFilter(e)}>Aplicar</Button>
+                      </Form.Group>
+                      &nbsp;&nbsp;
+                      <Form.Group>
+                        <Button type="submit" variant="outline-secondary" onClick={e => handelCleanInput(e)}><i className="bi-x-circle"></i></Button>
+                      </Form.Group>
+                    </Form>
+                  </div>
+                </Collapse>
+
+              </div>
+            </div>
+
+            <br />
+            {data.length !== 0 ?
+              <CheckTable
+                columns={columns}
+                data={data}
+              />
+              :
+              <div className="center pull-down">
+                <p>
+                  No hay proyectos por el momento
+                </p>
+              </div>}
           </div>
-        </div>
 
-        <br />
-        {data.length !== 0 ?
-          <CheckTable
-            columns={columns}
-            data={data}
-          />
-          :
-          <div className="center pull-down">
-            <p>
-              No hay proyectos por el momento
-            </p>
-          </div>}
-      </div>
-
-      <Modal show={showCerrarModal} onHide={handleCloseCerrarModal}>
-        <Modal.Header closeButton>
-          <Modal.Title>Cerrar {location.pathname.includes("/activities") ? "Actividad" : "Proyecto"}</Modal.Title>
-        </Modal.Header>
-        <Modal.Body>
-          <Form.Group>
-            <Form.Label>Fecha de Cierre</Form.Label>
-            <Form.Control
-              type="date"
-              value={fechaCierre}
-              min={selectedProject?.fecha_inicio ? moment(selectedProject.fecha_inicio).format("YYYY-MM-DD") : undefined} // 🔹 evita fechas menores
-              onChange={(e) => setFechaCierre(e.target.value)}
-            />
-          </Form.Group>
-        </Modal.Body>
-        <Modal.Footer>
-          <Button variant="secondary" onClick={handleCloseCerrarModal}>
-            Cancelar
-          </Button>
-          <Button variant="danger" onClick={handleConfirmCerrarProyecto}>
-            Cerrar Proyecto
-          </Button>
-        </Modal.Footer>
-      </Modal>
-
+          <Modal show={showCerrarModal} onHide={handleCloseCerrarModal}>
+            <Modal.Header closeButton>
+              <Modal.Title>Cerrar {location.pathname.includes("/activities") ? "Actividad" : "Proyecto"}</Modal.Title>
+            </Modal.Header>
+            <Modal.Body>
+              <Form.Group>
+                <Form.Label>Fecha de Cierre</Form.Label>
+                <Form.Control
+                  type="date"
+                  value={fechaCierre}
+                  min={selectedProject?.fecha_inicio ? moment(selectedProject.fecha_inicio).format("YYYY-MM-DD") : undefined} // 🔹 evita fechas menores
+                  onChange={(e) => setFechaCierre(e.target.value)}
+                />
+              </Form.Group>
+            </Modal.Body>
+            <Modal.Footer>
+              <Button variant="secondary" onClick={handleCloseCerrarModal}>
+                Cancelar
+              </Button>
+              <Button variant="danger" onClick={handleConfirmCerrarProyecto}>
+                Cerrar Proyecto
+              </Button>
+            </Modal.Footer>
+          </Modal>
+        </>
+      )}  
     </div>
   );
 }

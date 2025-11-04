@@ -53,7 +53,6 @@ function* getInterestedListSaga(action) {
 
 // Saga para actualizar un interesado
 function* updateInterestedSaga(action) {
-    console.log("entra xd");
     try {
         const response = yield call(Api.updateInteresado, action.payload);
         yield put({

@@ -181,6 +181,9 @@ function* handleMoveTask({ id, newStart, newEnd, projectId }) {
             newEnd,
             projectId,
         });
+
+        yield put({ type: types.FETCH_GANTT_REQUEST, projectId });
+
     } catch (e) {
         onError(e);
     }

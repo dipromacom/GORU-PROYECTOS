@@ -14,8 +14,12 @@ const Task = ({
     createTask,
     deleteTask,
     editTask,
-    interesados = [] // <-- recibimos interesados desde Column
+    interesados = [], // <-- recibimos interesados desde Column
+    cerrado
 }) => {
+    const editHandler = cerrado ? () => { } : (id, field) => editTask({ id, content: field });
+    const createHandler = cerrado ? () => { } : (field) => createTask({ statusId, content: field });
+    
     const {
         field,
         isEditing,
@@ -28,8 +32,8 @@ const Task = ({
     } = useEditField({
         autoFocus,
         fieldId: task?.id,
-        onCreate: (field) => createTask({ statusId, content: field }),
-        onEdit: (id, field) => editTask({ id, content: field }),
+        onCreate: createHandler,
+        onEdit: editHandler,
     });
 
     const [actionHovered, setActionHovered] = useState(false);
@@ -53,30 +57,33 @@ const Task = ({
         />
     );
 
-    const renderMenu = () => (
-        <ButtonGroup className={`${cardHovered ? 'visible' : 'invisible'}`} aria-label="actions">
-            <Button
-                className={`edit ${actionHovered === 'edit' ? 'bg-warning' : ''}`}
-                variant="outline-secondary"
-                size="sm"
-                onMouseEnter={() => setActionHovered('edit')}
-                onMouseLeave={() => setActionHovered(null)}
-                onClick={(e) => { e.stopPropagation(); setIsEditing(true); setField(task?.content || ""); }}
-            >
-                <i className="bi bi-pencil-square"></i>
-            </Button>
-            <Button
-                className={`delete ${actionHovered === 'delete' ? 'bg-danger' : ''}`}
-                variant="outline-secondary"
-                size="sm"
-                onMouseEnter={() => setActionHovered('delete')}
-                onMouseLeave={() => setActionHovered(null)}
-                onClick={() => deleteTask({ id: task.id })}
-            >
-                <i className="bi bi-trash"></i>
-            </Button>
-        </ButtonGroup>
-    );
+    const renderMenu = () => {
+        if (cerrado) return null;
+        return (
+            <ButtonGroup className={`${cardHovered ? 'visible' : 'invisible'}`} aria-label="actions">
+                <Button
+                    className={`edit ${actionHovered === 'edit' ? 'bg-warning' : ''}`}
+                    variant="outline-secondary"
+                    size="sm"
+                    onMouseEnter={() => setActionHovered('edit')}
+                    onMouseLeave={() => setActionHovered(null)}
+                    onClick={(e) => { e.stopPropagation(); setIsEditing(true); setField(task?.content || ""); }}
+                >
+                    <i className="bi bi-pencil-square"></i>
+                </Button>
+                <Button
+                    className={`delete ${actionHovered === 'delete' ? 'bg-danger' : ''}`}
+                    variant="outline-secondary"
+                    size="sm"
+                    onMouseEnter={() => setActionHovered('delete')}
+                    onMouseLeave={() => setActionHovered(null)}
+                    onClick={() => deleteTask({ id: task.id })}
+                >
+                    <i className="bi bi-trash"></i>
+                </Button>
+            </ButtonGroup>
+        );
+    };
 
     const renderTaskContent = ({ dragHandleProps = {} }) => (
         <Card className="kanban-task mt-2 mb-2" {...dragHandleProps}
@@ -84,21 +91,21 @@ const Task = ({
             onMouseLeave={() => setCardHovered(false)}
         >
             <Card.Body>
-                {isEditing || <div className="float-right">{renderMenu()}</div>}
+                {(!isEditing && !cerrado) && <div className="float-right">{renderMenu()}</div>}
                 <div className="d-flex flex-column">
                     <div className="flex-fill">
                         {isEditing || autoFocus ? renderEditingInput() : <p style={{ userSelect: "none" }}>{task?.content}</p>}
                         {task?.priority && task?.priority !== "none" && <p style={{ marginTop: "8px" }}>{task.priority}</p>}
                     </div>
                     {/* InteresadoDropdown siempre visible */}
-                    <InteresadoDropdown interesados={interesados} task={task} editTask={editTask} />
+                    <InteresadoDropdown interesados={interesados} task={task} editTask={cerrado ? () => { } : editTask} cerrado={cerrado} />
                 </div>
             </Card.Body>
         </Card>
     );
 
     return (
-        <Draggable draggableId={task?.id || `task-${index}`} index={index} isDragDisabled={!draggable}>
+        <Draggable draggableId={task?.id || `task-${index}`} index={index} isDragDisabled={!draggable || cerrado}>
             {({ draggableProps, dragHandleProps, innerRef }) => (
                 <div
                     style={{

@@ -8,10 +8,9 @@ import { selectors } from "../../reducers/project";
 import { Interesado } from "../ProyectoDetailMatriz/Interesado";
 import './ViewInteresados.css';
 
-export const ViewInteresados = ({ interesados, toDo, usuario, markAsDoneCallback }) => {
+export const ViewInteresados = ({ interesados, toDo, usuario, markAsDoneCallback, cerrado }) => {
     const [filteredData, setFilteredData] = useState([]);
     const [verInteresado, setVerInteresado] = useState(null); // Estado para alternar vista
-
     // Columnas de la tabla
     const columns = useMemo(
         () => [
@@ -25,22 +24,26 @@ export const ViewInteresados = ({ interesados, toDo, usuario, markAsDoneCallback
                 Header: 'Acciones',
                 accessor: 'acciones',
                 Cell: ({ row }) => (
-                    <OverlayTrigger
-                        placement="top"
-                        overlay={<Tooltip>Fecha de registro: {moment(row.original.fecha_creacion).format('LLL')}</Tooltip>}
-                    >
-                        <button
-                            className="btn d-flex align-items-center"
-                            style={{ margin: '0 10px' }}
-                            onClick={() => setVerInteresado(row.original)}
+                    !cerrado ? (
+                        <OverlayTrigger
+                            placement="top"
+                            overlay={<Tooltip>Fecha de registro: {moment(row.original.fecha_creacion).format('LLL')}</Tooltip>}
                         >
-                            <FaArrowRight size={16} />
-                        </button>
-                    </OverlayTrigger>
+                            <button
+                                className="btn d-flex align-items-center"
+                                style={{ margin: '0 10px' }}
+                                onClick={() => setVerInteresado(row.original)}
+                            >
+                                <FaArrowRight size={16} />
+                            </button>
+                        </OverlayTrigger>
+                    ) : (
+                        <span style={{ padding: '0 10px', display: 'inline-block' }}></span>
+                    )   
                 ),
             },
         ],
-        []
+        [cerrado]
     );
 
     useEffect(() => {

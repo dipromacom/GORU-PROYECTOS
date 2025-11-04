@@ -7,7 +7,7 @@ import { actions, selectors } from '../../reducers/project';
 import { toast } from "react-toastify";
 import './analisisImpacto.css';
 
-export const ViewAnalisisAmbiental = ({ analysisData, respuestaAnalisisAmbiental, projectID }) => {
+export const ViewAnalisisAmbiental = ({ analysisData, respuestaAnalisisAmbiental, projectID, cerrado }) => {
     const dispatch = useDispatch();
     const { id } = useParams(); 
     const [totalSum, setTotalSum] = useState(0);
@@ -168,12 +168,14 @@ export const ViewAnalisisAmbiental = ({ analysisData, respuestaAnalisisAmbiental
                                         value={documentLink}
                                         onChange={(e) => setDocumentLink(e.target.value)}
                                     />
-                                    <Button
-                                        style={{ backgroundColor: '#60cd26', borderColor: '#60cd26' }}
-                                        onClick={updateEnlace}
-                                    >
-                                        Guardar
-                                    </Button>
+                                    {!cerrado && (
+                                        <Button
+                                            style={{ backgroundColor: '#60cd26', borderColor: '#60cd26' }}
+                                            onClick={updateEnlace}
+                                        >
+                                            Guardar
+                                        </Button>
+                                    )}
                                 </InputGroup>
                             </Form.Group>
                         )}

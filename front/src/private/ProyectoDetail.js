@@ -59,7 +59,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     // const [interesado, setInteresado] = useState([]);
     const [taskFilter, setTaskFilter] = useState("");
     const esActividad = projectDetail?.modo === "A";
-    const disableEdit = projectDetail?.estado === "E";
+    const cerrado = projectDetail?.estado === "E";
     const iniciado = projectDetail?.estado === "S";
     const planificado = projectDetail?.estado === "P";
     const ejecutado = projectDetail?.estado === "X";
@@ -137,6 +137,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         // Selects / dropdowns relacionados
         setMaxDesviacionPeriodo(""); // asegúrate de usar el mismo nombre exacto del estado
         setPlazoPeriodo("");
+        setLeccionesAprendidas("");
 
         // Si usas flags para los collapses
         setOpenPrimeraParte(false);
@@ -199,6 +200,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setPlazoPeriodo(projectDetail?.plazo_periodo)
         setMaxDesviacionPeriodo(projectDetail?.max_desviacion_periodo)
         setTipoProyecto(projectDetail?.tipo_proyecto)
+        setLeccionesAprendidas(projectDetail?.lecciones_aprendidas)
     }
 
 
@@ -262,6 +264,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [plazoPeriodo, setPlazoPeriodo] = useState("M")
     const [maxDesviacionPeriodo, setMaxDesviacionPeriodo] = useState("M")
     const [tipoProyecto, setTipoProyecto] = useState("")
+    const [leccionesAprendidas, setLeccionesAprendidas] = useState("")
 
     //Aqui se declaran para manejar los estados de los collapse
     const [openPrimeraParte, setOpenPrimeraParte] = useState(false);
@@ -361,6 +364,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         dispatch(actions.updateProject(routeParams.id,payload));
     }
 
+    function handleSubmitLeccionesAprendidas(event) {
+        let payload = {
+            leccionesAprendidas: leccionesAprendidas,
+        };
+        console.log(payload);
+        dispatch(actions.updateProject(routeParams.id, payload));
+    }
+
     function handleSubmitDatosGenerales(event) {
         event.preventDefault();
         let payload = {
@@ -431,6 +442,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             ...(incentivo && { incentivo }),
             ...(plazoPeriodo && {plazoPeriodo}),
             ...(maxDesviacionPeriodo && {maxDesviacionPeriodo}),
+            ...(leccionesAprendidas && { leccionesAprendidas }),
             autoridadControlCambios
         }
 
@@ -462,7 +474,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
     };
 
-    const isTodoOrKanban = () => (activeKey === 'to-do' || activeKey === 'project-management' || activeKey === 'Analisis-ambiental')
+    const isTodoOrKanban = () => (activeKey === 'to-do' || activeKey === 'project-management' || activeKey === 'Analisis-ambiental' || activeKey === 'gantt' || activeKey === 'pizarra')
 
 
     function validateForm() {
@@ -527,7 +539,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                         {!isTodoOrKanban() && !(activeKey === 'Crear-Interesado' || activeKey === 'Matriz-Interesados') && (
                             <>
                                 {/* Mostrar el botón de editar o visualizar dependiendo del estado de editMode */}
-                                {!disableEdit && (
+                                {!cerrado && (
                                     <>
                                         <div className="green" style={{ cursor: 'pointer' }} onClick={() => toggleEdit()}>
                                             <i className={`bi ${!editMode ? 'bi-pencil-square' : 'bi-eye'} mr-2`} />
@@ -548,7 +560,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                         )}
 
                         {/* Condición para mostrar "Crear Interesado" solo cuando estamos en 'Matriz-Interesados' */}
-                        {activeKey === 'Matriz-Interesados' && !editMode && (
+                        {activeKey === 'Matriz-Interesados' && !cerrado && (
                             <>
                                 <div
                                     className="green"
@@ -561,7 +573,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                         )}
 
                         {/* Cuando estamos en 'Crear-Interesado', permitir volver */}
-                        {activeKey === 'Crear-Interesado' && !editMode && (
+                        {activeKey === 'Crear-Interesado' && !cerrado && (
                             <>
                                 <div className="vertical-separator mx-2"></div>
                                 <div
@@ -588,7 +600,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             <Nav.Item>
                                 <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
                             </Nav.Item>
-                            {(planificado || ejecutado) && (
+                            {(planificado || ejecutado || cerrado) && (
                                 <>
                                     <Nav.Item>
                                         <Nav.Link eventKey="Matriz-Interesados">Interesados </Nav.Link>
@@ -616,18 +628,23 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         </>
                                     )}
                                     <Nav.Item>
+                                        <Nav.Link eventKey="gantt">Gantt</Nav.Link>
+                                    </Nav.Item>
+                                    <Nav.Item>
                                         <Nav.Link eventKey="to-do" >To Do</Nav.Link>
                                     </Nav.Item>
                                     <Nav.Item>
                                         <Nav.Link eventKey="project-management">Kanban</Nav.Link>
-                                    </Nav.Item>
-                                    <Nav.Item>
-                                        <Nav.Link eventKey="gantt">Gantt</Nav.Link>
-                                    </Nav.Item>
+                                    </Nav.Item>                        
                                     <Nav.Item>
                                         <Nav.Link eventKey="pizarra">Pizarra</Nav.Link>
                                     </Nav.Item>
                                 </>
+                            )}
+                            {(cerrado) && (
+                                <Nav.Item>
+                                    <Nav.Link eventKey="leccionesAprendidas">lecciones Aprendidas</Nav.Link>
+                                </Nav.Item>
                             )}
                             
                             
@@ -1138,7 +1155,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                         </Tab.Pane>
                         <Tab.Pane eventKey="Matriz-Interesados">
-                            <ViewInteresados interesados={interesado} toDo={todo} markAsDoneCallback={id => doneTask(id)} />
+                            <ViewInteresados interesados={interesado} toDo={todo} markAsDoneCallback={id => doneTask(id)} cerrado={cerrado} />
                         </Tab.Pane>
                         <Tab.Pane eventKey="Crear-Interesado">
                             <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} />
@@ -1155,20 +1172,20 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 </select>
                             </div>   
 
-                            <TodoList toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)}></TodoList>
+                            <TodoList toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado}></TodoList>
                         </Tab.Pane>
                         <Tab.Pane eventKey="project-management">
                             {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_AGIL || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
-                                ? <Kanban interesados={interesado} />
+                                ? <Kanban interesados={interesado} cerrado={cerrado} />
                                 : <p>El tipo de proyecto no es apto para usar el Kanban</p>
                             }    
                         </Tab.Pane>
                         <Tab.Pane eventKey="Analisis-ambiental">
                             {
                             (analysisData && analysisData.length > 0) || (respuestaAnalisisAmbiental && respuestaAnalisisAmbiental.length > 0) ? (
-                                <ViewAnalisisAmbiental analysisData={analysisData} respuestaAnalisisAmbiental={respuestaAnalisisAmbiental} projectID={numericId} />
+                                <ViewAnalisisAmbiental analysisData={analysisData} respuestaAnalisisAmbiental={respuestaAnalisisAmbiental} projectID={numericId} cerrado={cerrado}/>
                             ) : (
-                                <AnalisisAmbiental projectID={numericId} />
+                                <AnalisisAmbiental projectID={numericId} cerrado={cerrado}/>
                             )
                             }
 
@@ -1176,6 +1193,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                         {/* --- Alcance --- */}
                         <Tab.Pane eventKey="alcance">
+                            {!editMode && !cerrado && (
+                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar interesados </p>
+                            )}
                             <InputAlcanceList
                                 alcanceEntregables={alcanceEntregables}
                                 setAlcanceEntregables={setAlcanceEntregables}
@@ -1199,6 +1219,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                         {/* --- Hitos --- */}
                         <Tab.Pane eventKey="hitos">
+                            {!editMode && !cerrado && (
+                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar hitos </p>
+                            )}
                             <InputHitosList
                                 tiempoDuracion={tiempoDuracion}
                                 setTiempoDuracion={setTiempoDuracion}
@@ -1225,6 +1248,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                         {/* --- Costos --- */}
                         <Tab.Pane eventKey="costos">
+                            {!editMode && !cerrado && (
+                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar costos </p>
+                            )}
                             <InputCostosList
                                 costoEntregable={costoEntregable}
                                 setCostoEntregable={setCostoEntregable}
@@ -1254,6 +1280,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                         {/* --- Calidad --- */}
                         <Tab.Pane eventKey="calidad">
+                            {!editMode && !cerrado && (
+                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar calidad </p>
+                            )}
                             <InputCalidadList
                                 costoEntregable={costoEntregable}
                                 calidadMetricas={calidadMetricas}
@@ -1278,6 +1307,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                         
                         {/* --- Riesgos --- */}
                         <Tab.Pane eventKey="riesgos">
+                            {!editMode && !cerrado && (
+                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar riesgos </p>
+                            )}
                             <Form.Group controlId="riesgos-criticos">
                                 <InputRiesgosList
                                     disabled={!editMode}
@@ -1308,6 +1340,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 ? <GanttChart
                                     projectId={projectId}
                                     interesados={interesado}
+                                    cerrado={cerrado}
                                 />
                                 : <p>El tipo de proyecto no es apto para usar el Gantt</p>
                             }
@@ -1316,8 +1349,31 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                         <Tab.Pane eventKey="pizarra">
                             <Whiteboard key={projectId}
                                 projectId={projectId}
+                                cerrado={cerrado}
                             />
                         </Tab.Pane>  
+                        <Tab.Pane eventKey="leccionesAprendidas">
+                            <Form.Group controlId="informacionBreve">
+                                <Form.Label>Lecciones aprendidas</Form.Label>
+                                <Form.Control
+                                    autoComplete="off"
+                                    type="text"
+                                    value={leccionesAprendidas}
+                                    as="textarea"
+                                    rows={10}
+                                    onChange={e => setLeccionesAprendidas(e.target.value)}
+                                />
+                            </Form.Group>
+                            <div className="mt-5 pb-5">
+                                <LoaderButton
+                                    type="submit"
+                                    className="btn-success btn-save"
+                                    onClick={handleSubmitLeccionesAprendidas}
+                                >
+                                    Guardar Cambios
+                                </LoaderButton>
+                            </div>
+                        </Tab.Pane>
                     </Tab.Content>
                 </div>
             </Tab.Container>

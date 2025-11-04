@@ -1,13 +1,14 @@
 import { useState } from "react";
 import { Dropdown, ButtonGroup } from "react-bootstrap";
 
-const InteresadoDropdown = ({ interesados = [], task = {}, editTask }) => {
+const InteresadoDropdown = ({ interesados = [], task = {}, editTask, cerrado }) => {
     const [interesadoId, setInteresadoId] = useState(task?.interesadoId || "");
     const [interesadoName, setInteresadoName] = useState(
         interesados.find(i => i.id === task?.interesadoId)?.nombre_interesado || ""
     );
 
     const handleSelect = (value) => {
+        if (cerrado) return;
         const [id, name] = value.split("|");
         setInteresadoId(id);
         setInteresadoName(name);
@@ -24,8 +25,8 @@ const InteresadoDropdown = ({ interesados = [], task = {}, editTask }) => {
     };
 
     return (
-        <Dropdown as={ButtonGroup} onSelect={handleSelect}>
-            <Dropdown.Toggle variant="outline-primary" size="sm">
+        <Dropdown as={ButtonGroup} onSelect={cerrado ? null : handleSelect}>
+            <Dropdown.Toggle variant="outline-primary" size="sm" disabled={cerrado}>
                 {interesadoName ? `Interesado: ${interesadoName}` : "Agregar Interesado"}
             </Dropdown.Toggle>
             <Dropdown.Menu>
@@ -33,7 +34,7 @@ const InteresadoDropdown = ({ interesados = [], task = {}, editTask }) => {
                     <Dropdown.Item disabled>No hay interesados</Dropdown.Item>
                 ) : (
                     interesados.map((item) => (
-                        <Dropdown.Item key={item.id} eventKey={`${item.id}|${item.nombre_interesado}`}>
+                        <Dropdown.Item key={item.id} disabled={cerrado} eventKey={`${item.id}|${item.nombre_interesado}`}>
                             {item.nombre_interesado}
                         </Dropdown.Item>
                     ))

@@ -90,9 +90,14 @@ const updateParentDates = async (parentId, transaction) => {
     });
 
     if (subtasks.length > 0) {
-        const minStart = new Date(Math.min(...subtasks.map(t => new Date(t.start_date))));
-        const maxEnd = new Date(Math.max(...subtasks.map(t => new Date(t.end_date))));
-        const totalDuration = Math.ceil((maxEnd - minStart) / (1000 * 60 * 60 * 24));
+        const minStartMs = Math.min(...subtasks.map(t => new Date(t.start_date).getTime()));
+        const maxEndMs = Math.max(...subtasks.map(t => new Date(t.end_date).getTime()));
+        const minStart = new Date(minStartMs);
+        const maxEnd = new Date(maxEndMs);
+
+        const totalDurationMs = maxEndMs - minStartMs;
+        const totalDurationDays = totalDurationMs / (1000 * 60 * 60 * 24);
+        const totalDuration = Math.ceil(totalDurationDays);
 
         await GanttTask.update({
             start_date: minStart,
@@ -111,15 +116,29 @@ const updateParentDates = async (parentId, transaction) => {
 const setGantt = async ({ task, projectId }) => {
     const transaction = await db.transaction();
     try {
-        const startDate = new Date(task.start_date);
-        const endDate = new Date(task.end_date);
+
+        const normalizeDateToUTCMidnight = (dateString) => {
+            const date = new Date(dateString);
+            // Crea una nueva fecha en UTC con solo el año, mes y día de la fecha de entrada
+            // Esto garantiza que siempre se guarde como 'YYYY-MM-DDT00:00:00.000Z'
+            return new Date(Date.UTC(
+                date.getFullYear(),
+                date.getMonth(),
+                date.getDate()
+            ));
+        };
+
+        const startDate = normalizeDateToUTCMidnight(task.start_date);
+        const endDate = normalizeDateToUTCMidnight(task.end_date);
 
         // Validación de fechas
         if (endDate < startDate) {
             throw new Error(`end_date no puede ser anterior a start_date (${task.name})`);
         }
 
-        const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+        const durationMs = endDate.getTime() - startDate.getTime();
+        const durationDays = durationMs / (1000 * 60 * 60 * 24);
+        const duration = Math.ceil(durationDays);
 
         await GanttTask.upsert({
             id: task.id,

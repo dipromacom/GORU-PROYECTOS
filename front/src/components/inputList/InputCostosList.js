@@ -1,6 +1,7 @@
 import React from "react";
 import { Form } from "react-bootstrap";
 import InputCostToList from "./InputCostToList";
+import { InputGroup } from 'react-bootstrap'
 
 const InputCostosList = ({
     costoEntregable,
@@ -29,36 +30,51 @@ const InputCostosList = ({
             )}
 
             <Form.Group controlId="reserva-contingencia">
-                <Form.Label>Reserva / Contingencia</Form.Label>
-                <Form.Control
-                    disabled={!editMode}
-                    autoFocus
-                    autoComplete="off"
-                    type="text"
-                    value={costoReservaContingencia}
-                    onChange={e =>
-                        regexValidator(e, /^\d+(\.\d{0,2})?$/g, setCostoReservaContingencia)
-                    }
-                />
+                <Form.Label>Reserva de Contingencia</Form.Label>
+                <InputGroup>
+                    <InputGroup.Prepend>
+                        <InputGroup.Text><strong>$</strong></InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <Form.Control
+                        disabled={!editMode}
+                        autoFocus
+                        autoComplete="off"
+                        type="text"
+                        value={costoReservaContingencia}
+                        onChange={e =>
+                            regexValidator(e, /^\d+(\.\d{0,2})?$/g, setCostoReservaContingencia)
+                        }
+                    />
+                </InputGroup>
             </Form.Group>
 
             <Form.Group controlId="reserva-gestion">
                 <Form.Label>Reserva de Gestión</Form.Label>
-                <Form.Control
-                    disabled={!editMode}
-                    autoFocus
-                    autoComplete="off"
-                    type="text"
-                    value={costoReservaGestion}
-                    onChange={e =>
-                        regexValidator(e, /^\d+(\.\d{0,2})?$/g, setCostoReservaGestion)
-                    }
-                />
+                <InputGroup>
+                    <InputGroup.Prepend>
+                        <InputGroup.Text><strong>$</strong></InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <Form.Control
+                        disabled={!editMode}
+                        autoFocus
+                        autoComplete="off"
+                        type="text"
+                        value={costoReservaGestion}
+                        onChange={e =>
+                            regexValidator(e, /^\d+(\.\d{0,2})?$/g, setCostoReservaGestion)
+                        }
+                    />
+                </InputGroup>    
             </Form.Group>
 
-            <Form.Group controlId="presupuesto-total">
+            <Form.Group controlId="presupuesto-total">      
                 <Form.Label>Presupuesto Total</Form.Label>
-                <Form.Control disabled type="text" value={presupuesto} readOnly />
+                <InputGroup>     
+                    <InputGroup.Prepend>
+                        <InputGroup.Text><strong>$</strong></InputGroup.Text>
+                    </InputGroup.Prepend>
+                    <Form.Control disabled type="text" value={presupuesto} readOnly />
+                </InputGroup>
             </Form.Group>
         </div>
     );

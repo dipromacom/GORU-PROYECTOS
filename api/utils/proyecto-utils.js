@@ -406,11 +406,10 @@ const getFilteredProjects = async (query, usuarioId) => {
   if (startDateFrom && startDateTo) {
     filter = {
       ...filter,
-      [Op.and]: [
-        fn('DATE_TRUNC', 'day', col('fecha_inicio')) >= startDateFrom,
-        fn('DATE_TRUNC', 'day', col('fecha_inicio')) <= startDateTo,
-        { fecha_inicio: { [Op.ne]: null } }
-      ]
+      fecha_inicio: {
+        [Op.ne]: null,
+        [Op.between]: [startDateFrom, startDateTo],
+      },
     };
   }
 

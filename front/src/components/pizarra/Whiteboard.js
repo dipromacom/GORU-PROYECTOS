@@ -4,7 +4,8 @@ import { actions, selectors } from "../../reducers/whiteboard";
 import { useParams } from "react-router-dom";
 import "./Whiteboard.css";
 
-const Whiteboard = () => {
+const Whiteboard = ({cerrado}) => {
+    const isBoardEnabled = !cerrado;
     const canvasRef = useRef(null);
     const wrapperRef = useRef(null); // canvas-wrapper DOM node (for postits/images)
     const containerRef = useRef(null); // canvas-container DOM node
@@ -742,8 +743,12 @@ const Whiteboard = () => {
         const saveLocal = () => {
             try {
                 const canvas = canvasRef.current;
-                if (!canvas) return;
+                const ctx = ctxRef.current;
+                if (!canvas || !ctx) return;
+                const dpr = dprRef.current;
+                ctx.setTransform(1, 0, 0, 1, 0, 0); // Resetear escala/transformación
                 const imageData = canvas.toDataURL("image/png");
+                ctx.scale(dpr, dpr);
                 const wrapper = wrapperRef.current;
                 const postits = [];
                 const images = [];
@@ -804,7 +809,10 @@ const Whiteboard = () => {
             // restaurar imagen
             if (data.canvas?.image) {
                 const img = new Image();
-                img.onload = () => ctx.drawImage(img, 0, 0);
+                img.onload = () => {
+                    const dpr = dprRef.current;
+                    ctx.drawImage(img, 0, 0);
+                }
                 img.src = data.canvas.image;
             }
 
@@ -889,22 +897,25 @@ const Whiteboard = () => {
                     <div className="tool-section">
                         <button
                             id="drawBtn"
-                            className={`tool-btn ${currentTool === "pen" || currentTool === "eraser" ? "active" : ""}`}
+                            className={`tool-btn ${currentTool === "pen" || currentTool === "eraser" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
                             onClick={() => {
-                                setCurrentTool("pen");
-                                setDrawMode("free");
+                                if (isBoardEnabled) {
+                                    setCurrentTool("pen");
+                                    setDrawMode("free");
+                                }
                             }}
+                            disabled={!isBoardEnabled}
                         >
                             ✏️ Dibujar
                         </button>
 
                         <div className={`draw-tools ${currentTool === "pen" ? "active" : ""}`} id="drawTools">
                             
-                            <button id="freeDrawBtn" className={`shape-btn ${drawMode === "free" ? "active" : ""}`} title="Dibujo libre" onClick={() => handleSetDrawMode("free")}>✏️</button>
-                            <button id="rectBtn" className={`shape-btn ${drawMode === "rect" ? "active" : ""}`} title="Rectángulo" onClick={() => handleSetDrawMode("rect")}>▢</button>
-                            <button id="circleBtn" className={`shape-btn ${drawMode === "circle" ? "active" : ""}`} title="Círculo" onClick={() => handleSetDrawMode("circle")}>⭕</button>
-                            <button id="triangleBtn" className={`shape-btn ${drawMode === "triangle" ? "active" : ""}`} title="Triángulo" onClick={() => handleSetDrawMode("triangle")}>▲</button>
-                            <button id="eraserBtn" className={`shape-btn ${drawMode === "eraser" ? "active" : ""}`} title="Borrador" onClick={() => handleSetDrawMode("eraser")}>🧹</button>
+                            <button id="freeDrawBtn" className={`shape-btn ${drawMode === "free" ? "active" : ""}`} title="Dibujo libre" onClick={() => isBoardEnabled && handleSetDrawMode("free")} disabled={!isBoardEnabled}>✏️</button>
+                            <button id="rectBtn" className={`shape-btn ${drawMode === "rect" ? "active" : ""}`} title="Rectángulo" onClick={() => isBoardEnabled && handleSetDrawMode("rect")} disabled={!isBoardEnabled}>▢</button>
+                            <button id="circleBtn" className={`shape-btn ${drawMode === "circle" ? "active" : ""}`} title="Círculo" onClick={() => isBoardEnabled && handleSetDrawMode("circle")} disabled={!isBoardEnabled}>⭕</button>
+                            <button id="triangleBtn" className={`shape-btn ${drawMode === "triangle" ? "active" : ""}`} title="Triángulo" onClick={() => isBoardEnabled && handleSetDrawMode("triangle")} disabled={!isBoardEnabled}>▲</button>
+                            <button id="eraserBtn" className={`shape-btn ${drawMode === "eraser" ? "active" : ""}`} title="Borrador" onClick={() => isBoardEnabled && handleSetDrawMode("eraser")} disabled={!isBoardEnabled}>🧹</button>
                         </div>
                     </div>
 
@@ -912,7 +923,12 @@ const Whiteboard = () => {
                         <button
                             id="postitBtn"
                             className={`tool-btn ${currentTool === "postit" ? "active" : ""}`}
-                            onClick={() => setCurrentTool((prev) => (prev === "postit" ? "pen" : "postit"))}
+                            onClick={() => {
+                                if (isBoardEnabled) {
+                                    setCurrentTool((prev) => (prev === "postit" ? "pen" : "postit"));
+                                }
+                            }}
+                            disabled={!isBoardEnabled}
                         >
                             📝 Post-it
                         </button>
@@ -921,15 +937,18 @@ const Whiteboard = () => {
                             id="imageBtn"
                             className={`tool-btn ${currentTool === "image" ? "active" : ""}`}
                             onClick={() => {
-                                setCurrentTool("image");
-                                const input = document.getElementById("imageInput");
-                                if (input) input.click();
+                                if (isBoardEnabled) {
+                                    setCurrentTool("image");
+                                    const input = document.getElementById("imageInput");
+                                    if (input) input.click();
+                                }
                             }}
+                            disabled={!isBoardEnabled}
                         >
                             🖼️ Imagen
                         </button>
 
-                        <button id="clearBtn" className="tool-btn" onClick={() => clearCanvas()}>🗑️ Limpiar</button>
+                        <button id="clearBtn" className={`tool-btn ${!isBoardEnabled ? "disabled" : ""}`} onClick={() => isBoardEnabled && clearCanvas()} disabled={!isBoardEnabled}>🗑️ Limpiar</button>
                         <button
                             className="tool-btn"
                             onClick={() => {
@@ -991,10 +1010,10 @@ const Whiteboard = () => {
                                 style={{ background: c }}
                                 data-color={c}
                                 onClick={() => {
-                                    setBrushColor(c);
-                                    // remove eraser
-                                    if (drawMode === "eraser") setDrawMode("free");
-                                    // update visual active handled by class
+                                    if (isBoardEnabled) {
+                                        setBrushColor(c);
+                                        if (drawMode === "eraser") setDrawMode("free");
+                                    }
                                 }}
                             />
                         ))}
@@ -1008,11 +1027,11 @@ const Whiteboard = () => {
                 </div>
             </header>
 
-            <div className="canvas-container" ref={containerRef}>
+            <div className={`canvas-container ${!isBoardEnabled ? "disabled-interaction" : ""}`} ref={containerRef}>
                 <div className="canvas-wrapper" id="canvasWrapper" ref={wrapperRef}>
                     <canvas id="whiteboard" ref={canvasRef} />
                 </div>
-                <input id="imageInput" className="file-input" type="file" accept="image/*" />
+                <input id="imageInput" className="file-input" type="file" accept="image/*" disabled={!isBoardEnabled} />
             </div>
 
             <div className="zoom-controls">
@@ -1022,41 +1041,47 @@ const Whiteboard = () => {
                 <button className="zoom-btn" id="zoomReset" title="Restablecer zoom (Ctrl + 0)">⌂</button>
             </div>
 
-            <div className={`floating-menu ${currentTool === "postit" ? "active" : ""}`} id="postitMenu">
+            <div className={`floating-menu ${currentTool === "postit" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`} id="postitMenu">
                 <h3>Crear Post-it</h3>
                 <div style={{ display: "flex", gap: 8, marginBottom: 16, justifyContent: "center" }}>
                     <button
-                        className={`color-btn ${postitColor === "yellow" ? "active" : ""}`}
+                        className={`color-btn ${postitColor === "yellow" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
                         style={{ background: "#fef08a", borderColor: "rgba(217, 119, 6, 0.3)" }}
                         data-postit-color="yellow"
-                        onClick={() => setPostitColor("yellow")}
+                        onClick={() => isBoardEnabled && setPostitColor("yellow")}
+                        disabled={!isBoardEnabled}
                     />
                     <button
-                        className={`color-btn ${postitColor === "green" ? "active" : ""}`}
+                        className={`color-btn ${postitColor === "green" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
                         style={{ background: "#bbf7d0", borderColor: "rgba(34, 197, 94, 0.3)" }}
                         data-postit-color="green"
-                        onClick={() => setPostitColor("green")}
+                        onClick={() => isBoardEnabled && setPostitColor("green")}
+                        disabled={!isBoardEnabled}
                     />
+                    {/* ... (otros botones de color) ... */}
                     <button
-                        className={`color-btn ${postitColor === "blue" ? "active" : ""}`}
+                        className={`color-btn ${postitColor === "blue" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
                         style={{ background: "#bfdbfe", borderColor: "rgba(59, 130, 246, 0.3)" }}
                         data-postit-color="blue"
-                        onClick={() => setPostitColor("blue")}
+                        onClick={() => isBoardEnabled && setPostitColor("blue")}
+                        disabled={!isBoardEnabled}
                     />
                     <button
-                        className={`color-btn ${postitColor === "pink" ? "active" : ""}`}
+                        className={`color-btn ${postitColor === "pink" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
                         style={{ background: "#fce7f3", borderColor: "rgba(236, 72, 153, 0.3)" }}
                         data-postit-color="pink"
-                        onClick={() => setPostitColor("pink")}
+                        onClick={() => isBoardEnabled && setPostitColor("pink")}
+                        disabled={!isBoardEnabled}
                     />
                     <button
-                        className={`color-btn ${postitColor === "purple" ? "active" : ""}`}
+                        className={`color-btn ${postitColor === "purple" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
                         style={{ background: "#e9d5ff", borderColor: "rgba(147, 51, 234, 0.3)" }}
                         data-postit-color="purple"
-                        onClick={() => setPostitColor("purple")}
+                        onClick={() => isBoardEnabled && setPostitColor("purple")}
+                        disabled={!isBoardEnabled}
                     />
                 </div>
-                <button id="createPostit">Crear Post-it</button>
+                <button id="createPostit" disabled={!isBoardEnabled}>Crear Post-it</button>
             </div>
         </div>
     );

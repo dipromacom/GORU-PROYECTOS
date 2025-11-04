@@ -22,7 +22,8 @@ const Column = ({
     createTask,
     deleteTask,
     editTask,
-    interesados = []
+    interesados = [],
+    cerrado
 }) => {
     const tasks = column?.tasks;
     const {
@@ -36,13 +37,14 @@ const Column = ({
         onKeyPressed,
     } = useEditField({
         fieldId: column?.id,
-        onCreate: (field) => createStatus({ title: field }),
-        onEdit: (id, field) => editStatus({ idField: id, title: field }),
+        onCreate: cerrado ? () => { } : (field) => createStatus({ title: field }),
+        onEdit: cerrado ? () => { } : (id, field) => editStatus({ idField: id, title: field }),
     });
 
     const [isAddingNewTask, setIsAddingNewTask] = useState(false);
 
     const renderMenu = () => {
+        if (cerrado) return null;
         return (
             <DropdownButton
                 variant="outline-secondary"
@@ -80,6 +82,7 @@ const Column = ({
     };
 
     const renderEmptyColumnHeader = () => {
+        if (cerrado) return null;
         return (
             <Row className="mb-4 px-2 justify-content-between align-items-center">
                 {isEditingGroup ? (
@@ -127,6 +130,7 @@ const Column = ({
                                     task={task}
                                     index={index}
                                     interesados={interesados}
+                                    cerrado={cerrado}
                                 />
                             ))}
                         {column && isAddingNewTask && (
@@ -146,7 +150,7 @@ const Column = ({
                         )}
                         {placeholder}
 
-                        {column && !isAddingNewTask && (
+                        {column && !isAddingNewTask && !cerrado && (
                             <AddNewTaskInput
                                 key={`${column.id}`}
                                 onClick={() => setIsAddingNewTask(true)}

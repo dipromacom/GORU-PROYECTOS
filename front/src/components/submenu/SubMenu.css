@@ -67,6 +67,13 @@
   font-weight: 600;
 }
 
+.disable-widget-label {
+  font-size: 14px !important;
+  font-weight: 600;
+  color:#A5A6B5;
+  filter: grayscale(100%);
+}
+
 .new-container {
   padding-right: 14px;
   padding-top: 4px;

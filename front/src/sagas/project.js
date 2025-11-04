@@ -449,7 +449,8 @@ const createRequestProjectCreation = ({
     incentivo,
     autoridadControlCambios,
     plazoPeriodo,
-    maxDesviacionPeriodo
+    maxDesviacionPeriodo,
+    leccionesAprendidas
 }) => {
     return {
         nombre: nombreProyecto,
@@ -490,7 +491,8 @@ const createRequestProjectCreation = ({
         incentivo: incentivo,
         autidad_control_cambios: autoridadControlCambios,
         plazo_periodo: plazoPeriodo,
-        max_desviacion_periodo: maxDesviacionPeriodo
+        max_desviacion_periodo: maxDesviacionPeriodo,
+        lecciones_aprendidas: leccionesAprendidas
     }
 }
 

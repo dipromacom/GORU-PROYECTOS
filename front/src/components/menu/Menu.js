@@ -18,7 +18,7 @@ export default function Menu() {
           menuName="Inicio" 
           menuAlt="Inicio"
           menuToolTip="HOME"
-          redirectTo="projects"
+          redirectTo="aboutUs"
         />
       </div>
 
@@ -29,21 +29,19 @@ export default function Menu() {
           menuToolTip="PORTAFOLIOS"
           redirectTo="portfolios"
         />*/}
-        {/*<MenuItem 
+        <MenuItem 
           menuName="Programa" 
           menuAlt="Programa"
           menuToolTip="PROGRAMAS"
           redirectTo="programs"
-        />*/}
+        />
 
-        {localStorage.getItem("modo") === "Profesional" && (
-          <MenuItem
-            menuName="Proyecto"
-            menuAlt="Proyecto"
-            menuToolTip="PROYECTOS"
-            redirectTo="projects"
-          />
-        )}
+        <MenuItem
+          menuName="Proyecto"
+          menuAlt="Proyecto"
+          menuToolTip="PROYECTOS"
+          redirectTo="projects"
+        />
         <MenuItem
           menuName="Portafolio"
           menuAlt="Actividades"

@@ -7,7 +7,7 @@ import { Container, Row, Col, Modal, Button } from "react-bootstrap"; // Importi
 import { actions, selectors } from "../../reducers/kanban";
 import { connect } from "react-redux";
 
-const Kanban = ({ dispatch, tasksByStatus, interesados }) => {
+const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado  }) => {
   console.log(interesados);
   const routeParams = useParams();
 
@@ -53,6 +53,11 @@ const Kanban = ({ dispatch, tasksByStatus, interesados }) => {
       setTaskToDelete(null);
   };
 
+  const handleDragEnd = (result) => {
+    if (cerrado) return; // 👈 Evita cualquier acción de arrastre si está cerrado
+    moveTask(result);
+  }
+
   /*const deleteTask = ({ id }) => {
     dispatch(actions.deleteTask({ id }))
     dispatch(actions.syncKanban({ projectId: routeParams.id }))
@@ -69,7 +74,7 @@ const Kanban = ({ dispatch, tasksByStatus, interesados }) => {
   return (
     <Container fluid className="h-100 d-flex flex-column kanban">
       <Row className="flex-fill mt-3 overflow-auto">
-        <DragDropContext onDragEnd={moveTask}>
+        <DragDropContext onDragEnd={handleDragEnd}>
           {tasksByStatus.map((status) => {
             const column = status;
             return (
@@ -84,6 +89,7 @@ const Kanban = ({ dispatch, tasksByStatus, interesados }) => {
                   //deleteTask={deleteTask}
                   deleteTask={requestDeleteTask}
                   interesados={interesados}
+                  cerrado={cerrado}
                 />
               </Col>
             );
@@ -91,6 +97,7 @@ const Kanban = ({ dispatch, tasksByStatus, interesados }) => {
           <Col key="new-column" className="p-2">
             <Column
               createStatus={createStatus}
+              cerrado={cerrado}
             />
           </Col>
         </DragDropContext>

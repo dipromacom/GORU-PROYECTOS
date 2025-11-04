@@ -9,7 +9,7 @@
 
 /* Header / toolbar */
 .whiteboard-header {
-    background: rgba(5, 150, 105, 0.95);
+    background: #44a80d;
     backdrop-filter: blur(20px);
     padding: 16px 30px;
     display: flex;
@@ -315,7 +315,7 @@
     display: flex;
     flex-direction: column;
     gap: 8px;
-    background: rgba(5, 150, 105, 0.95);
+    background: #44a80d;
     backdrop-filter: blur(20px);
     border-radius: 12px;
     padding: 12px;
@@ -407,6 +407,32 @@
     box-shadow: 0 10px 30px rgba(0, 0, 0, 0.2);
     z-index: 12000;
     animation: fadeInOut 1.6s ease-in-out;
+}
+
+.tool-btn:disabled,
+.shape-btn:disabled,
+.color-btn.disabled,
+input[type="range"]:disabled,
+.floating-menu.disabled button {
+    cursor: not-allowed !important;
+    /* Muestra un cursor de no permitido */
+    opacity: 0.5;
+    /* Atenúa el color */
+    pointer-events: none;
+    /* Asegura que no se puedan hacer clic ni interacciones */
+}
+
+/* Para el contenedor general del canvas */
+.canvas-container.disabled-interaction {
+    pointer-events: none;
+    /* Deshabilita clics y eventos de ratón en el área de dibujo */
+    opacity: 0.8;
+    /* Opcional: para dar una indicación visual de que está "cerrado" */
+}
+
+.canvas-container.disabled-interaction .postit {
+    pointer-events: auto;
+    /* Puedes cambiar esto según tus requisitos */
 }
 
 @keyframes fadeInOut {

@@ -20,6 +20,19 @@ const TodoListForm = ({ setToDos, usuario, labels = [], setLabels = () => { }, a
     const personaId = persona?.id;
     const nombreCompleto = `${persona?.nombre?.trim() || ''} ${persona?.apellido || ''}`.trim();
 
+    const getPrioridadNombre = (prioridadCode) => {
+        switch (prioridadCode) {
+            case 'L':
+                return 'Baja';
+            case 'M':
+                return 'Media';
+            case 'H':
+                return 'Alta';
+            default:
+                return ''; // Retorna vacío si no hay prioridad seleccionada
+        }
+    };
+
     const handleSubmit = (e) => {
         e.preventDefault();
 
@@ -111,7 +124,9 @@ const TodoListForm = ({ setToDos, usuario, labels = [], setLabels = () => { }, a
 
                         <Col className="col-md-auto">
                             <Dropdown as={ButtonGroup} onSelect={value => { setPrioridad(value); }}>
-                                <Dropdown.Toggle variant="outline-primary">Prioridad</Dropdown.Toggle>
+                                <Dropdown.Toggle variant="outline-primary">
+                                    {prioridad ? `Prioridad: ${getPrioridadNombre(prioridad)}` : 'Prioridad'}
+                                </Dropdown.Toggle>
                                 <Dropdown.Menu>
                                     <Dropdown.Item eventKey={'L'} active={prioridad === 'L'}><i className="bi bi-flag text-success mr-1"></i>Baja</Dropdown.Item>
                                     <Dropdown.Item eventKey={'M'} active={prioridad === 'M'}><i className="bi bi-flag text-warning mr-1"></i>Media</Dropdown.Item>

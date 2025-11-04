@@ -6,7 +6,7 @@ import { useDispatch } from 'react-redux';
 import { toast } from "react-toastify";
 import './analisisImpacto.css';
 
-export const AnalisisAmbiental = ({ showNotification, projectID, analysisData }) => {
+export const AnalisisAmbiental = ({ showNotification, projectID, analysisData, cerrado }) => {
     const dispatch = useDispatch();
     const { id } = useParams(); // Extrae el id de los parámetros de la ruta
     // const numericId = parseInt(id, 10);
@@ -259,7 +259,7 @@ export const AnalisisAmbiental = ({ showNotification, projectID, analysisData })
                 </Row>
 
                 <Row className="justify-content-center mt-4">
-                   {isSaving ? null : (
+                    {isSaving || cerrado ? null : (
                         <Col md={3}>
                             <Button
                                 style={{ backgroundColor: '#60cd26', borderColor: '#60cd26' }}

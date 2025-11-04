@@ -67,7 +67,7 @@ function Membership({ dispatch, isLoading, user, persona }) {
         </h1>
       }
       <p>
-        Falta poco para comenzar en GORU Portfalolio y Proyectos
+        Falta poco para comenzar en GORU Programas y Proyectos
       </p>
     </div>
 

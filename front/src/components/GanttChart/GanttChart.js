@@ -10,7 +10,7 @@ import { actions as ganttActions, selectors as ganttSelectors } from "../../redu
 import "./GanttChart.css";
 import { duration } from "moment";
 
-const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) => {
+const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado }) => {
     const safeProjectId = projectId ?? null;
 
     // Aseguramos que tasks sea un arreglo
@@ -51,8 +51,18 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
 
     // --- Normalización de datos ---
     const normalizeTaskForGantt = (t) => {
-        const start = new Date(t.start_date || t.start || new Date());
-        const end = new Date(t.end_date || t.end || start.getTime() + 86400000);
+        const dateToUTC = (dateString) => {
+            if (!dateString) return new Date();
+            return new Date(dateString);
+        };
+
+        const start = dateToUTC(t.start_date || t.start);
+        let end;
+        if (t.end_date || t.end) {
+            end = dateToUTC(t.end_date || t.end);
+        } else {
+            end = new Date(start.getTime() + 86400000);
+        }
 
         return {
             ...t,
@@ -72,8 +82,11 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
             const children = updated.filter((t) => t.parent_id === group.id);
             if (children.length === 0) continue;
 
-            const minStart = new Date(Math.min(...children.map((c) => new Date(c.start_date || c.start))));
-            const maxEnd = new Date(Math.max(...children.map((c) => new Date(c.end_date || c.end))));
+            const minStartMs = Math.min(...children.map((c) => new Date(c.start_date || c.start).getTime()));
+            const maxEndMs = Math.max(...children.map((c) => new Date(c.end_date || c.end).getTime()));
+
+            const minStart = new Date(minStartMs);
+            const maxEnd = new Date(maxEndMs);
 
             group.start_date = minStart.toISOString();
             group.end_date = maxEnd.toISOString();
@@ -87,17 +100,26 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
         const taskMap = Object.fromEntries(tasks.map((t) => [t.id, t]));
         const memo = {};
 
+        const getUTCMidnight = (dateStr) => {
+            if (!dateStr) return new Date();
+            return new Date(`${dateStr.slice(0, 10)}T00:00:00Z`);
+        }
+
         const dfs = (taskId) => {
             if (memo[taskId]) return memo[taskId];
             const task = taskMap[taskId];
             if (!task) return 0;
+
+            const startDate = getUTCMidnight(task.start_date);
+            const endDate = getUTCMidnight(task.end_date);
+
             if (!task.dependencies || task.dependencies.length === 0) {
-                memo[taskId] = (new Date(task.end_date) - new Date(task.start_date)) / (1000 * 3600 * 24);
+                memo[taskId] = (endDate - startDate) / (1000 * 3600 * 24);
                 return memo[taskId];
             }
 
             const maxDep = Math.max(...task.dependencies.map(dfs));
-            const duration = (new Date(task.end_date) - new Date(task.start_date)) / (1000 * 3600 * 24);
+            const duration = (endDate - startDate) / (1000 * 3600 * 24);
             memo[taskId] = maxDep + duration;
             return memo[taskId];
         };
@@ -139,12 +161,23 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
 
     const ganttTasks = useMemo(() => {
         // 🔸 1. Recalcular fechas de grupos
-        const recalculatedTasks = recalculateGroupDates(tasks);
+        let recalculatedTasks = recalculateGroupDates(tasks);
 
-        // 🔸 2. Calcular ruta crítica
+        // 🔸 2 Generar Alias (T1, G1, T2, G2...))
+        const taskAliasCounter = { task: 1, group: 1 };
+        recalculatedTasks = recalculatedTasks.map(t => {
+            if (t.type === 'group' || t.type === 'task') {
+                const prefix = t.type === 'task' ? 'T' : 'G';
+                const alias = `${prefix}${taskAliasCounter[t.type]++}`;
+                return { ...t, alias };
+            }
+            return t;
+        });
+
+        // 🔸 3. Calcular ruta crítica
         const criticalIds = findCriticalPath(recalculatedTasks);
 
-        // 🔸 3. Ordenar: grupos primero (por fecha más reciente)
+        // 🔸 4. Ordenar: grupos primero (por fecha más reciente)
         const orderedTasks = [...recalculatedTasks].sort((a, b) => {
             // Prioriza los de tipo grupo
             if (a.type === "group" && b.type !== "group") return -1;
@@ -161,7 +194,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
             return 0;
         });
 
-        // 🔸 4. Mapear a formato del Gantt
+        // 🔸 5. Mapear a formato del Gantt
         return orderedTasks.map((t) => {
             const nt = normalizeTaskForGantt(t);
             const interesadosNames = (nt.interesados_id || []).map((iid) => {
@@ -173,7 +206,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
 
             return {
                 id: nt.id,
-                name: nt.name,
+                name: nt.alias,
                 start: nt.start,
                 end: nt.end,
                 type: nt.type === "group" ? "project" : "task",
@@ -190,6 +223,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                     interesadosNames,
                     interesadosIds: nt.interesados_id || [],
                     isCritical,
+                    originalName: t.name,
+                    alias: t.alias,
                 },
             };
         });
@@ -207,6 +242,36 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
         }
         return map;
     }, [tasks]);
+
+    // --- Mapeo de alias para la lista lateral ---
+    const taskAliasMap = useMemo(() => {
+        return ganttTasks.reduce((acc, t) => {
+            acc[t.id] = t._meta.alias; // El alias está en _meta
+            return acc;
+        }, {});
+    }, [ganttTasks]);
+
+    // --- Mapeo de tareas con fechas y duración actualizadas ---
+    const updatedTasksMap = useMemo(() => {
+        return ganttTasks.reduce((acc, t) => {
+            // Calcular duración en días (diferencia de milisegundos / milisegundos en un día)
+            const durationMs = t.end.getTime() - t.start.getTime();
+            const durationDays = Math.ceil(durationMs / (1000 * 3600 * 24));
+
+            acc[t.id] = {
+                ...t,
+                start_date_local: t.start.toLocaleDateString('es-EC'),
+                end_date_local: t.end.toLocaleDateString('es-EC'),
+                duration_days: durationDays,
+                originalName: t._meta.originalName,
+                alias: t._meta.alias,
+                interesados_id: t._meta.interesadosIds,
+                dependencies: t.dependencies,
+                progress: t.progress,
+            };
+            return acc;
+        }, {});
+    }, [ganttTasks]);
 
     // --- Modal Crear ---
     const openCreate = () => {
@@ -229,6 +294,14 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
         setShowModal(true);
     };
 
+    const toInputDate = (isoString) => {
+        const d = new Date(isoString);
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        return `${year}-${month}-${day}`;
+    };
+
     // --- Modal Editar ---
     const openEdit = (taskId) => {
         const t = tasks.find((x) => String(x.id) === String(taskId));
@@ -238,8 +311,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
             id: t.id,
             name: t.name || "",
             description: t.description || "",
-            start_date: t.start_date ? t.start_date.slice(0, 10) : new Date(t.start).toISOString().slice(0, 10),
-            end_date: t.end_date ? t.end_date.slice(0, 10) : new Date(t.end).toISOString().slice(0, 10),
+            start_date: t.start_date ? toInputDate(t.start_date) : toInputDate(t.start),
+            end_date: t.end_date ? toInputDate(t.end_date) : toInputDate(t.end),      
             progress: Number(t.progress ?? 0),
             dependencies: t.dependencies ? [...t.dependencies] : [],
             interesados_id: t.interesados_id ? t.interesados_id.map(String) : [],
@@ -293,8 +366,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
             name: form.name,
             description: form.description,
             type: form.type || "task",
-            start: new Date(form.start_date).toISOString(),
-            end: new Date(form.end_date).toISOString(),
+            start: new Date(`${form.start_date}T00:00:00`).toISOString(),
+            end: new Date(`${form.end_date}T00:00:00`).toISOString(),
             progress: Number(form.progress || 0),
             dependencies: form.dependencies || [],
             interesados_id: interesadosUUID,
@@ -337,13 +410,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
     // --- Render personalizado ---
     const renderTask = (ganttTask) => {
         const meta = ganttTask._meta || {};
+        const originalName = meta.originalName || ganttTask.name;
+        const alias = meta.alias || ganttTask.name;
         const interesadosNames = meta.interesadosNames || [];
         return (
             <div
                 className={`gantt-task-custom ${ganttTask._meta?.isCritical ? "critical" : ""}`}
-                title={ganttTask.name}
+                title={originalName}
             >
-                <div className="gantt-task-name">{ganttTask.name}</div>
+                <div className="gantt-task-name">{alias}</div>
                 <div className="gantt-task-interesados">
                     {interesadosNames.length > 0
                         ? interesadosNames.map((n, i) => (
@@ -378,6 +453,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
         const projectEnd = new Date(Math.max(...endDates));
 
         const totalDays = (projectEnd - projectStart) / (1000 * 3600 * 24);
+        let remainDays = (projectEnd - new Date()) / (1000 * 3600 * 24);
+        if (remainDays < 0) remainDays = 0;
         const totalHours = totalDays * 8;
 
         const avgProgress = tasks.reduce((acc, t) => acc + (t.progress || 0), 0) / tasks.length;
@@ -397,6 +474,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
             start: projectStart.toLocaleDateString(),
             end: projectEnd.toLocaleDateString(),
             totalDays: Math.round(totalDays),
+            remainDays: Math.round(remainDays),
             totalHours: Math.round(totalHours),
             avgProgress: Math.round(avgProgress),
             totalTasks,
@@ -426,13 +504,16 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                             <strong>Total días:</strong> {projectSummary.totalDays}
                         </div>
                         <div className="gantt-summary-item">
-                            <strong>Total horas:</strong> {projectSummary.totalHours}
+                            <strong>Días restantes:</strong> {projectSummary.remainDays}
                         </div>
+                        {/*<div className="gantt-summary-item">
+                            <strong>Total horas:</strong> {projectSummary.totalHours}
+                        </div>*/}
                     </Col>
                     <Col md={6} lg={4}>
-                        <div className="gantt-summary-item">
+                        {/*<div className="gantt-summary-item">
                             <strong>Ruta crítica:</strong> {projectSummary.criticalDays} días
-                        </div>
+                        </div>*/}
                         <div className="gantt-summary-item">
                             <strong>Avance total:</strong> {projectSummary.avgProgress}%
                         </div>
@@ -463,9 +544,10 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                 return <span className="gantt-task-none">Sin dependencias</span>;
             return deps.map((depId, i) => {
                 const depTask = tasks.find((x) => String(x.id) === String(depId));
+                const alias = taskAliasMap[depId] || '';
                 return (
                     <Badge key={i} bg="info" className="gantt-mini-badge">
-                        {depTask ? depTask.name : depId}
+                        {depTask ? `${depTask.name} (${alias})` : depId}
                     </Badge>
                 );
             });
@@ -487,13 +569,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
 
         return (
             <>
-                { renderProjectSummary() }
+                {renderProjectSummary()}
                 <div className="gantt-left">
                     <div className="gantt-left-header">
                         <h5>Actividades</h5>
-                        <Button size="sm" variant="outline-primary" onClick={openCreate}>
-                            + Nueva
-                        </Button>
+                        {!cerrado && (
+                            <Button size="sm" variant="outline-primary" onClick={openCreate}>
+                                + Nueva
+                            </Button>
+                        )}
                     </div>
 
                     <ListGroup variant="flush" className="gantt-left-list">
@@ -513,41 +597,39 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                                             <span className="gantt-arrow">
                                                 {expandedGroups[group.id] ? "▼" : "▶"}
                                             </span>
-                                            {group.name}
+                                            {group.name} ({taskAliasMap[group.id] || 'G?'} )
                                         </div>
                                         <div className="gantt-item-dates">
-                                            {group.start_date
-                                                ? `${new Date(
-                                                    group.start_date
-                                                ).toLocaleDateString()} → ${new Date(
-                                                    group.end_date
-                                                ).toLocaleDateString()}`
+                                            {updatedTasksMap[group.id]?.start_date_local
+                                                ? `${updatedTasksMap[group.id].start_date_local} → ${updatedTasksMap[group.id].end_date_local}`
                                                 : "Sin fechas"}
                                         </div>
                                         <div className="gantt-item-extra">
                                             <div>
                                                 <strong>Duración:</strong>{" "}
-                                                {group.duration ?? "-"} días
+                                                {updatedTasksMap[group.id]?.duration_days ?? "-"} días
                                             </div>
                                         </div>
                                     </div>
                                     <div className="gantt-item-actions">
-                                        <Button
-                                            size="sm"
-                                            variant="outline-secondary"
-                                            onClick={() => openEdit(group.id)}
-                                        >
-                                            ✏️
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline-danger"
-                                            onClick={() =>
-                                                confirmDeleteTask(group.id)
-                                            }
-                                        >
-                                            🗑️
-                                        </Button>
+                                        {!cerrado && (
+                                            <>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline-secondary"
+                                                    onClick={() => openEdit(group.id)}
+                                                >
+                                                    ✏️
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline-danger"
+                                                    onClick={() => confirmDeleteTask(group.id)}
+                                                >
+                                                    🗑️
+                                                </Button>
+                                            </>
+                                        )}
                                     </div>
                                 </ListGroup.Item>
 
@@ -560,21 +642,17 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                                         >
                                             <div className="gantt-item-info">
                                                 <div className="gantt-item-title">
-                                                    {t.name}
+                                                    {t.name} ({taskAliasMap[t.id] || 'T?'})
                                                 </div>
                                                 <div className="gantt-item-dates">
-                                                    {t.start_date
-                                                        ? `${new Date(
-                                                            t.start_date
-                                                        ).toLocaleDateString()} → ${new Date(
-                                                            t.end_date
-                                                        ).toLocaleDateString()}`
+                                                    {updatedTasksMap[t.id]?.start_date_local
+                                                        ? `${updatedTasksMap[t.id].start_date_local} → ${updatedTasksMap[t.id].end_date_local}`
                                                         : "Sin fechas"}
                                                 </div>
                                                 <div className="gantt-item-extra">
                                                     <div>
                                                         <strong>Duración:</strong>{" "}
-                                                        {t.duration ?? "-"} días
+                                                        {updatedTasksMap[t.id]?.duration_days ?? "-"} días
                                                     </div>
                                                     <div>
                                                         <strong>Dependencias:</strong>{" "}
@@ -588,25 +666,31 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                                                             t.interesados_id
                                                         )}
                                                     </div>
+                                                    <div>
+                                                        <strong>% de avance:</strong>{" "}
+                                                        {t.progress}
+                                                    </div>
                                                 </div>
                                             </div>
                                             <div className="gantt-item-actions">
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline-secondary"
-                                                    onClick={() => openEdit(t.id)}
-                                                >
-                                                    ✏️
-                                                </Button>
-                                                <Button
-                                                    size="sm"
-                                                    variant="outline-danger"
-                                                    onClick={() =>
-                                                        confirmDeleteTask(t.id)
-                                                    }
-                                                >
-                                                    🗑️
-                                                </Button>
+                                                {!cerrado && (
+                                                    <>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline-secondary"
+                                                            onClick={() => openEdit(t.id)}
+                                                        >
+                                                            ✏️
+                                                        </Button>
+                                                        <Button
+                                                            size="sm"
+                                                            variant="outline-danger"
+                                                            onClick={() => confirmDeleteTask(t.id)}
+                                                        >
+                                                            🗑️
+                                                        </Button>
+                                                    </>
+                                                )}
                                             </div>
                                         </ListGroup.Item>
                                     ))}
@@ -622,20 +706,16 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                                     className="gantt-list-item"
                                 >
                                     <div className="gantt-item-info">
-                                        <div className="gantt-item-title">{t.name}</div>
+                                        <div className="gantt-item-title">{t.name} ({taskAliasMap[t.id] || 'T?'})</div>
                                         <div className="gantt-item-dates">
-                                            {t.start_date
-                                                ? `${new Date(
-                                                    t.start_date
-                                                ).toLocaleDateString()} → ${new Date(
-                                                    t.end_date
-                                                ).toLocaleDateString()}`
+                                            {updatedTasksMap[t.id]?.start_date_local
+                                                ? `${updatedTasksMap[t.id].start_date_local} → ${updatedTasksMap[t.id].end_date_local}`
                                                 : "Sin fechas"}
                                         </div>
                                         <div className="gantt-item-extra">
                                             <div>
                                                 <strong>Duración:</strong>{" "}
-                                                {t.duration ?? "-"} días
+                                                {updatedTasksMap[t.id]?.duration_days ?? "-"} días
                                             </div>
                                             <div>
                                                 <strong>Dependencias:</strong>{" "}
@@ -645,25 +725,31 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                                                 <strong>Interesados:</strong>{" "}
                                                 {renderInteresados(t.interesados_id)}
                                             </div>
+                                            <div>
+                                                <strong>% de avance:</strong>{" "}
+                                                {t.progress}
+                                            </div>
                                         </div>
                                     </div>
                                     <div className="gantt-item-actions">
-                                        <Button
-                                            size="sm"
-                                            variant="outline-secondary"
-                                            onClick={() => openEdit(t.id)}
-                                        >
-                                            ✏️
-                                        </Button>
-                                        <Button
-                                            size="sm"
-                                            variant="outline-danger"
-                                            onClick={() =>
-                                                confirmDeleteTask(t.id)
-                                            }
-                                        >
-                                            🗑️
-                                        </Button>
+                                        {!cerrado && (
+                                            <>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline-secondary"
+                                                    onClick={() => openEdit(t.id)}
+                                                >
+                                                    ✏️
+                                                </Button>
+                                                <Button
+                                                    size="sm"
+                                                    variant="outline-danger"
+                                                    onClick={() => confirmDeleteTask(t.id)}
+                                                >
+                                                    🗑️
+                                                </Button>
+                                            </>
+                                        )}
                                     </div>
                                 </ListGroup.Item>
                             ))}
@@ -671,7 +757,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                 </div>
             </>
         );
-            
+
     };
 
 
@@ -684,9 +770,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                         <Gantt
                             tasks={ganttTasks}
                             viewMode={ViewMode.Day}
-                            onDateChange={onDateChange}
-                            onProgressChange={onProgressChange}
-                            onClick={onTaskClick}
+                            onDateChange={cerrado ? null : onDateChange}
+                            onProgressChange={cerrado ? null : onProgressChange}
+                            onClick={cerrado ? null : onTaskClick}
                             renderTask={renderTask}
                             listCellWidth=""
                         />
@@ -791,7 +877,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch }) 
                                         ))}
                                 </Form.Control>
                             </Form.Group>
-                        )}                
+                        )}
 
                         <Form.Group className="mb-3">
                             <Form.Label>Interesados</Form.Label>

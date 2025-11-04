@@ -7,7 +7,7 @@ import moment from 'moment';
 const TodoItem = ({
     id, title, description, prioridad, interesado, label, done,
     onComplete, dueDate, duedate, onDelete, enableCheck, interesadoId,
-    close // 🔹 nuevo prop que viene desde la API
+    close, cerrado// 🔹 nuevo prop que viene desde la API
 }) => {
     const [doneItem, setDoneItem] = useState(done);
     const [hover, setHover] = useState(false);
@@ -19,6 +19,8 @@ const TodoItem = ({
         setCloseDate("");
         setShowModal(false);
     };
+
+    const disableActions = cerrado || doneItem;
 
     const handleConfirmClose = () => {
         
@@ -97,7 +99,7 @@ const TodoItem = ({
                         </div>
 
                         {/* 🔹 Botón cerrar tarea */}
-                        {!doneItem && (
+                        {!disableActions && (
                             <Button
                                 variant={close ? "secondary" : "outline-success"}
                                 size="sm"
