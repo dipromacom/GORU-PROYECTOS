@@ -4,7 +4,7 @@ import { Dropdown, ButtonGroup } from "react-bootstrap";
 const InteresadoDropdown = ({ interesados = [], task = {}, editTask, cerrado }) => {
     const [interesadoId, setInteresadoId] = useState(task?.interesadoId || "");
     const [interesadoName, setInteresadoName] = useState(
-        interesados.find(i => i.id === task?.interesadoId)?.nombre_interesado || ""
+        interesados.find(i => String(i.id) === String(task?.interesadoId))?.nombre_interesado || ""
     );
 
     const handleSelect = (value) => {
@@ -13,13 +13,11 @@ const InteresadoDropdown = ({ interesados = [], task = {}, editTask, cerrado }) 
         setInteresadoId(id);
         setInteresadoName(name);
 
-        // 🔹 actualizar en Redux
-        if (editTask && task?.id) {
+        // 🔹 Actualizar en Redux o estado padre
+        if (editTask) {
             editTask({
-                id: task.id,
-                content: task.content,
-                priority: task.priority,
-                interesadoId: id
+                ...task,
+                interesadoId: id,
             });
         }
     };
@@ -29,12 +27,17 @@ const InteresadoDropdown = ({ interesados = [], task = {}, editTask, cerrado }) 
             <Dropdown.Toggle variant="outline-primary" size="sm" disabled={cerrado}>
                 {interesadoName ? `Interesado: ${interesadoName}` : "Agregar Interesado"}
             </Dropdown.Toggle>
+
             <Dropdown.Menu>
                 {interesados.length === 0 ? (
                     <Dropdown.Item disabled>No hay interesados</Dropdown.Item>
                 ) : (
                     interesados.map((item) => (
-                        <Dropdown.Item key={item.id} disabled={cerrado} eventKey={`${item.id}|${item.nombre_interesado}`}>
+                        <Dropdown.Item
+                            key={item.id}
+                            disabled={cerrado}
+                            eventKey={`${item.id}|${item.nombre_interesado}`}
+                        >
                             {item.nombre_interesado}
                         </Dropdown.Item>
                     ))

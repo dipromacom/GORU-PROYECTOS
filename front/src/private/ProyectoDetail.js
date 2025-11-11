@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/role-supports-aria-props */
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState, useRef } from "react";
+import React, { useEffect, useState, useRef, useCallback } from "react";
 import { connect } from "react-redux";
 import LoaderButton from "../components/loaderButton/LoaderButton";
 import { Form, Col, Row, InputGroup, Button, DropdownButton, Dropdown } from "react-bootstrap";
@@ -39,6 +39,7 @@ import {ViewInteresados} from "../components/ProyectoDetailMatriz/ViewInteresado
 import { CreateInteresados } from "../components/ProyectoDetailMatriz/CreateInteresados";
 import Task from "../components/kanban/Task";
 import { getInteresadosByProjectId } from "../api";
+import SummaryChart from '../components/summaryChart/SummaryChart';
 
 // nuevos componentes para alcance/hitos/costo/calidad
 import InputAlcanceList from "../components/inputList/InputAlcanceList";
@@ -185,6 +186,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setCostoEntregable(projectDetail?.costo_entregable)
         setCostoReservaContingencia(projectDetail?.costo_reserva_contingencia)
         setCostoReservaGestion(projectDetail?.costo_reserva_gestion)
+        setCostoReservaContingenciaReal(projectDetail?.costo_reserva_contingencia_real)
+        setCostoReservaGestionReal(projectDetail?.costo_reserva_gestion_real)
         setCalidadMetricas(projectDetail?.calidad_metricas)
         setRiesgos(projectDetail?.riesgos)
         setRecursosRequeridos(projectDetail?.recursos_requeridos)
@@ -248,6 +251,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [costoEntregable, setCostoEntregable] = useState([]);
     const [costoReservaContingencia, setCostoReservaContingencia] = useState("");
     const [costoReservaGestion, setCostoReservaGestion] = useState("");
+    const [costoReservaContingenciaReal, setCostoReservaContingenciaReal] = useState("");
+    const [costoReservaGestionReal, setCostoReservaGestionReal] = useState("");
     const [presupuesto, setPresupuesto] = useState(0) // NUEVO
     const [calidadMetricas, setCalidadMetricas] = useState([]);
     const [riesgos, setRiesgos] = useState([]);
@@ -296,6 +301,21 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setPresupuesto(totalPresupuesto)
     }, [costoReservaContingencia, costoReservaGestion, costoEntregable])
 
+    const getEntregableNames = (alcanceEntregables) => {
+        if (!alcanceEntregables) return [];
+        if (alcanceEntregables.length === 0) return [];
+
+        // Si el primer elemento es un string, asumimos el formato antiguo.
+        if (typeof alcanceEntregables[0] === 'string') {
+            return alcanceEntregables;
+        }
+        // Si es un objeto y tiene la propiedad 'nombre', asumimos el nuevo formato.
+        else if (typeof alcanceEntregables[0] === 'object' && alcanceEntregables[0].hasOwnProperty('nombre')) {
+            return alcanceEntregables.map(item => item.nombre);
+        }
+        return [];
+    };
+
     useEffect(() => {
         /*function initCostoEntregable() {
             let newCostoEntregable = []
@@ -306,14 +326,21 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             setCostoEntregable(newCostoEntregable)
         }*/
         function initCostoEntregable() {
-            const newCostoEntregable = alcanceEntregables.map(entregable => {
+            // Usamos la función auxiliar para obtener solo los nombres de los entregables
+            const entregableNames = getEntregableNames(alcanceEntregables);
+
+            const newCostoEntregable = entregableNames.map(entregable => {
                 const existing = (costoEntregable || []).find(item => item.entregable === entregable)
                 return existing ? existing : { entregable, costo: 0 }
             })
             setCostoEntregable(newCostoEntregable)
         }
+
         function initCalidadMetricas() {
-            const newCalidadMetricas = alcanceEntregables.map(entregable => {
+            // Usamos la función auxiliar para obtener solo los nombres de los entregables
+            const entregableNames = getEntregableNames(alcanceEntregables);
+
+            const newCalidadMetricas = entregableNames.map(entregable => {
                 const existing = (calidadMetricas || []).find(item => item.entregable === entregable)
                 return existing ? existing : { entregable, metrica: '' }
             })
@@ -327,10 +354,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                 newCalidadMetricas = [...calidadMetricas, { entregable: alcanceEntregables[alcanceEntregables.length - 1], metrica: '' }]
             setCalidadMetricas(newCalidadMetricas)
         }*/
-
-        if (calidadMetricas?.length !== alcanceEntregables?.length)
+        const currentAlcanceLength = getEntregableNames(alcanceEntregables).length;
+        
+        if ((calidadMetricas || []).length !== currentAlcanceLength)
             initCalidadMetricas()
-        if (costoEntregable?.length !== alcanceEntregables?.length)
+        if ((costoEntregable || []).length !== currentAlcanceLength)
             initCostoEntregable()
     }, [alcanceEntregables])
 
@@ -429,6 +457,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             ...(costoEntregable && { costoEntregable }),
             ...(costoReservaContingencia && { costoReservaContingencia }),
             ...(costoReservaGestion && { costoReservaGestion }),
+            ...(costoReservaContingenciaReal && { costoReservaContingenciaReal }),
+            ...(costoReservaGestionReal && { costoReservaGestionReal }),
             ...(calidadMetricas && { calidadMetricas }),
             ...(riesgos && { riesgos }),
             ...(recursosRequeridos && { recursosRequeridos }),
@@ -525,6 +555,24 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         const title = values.filter( val => val.clave === maxDesviacionPeriodo)[0]?.valor
         return title;
     }
+
+    const [resumenEjecucion, setResumenEjecucion] = useState({
+        alcance: 0,
+        hitos: 0,
+        costoDesviacion: 0,
+        calidad: 0,
+        gantt: 0,
+        riesgoPromedio: null, // H, M, L
+    });
+
+    const setPorcentajeCompletado = useCallback((key, percentage) => {
+        setResumenEjecucion(prev => ({ ...prev, [key]: percentage }));
+    }, [setResumenEjecucion]); // Solo depende de setResumenEjecucion, que es estable.
+
+
+    const setRiesgoPromedio = useCallback((riesgo) => {
+        setResumenEjecucion(prev => ({ ...prev, riesgoPromedio: riesgo }));
+    }, [setResumenEjecucion]);
 
     return (
         <div className="page-menu-container">
@@ -729,6 +777,47 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     ))}
                                 </Form.Control>
                             </Form.Group>
+
+                            {ejecutado && (
+                                <div className="summary-section">
+                                    <hr className="mb-4" />
+                                    {/* 1. Encabezado */}
+                                    <h3 className="mb-4">
+                                        <span role="img" aria-label="resumen">📝</span> Resumen de Ejecución
+                                    </h3>
+
+                                    <Row className="mb-4" style={{ rowGap: "40px", alignItems: "end" }}>
+                                        {/* GRÁFICOS QUE SOLO APARECEN EN PROYECTOS (!esActividad) */}
+                                        {!esActividad && (
+                                            <>
+                                                <Col md={4} className="d-flex justify-content-center pb-4">
+                                                    <SummaryChart type="alcance" value={resumenEjecucion.alcance} />
+                                                </Col>
+                                                <Col md={4} className="d-flex justify-content-center pb-4">
+                                                    <SummaryChart type="hitos" value={resumenEjecucion.hitos} />
+                                                </Col>
+                                                <Col md={4} className="d-flex justify-content-center pb-4">
+                                                    <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
+                                                </Col>
+                                                <Col md={4} className="d-flex justify-content-center pb-4">
+                                                    <SummaryChart type="calidad" value={resumenEjecucion.calidad} />
+                                                </Col>
+                                                <Col md={4} className="d-flex justify-content-center pb-4">
+                                                    <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
+                                                </Col>
+                                            </>
+                                        )}
+                                        {(tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO) && (
+                                            <>
+                                                {/* GRÁFICO GANTT (APARECE SIEMPRE QUE ESTÉ EJECUTADO, SIN IMPORTAR esActividad) */}
+                                                <Col md={4} className="d-flex justify-content-center pb-4">
+                                                    <SummaryChart type="gantt" value={resumenEjecucion.gantt} />
+                                                </Col>
+                                            </>
+                                        )}
+                                    </Row>
+                                </div>
+                            )}
 
 
 
@@ -1200,6 +1289,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 alcanceEntregables={alcanceEntregables}
                                 setAlcanceEntregables={setAlcanceEntregables}
                                 editMode={editMode}
+                                ejecutado={ejecutado}
+                                onSummaryChange={setPorcentajeCompletado}
                             />
                             <div className="mt-5 pb-5">
                                 {
@@ -1229,6 +1320,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 setTiempoFechasCriticas={setTiempoFechasCriticas}
                                 editMode={editMode}
                                 showDuration={showDuration}
+                                ejecutado={ejecutado}
+                                onSummaryChange={setPorcentajeCompletado}
                             />
                             <div className="mt-5 pb-5">
                                 {
@@ -1256,11 +1349,17 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 setCostoEntregable={setCostoEntregable}
                                 costoReservaContingencia={costoReservaContingencia}
                                 setCostoReservaContingencia={setCostoReservaContingencia}
+                                costoReservaContingenciaReal={costoReservaContingenciaReal}
+                                setCostoReservaContingenciaReal={setCostoReservaContingenciaReal}
                                 costoReservaGestion={costoReservaGestion}
                                 setCostoReservaGestion={setCostoReservaGestion}
+                                costoReservaGestionReal={costoReservaGestionReal}
+                                setCostoReservaGestionReal={setCostoReservaGestionReal}
                                 presupuesto={presupuesto}
                                 editMode={editMode}
                                 regexValidator={regexValidator}
+                                ejecutado={ejecutado}
+                                onSummaryChange={setPorcentajeCompletado}
                             />
                             <div className="mt-5 pb-5">
                                 {
@@ -1288,6 +1387,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 calidadMetricas={calidadMetricas}
                                 setCalidadMetricas={setCalidadMetricas}
                                 editMode={editMode}
+                                ejecutado={ejecutado}
+                                onSummaryChange={setPorcentajeCompletado}
                             />
                             <div className="mt-5 pb-5">
                                 {
@@ -1315,6 +1416,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     disabled={!editMode}
                                     riesgosList={riesgos}
                                     setRiesgosList={setRiesgos}
+                                    interesados={interesado}
+                                    ejecutado={ejecutado}
+                                    onSummaryChange={setRiesgoPromedio}
                                 />
                             </Form.Group>
 
@@ -1341,6 +1445,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     projectId={projectId}
                                     interesados={interesado}
                                     cerrado={cerrado}
+                                    ejecutado={ejecutado}
+                                    onSummaryChange={setPorcentajeCompletado}
                                 />
                                 : <p>El tipo de proyecto no es apto para usar el Gantt</p>
                             }

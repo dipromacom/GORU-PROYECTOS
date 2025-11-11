@@ -31,6 +31,8 @@ module.exports = (db, Sequelize) => {
     costo_entregable: { type: Sequelize.JSONB }, // cambiar a JsonB
     costo_reserva_contingencia: { type: Sequelize.NUMBER },
     costo_reserva_gestion: { type: Sequelize.NUMBER },
+    costo_reserva_contingencia_real: { type: Sequelize.NUMBER },
+    costo_reserva_gestion_real: { type: Sequelize.NUMBER },
     calidad_metricas: { type: Sequelize.JSONB }, // cambiar a JSONB
     riesgos: { type: Sequelize.JSONB },
     recursos_requeridos: { type: Sequelize.TEXT },

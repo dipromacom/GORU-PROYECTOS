@@ -18,7 +18,7 @@ export default function Menu() {
           menuName="Inicio" 
           menuAlt="Inicio"
           menuToolTip="HOME"
-          redirectTo="aboutUs"
+          redirectTo="home"
         />
       </div>
 

@@ -48,3 +48,14 @@
   flex-wrap: wrap;
   justify-content: space-between;
 }
+
+.home-tools {
+  padding: 25px;
+  display: grid;
+  gap: 40px 10px;
+  grid-template-columns: 1fr 1fr 1fr;
+}
+
+.home-tools img {
+  height: 80px;
+}

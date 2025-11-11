@@ -12,6 +12,7 @@ import Default from "./layout/Default";
 import NotFound from "./public/NotFound";
 import PriorizacionProyectos from "./private/PriorizacionProyectos";
 import Nosotros from "./private/Nosotros";
+import Home from "./private/Home";
 import Proyectos from "./private/Proyectos";
 import Programas from "./private/Programas";
 import Portafolios from "./private/Portafolios";
@@ -60,6 +61,7 @@ export default function Routes() {
       <Desktop exact path="/tools" component={Instrumentos} />
       <Desktop exact path="/priorization" component={PriorizacionProyectos} />
       <Desktop exact path="/aboutUs" component={Nosotros} />
+      <Desktop exact path="/home" component={Home} />
       <Desktop exact path="/projects" component={Proyectos} />
       <Desktop exact path="/projects/new" component={ProyectoNew} />
       <Desktop exact path="/projects/:id" component={ProyectoDetail} />

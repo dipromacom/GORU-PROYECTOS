@@ -89,9 +89,10 @@ function Instrumentos() {
                 />
 
                  <WidgetTool
-                    title="Herramienta de Priorización de Proyectos"
-                    description="Herramienta que permitira medir el nivel de prioridad de un Proyecto
-                    y a su vez facilitando la tarea de selección de un proyecto previo a su comienzo."
+                    title="Goru PIVOT® – Sistema de Priorización de Valor Organizacional y Transformacional"
+                    description="“PIVOT” representa el punto de giro estratégico: el lugar donde la organización decide hacia dónde dirigir sus recursos.
+                    Refleja dinamismo, cambio, reevaluación continua (la “R” de M.O.R.E.) y enfoque adaptativo.
+                    Enfatiza: Agilidad, priorización dinámica, valor en movimiento."
                     hasDisccount={false}
                     redirecTo="priorization/result"
                     disabled={false}

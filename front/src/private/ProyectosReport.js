@@ -307,6 +307,27 @@ export const ProyectoPdf = ({ proyecto }) => {
         TipoProyecto
     } = proyecto
 
+    let entregablesParaPDF = alcance_entregables;
+
+    if (Array.isArray(alcance_entregables) && alcance_entregables.length > 0) {
+        // Verificamos si es el nuevo formato de objetos
+        if (typeof alcance_entregables[0] === 'object' && alcance_entregables[0] !== null && alcance_entregables[0].hasOwnProperty('nombre')) {
+            entregablesParaPDF = alcance_entregables.map(item => item.nombre);
+        }
+    }
+
+    let hitosParaPDF = tiempo_fechas_criticas;
+
+    if (Array.isArray(tiempo_fechas_criticas) && tiempo_fechas_criticas.length > 0) {
+        // Verificamos si es el nuevo formato de objetos que puede tener 'completado'
+        if (tiempo_fechas_criticas[0].hasOwnProperty('completado')) {
+            hitosParaPDF = tiempo_fechas_criticas.map(item => ({
+                description: item.description,
+                date: item.date
+            }));
+        }
+    }
+
     return (
         <Document title={nombre}>
             <Page size="A4" style={styles.page}>
@@ -403,7 +424,7 @@ export const ProyectoPdf = ({ proyecto }) => {
                     {alcance_entregables ?
                         <View style={styles.info}>
                             <Text style={styles.subtitle}>Alcance Entregables:</Text>
-                            {alcance_entregables.map((value, idx) => (
+                            {entregablesParaPDF.map((value, idx) => (
                                 <Text key={idx}>{value}</Text>
                             ))}
                         </View> : <></>}
@@ -415,7 +436,7 @@ export const ProyectoPdf = ({ proyecto }) => {
                         <View style={styles.info}>
                             <Text style={styles.subtitle}>Fechas Criticas:</Text>
                             {
-                                tiempo_fechas_criticas.map((fc, idx) => (
+                                    hitosParaPDF.map((fc, idx) => (
                                     <View style={styles.fecha_critica_row}>
                                         <Text style={styles.fecha_critica_col_desc} key={`col1_${idx}`}>{fc.description}</Text>
                                         <Text style={styles.fecha_critica_col_date} key={`col2_${idx}`}>{moment(fc.date).format('DD/MM/YYYY')}</Text>

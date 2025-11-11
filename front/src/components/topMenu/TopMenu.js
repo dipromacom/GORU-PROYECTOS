@@ -7,6 +7,7 @@ import { connect } from "react-redux";
 import { actions as sessionActions, selectors as sessionSelectors } from "../../reducers/session";
 import { actions as routesActions} from "../../reducers/routes";
 import { actions as personaActions, selectors as personaSelectors } from "../../reducers/persona";
+import GoogleAppsMenu from "../GoogleAppsMenu/GoogleAppsMenu";
 
 function TopMenu({ dispatch, persona, user }) {
   const [txtBuscar, setTxtBuscar] = useState("");
@@ -114,8 +115,12 @@ function TopMenu({ dispatch, persona, user }) {
       <div className="float-left menu-options-container">
         <div className="menu-placeholder center blue">
           <div className="float-left top-menu-item top-menu-text disabled">
-            <p>Herramientas</p>
+            <GoogleAppsMenu />
           </div>
+          
+          {/*<div className="float-left top-menu-item top-menu-text disabled">
+            <p>Herramientas</p>
+          </div>*/}
           <div className="float-left top-menu-item top-menu-text" onClick={() => handleMenuItemClick("aboutUs")}>
             <p>Nosotros</p>
           </div>

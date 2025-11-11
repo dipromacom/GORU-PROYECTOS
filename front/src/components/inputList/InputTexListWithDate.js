@@ -29,7 +29,7 @@ const InputTextListWithDate = ({ list, setList, duration = 0, disabled=false }) 
         e.preventDefault()
         if (totalDuration(date) <= duration) {
             if (!list) list =[];
-            let listTemp = [...list, { description, date }]
+            let listTemp = [...list, { description, date, completado: false }]
             setList(listTemp.sort((a, b) => {
                 return new Date(a.date) - new Date(b.date)
             }));

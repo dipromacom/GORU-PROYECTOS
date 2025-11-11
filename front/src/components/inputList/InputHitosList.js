@@ -1,6 +1,7 @@
 import React from "react";
 import { Form } from "react-bootstrap";
 import InputTextListWithDate from "../inputList/InputTexListWithDate";
+import InputHitosEjecutado from "./InputHitosEjecutado";
 
 const InputHitosList = ({
     tiempoDuracion,
@@ -8,8 +9,25 @@ const InputHitosList = ({
     tiempoFechasCriticas,
     setTiempoFechasCriticas,
     editMode,
-    showDuration
+    showDuration,
+    ejecutado,
+    onSummaryChange
+
 }) => {
+
+    const transformedFechasCriticas = React.useMemo(() => {
+        if (ejecutado && tiempoFechasCriticas && tiempoFechasCriticas.length > 0) {
+            // Comprobamos si el primer elemento es el formato antiguo (solo date/description)
+            if (!tiempoFechasCriticas[0].hasOwnProperty('completado')) {
+                return tiempoFechasCriticas.map(item => ({
+                    ...item,
+                    completado: false // Inicializa como no completado
+                }));
+            }
+        }
+        return tiempoFechasCriticas;
+    }, [tiempoFechasCriticas, ejecutado]);
+
     return (
         <div>
             <h3>Tiempo / Plazo</h3>
@@ -29,12 +47,26 @@ const InputHitosList = ({
 
             <Form.Group controlId="fechas-criticas">
                 <Form.Label>Fechas Críticas</Form.Label>
-                <InputTextListWithDate
-                    disabled={!editMode}
-                    list={tiempoFechasCriticas}
-                    setList={setTiempoFechasCriticas}
-                    duration={tiempoDuracion}
-                />
+
+                {ejecutado && tiempoFechasCriticas?.length > 0 ? (
+                    // 🌟 MODO EJECUTADO
+                    <InputHitosEjecutado
+                        tiempoFechasCriticas={transformedFechasCriticas}
+                        setTiempoFechasCriticas={setTiempoFechasCriticas}
+                        editMode={editMode}
+                        ejecutado={ejecutado}
+                        onSummaryChange={onSummaryChange}
+
+                    />
+                ) : (
+                    // 📝 MODO CREACIÓN/EDICIÓN (Formato simple)
+                    <InputTextListWithDate
+                        disabled={!editMode}
+                        list={tiempoFechasCriticas}
+                        setList={setTiempoFechasCriticas}
+                        duration={tiempoDuracion}
+                    />
+                )}
             </Form.Group>
         </div>
     );

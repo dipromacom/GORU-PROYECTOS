@@ -1,3 +1,25 @@
 input.input-cost-list{
     text-align: right !important;
 }
+
+.input-cost-list-container .list-cost-header {
+    border-bottom: 1px solid #333;
+    padding: 0.5rem 0;
+    align-items: center;
+}
+
+.input-cost-list-container .list-group-item {
+    /* Mantener el diseño de lista simple con flexbox */
+    padding: 0.5rem 0.75rem !important;
+}
+
+.input-cost-list-container .input-cost-item {
+    width: 100%;
+    /* Asegura que el input group ocupe el espacio */
+}
+
+.input-cost-list-container .total-cost-row {
+    background-color: #f8f9fa;
+    /* Color de fondo sutil para el total */
+    border-top: 1px solid #dee2e6;
+}

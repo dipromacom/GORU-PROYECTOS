@@ -10,3 +10,59 @@
     padding-top: 4px;
     padding-bottom: 4px;
 }
+
+/* nuevas reglas para layout 70/30 */
+.input-text-list .item-row {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.input-text-list .item-content {
+    padding-right: 8px;
+}
+
+.input-text-list .item-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    gap: 8px;
+}
+
+/* botón eliminar compacto */
+.input-text-list .btn-delete {
+    font-size: 1.05rem;
+    line-height: 1;
+}
+
+/* evitar que el input sea demasiado pequeño */
+.input-text-list .item-content .form-control {
+    width: 100%;
+    min-width: 160px;
+}
+
+/* Estilos para la tabla de hitos/alcance en modo ejecutado */
+.alcance-header {
+    border-bottom: 1px solid #dee2e6;
+    padding-bottom: 0.5rem;
+    margin-bottom: 0 !important;
+}
+
+.alcance-row {
+    margin-left: 0 !important;
+    margin-right: 0 !important;
+}
+
+.alcance-row .item-content {
+    /* Mantiene el texto alineado si el botón de eliminar se mueve al final */
+    word-break: break-word;
+}
+
+.alcance-row .item-actions {
+    padding: 0;
+    /* Asegura que el botón de eliminar quede en el borde de su columna */
+}
+
+.alcance-row .delete-btn {
+    cursor: pointer;
+}

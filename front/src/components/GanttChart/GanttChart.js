@@ -10,7 +10,7 @@ import { actions as ganttActions, selectors as ganttSelectors } from "../../redu
 import "./GanttChart.css";
 import { duration } from "moment";
 
-const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado }) => {
+const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, onSummaryChange = () => { } }) => {
     const safeProjectId = projectId ?? null;
 
     // Aseguramos que tasks sea un arreglo
@@ -526,6 +526,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             </div>
         );
     };
+
+    useEffect(() => {
+        if (ejecutado && projectSummary) {
+            onSummaryChange('gantt', projectSummary.avgProgress);
+        }
+        else{
+            onSummaryChange('gantt', 0);
+        } 
+    }, [projectSummary, ejecutado, onSummaryChange]);
 
     // --- Lista lateral ---
     const renderLeftList = () => {
