@@ -21,6 +21,15 @@ export const CirticalBadge = ({valor})=>{
 }
 
 export const CriticalBadgeFromText =  ({value,femenize=false})=>{
+    let number = 1;
+    if (value === 'H') number = 3
+    if (value === 'M') number = 2
+    const tempVal = femenize ? possibleValues[value].replace(/.$/, 'a') : possibleValues[value]
+    const upOrDown = baseColors[value] === 'success' ? 'bi-chevron-double-down' : 'bi-chevron-double-up'
+    return (<p className='mb-0'> ({number}) &nbsp;{tempVal} <i className={`font-weight-bold bi ${upOrDown} text-${baseColors[value]}`}></i></p>)
+}
+
+export const CriticalBadgeFromTextValue = ({ value, femenize = false }) => {
     const tempVal = femenize ? possibleValues[value].replace(/.$/, 'a') : possibleValues[value]
     const upOrDown = baseColors[value] === 'success' ? 'bi-chevron-double-down' : 'bi-chevron-double-up'
     return (<p className='mb-0'> {tempVal} <i className={`font-weight-bold bi ${upOrDown} text-${baseColors[value]}`}></i></p>)

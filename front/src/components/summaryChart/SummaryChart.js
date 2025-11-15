@@ -53,46 +53,58 @@ const DoughnutProgress = ({ title, percentage }) => {
     );
 };
 
+const getRiskColorVariant = (percentage) => {
+    // La lógica de riesgo es INVERSA a la de progreso (mayor % = peor riesgo)
+    if (percentage >= 67) return DANGER_COLOR; // 67-100% -> Rojo
+    if (percentage >= 34) return WARNING_COLOR; // 34-66% -> Amarillo
+    return SUCCESS_COLOR; // 0-33% -> Verde
+}
 
 // --- Componente de Riesgo (Badge Semáforo) ---
-const RiskIndicator = ({ riskValue }) => {
-    let variant = SUCCESS_COLOR; // Color de fondo por defecto (L)
-    let label = 'BAJO (L)';
-    let textColor = 'white';     // Color de texto por defecto
+const RiskIndicator = ({ title, riskValue }) => {
+    title="Indice de Riesgo"
+    const percentage = riskValue === null || riskValue === undefined ? 0 : riskValue;
 
-    if (riskValue === 'M') {
-        // NARANJA/AMARILLO
-        variant = WARNING_COLOR;
-        label = 'MEDIO (M)';
-        // El texto debe ser negro sobre amarillo para alto contraste
-        textColor = 'black';
-    } else if (riskValue === 'H') {
-        // ROJO
-        variant = DANGER_COLOR;
-        label = 'ALTO (H)';
-        // El texto debe ser blanco sobre rojo
-        textColor = 'white';
-    } else if (!riskValue) {
-        // N/A
-        variant = '#6c757d'; // Gris secundario
-        label = 'N/A';
-        textColor = 'white';
-    }
+    const remaining = 100 - percentage;
+
+    // Obtener el color basado en la regla de riesgo
+    const color = getRiskColorVariant(percentage);
+
+    const data = {
+        datasets: [
+            {
+                data: [percentage, remaining],
+                backgroundColor: [color, '#e9ecef'], // Color principal y color de fondo
+                hoverBackgroundColor: [color, '#e9ecef'],
+                borderWidth: 0,
+            },
+        ],
+    };
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        cutoutPercentage: 75,
+        legend: { display: false },
+        tooltips: { enabled: false },
+    };
 
     return (
-        <div className="text-center">
-            {/* Aplicando el color de fondo y color de texto directamente mediante style */}
-            <Badge
+        <div style={{ position: 'relative', height: '120px', width: '120px' }} className="text-center">
+            <Doughnut data={data} options={options} />
+            <div
                 style={{
-                    fontSize: '1.5rem',
-                    padding: '10px 15px',
-                    backgroundColor: variant, // Usa el color (Rojo, Amarillo/Naranja, Verde, Gris)
-                    color: textColor,         // Usa el color del texto (Blanco o Negro)
+                    position: 'absolute',
+                    top: '50%',
+                    left: '50%',
+                    transform: 'translate(-50%, -50%)',
+                    fontSize: '1.2rem',
+                    fontWeight: 'bold',
                 }}
             >
-                {label}
-            </Badge>
-            <p className="mt-2 mb-0 fw-bold">Riesgo Promedio</p>
+                {percentage}%
+            </div>
+            <p className="mt-2 mb-0 fw-bold">{title}</p>
         </div>
     );
 };
@@ -107,7 +119,7 @@ const CostDeviation = ({ deviation }) => {
 
     // 2. Determinar los colores y el mensaje
     let color = INFO_COLOR;      // Azul por defecto
-    let title = 'Costo Real vs Estimado: Superávit';
+    let title = 'Indice de Costos';
     let centerText = `${numDeviation.toFixed(2)}%`; // Muestra el valor real en el centro
 
     if (numDeviation <= 100) {
@@ -116,7 +128,7 @@ const CostDeviation = ({ deviation }) => {
     } else {
         // Sobrepresupuesto (más del 100%)
         color = DANGER_COLOR;
-        title = 'Costo Real vs Estimado: Sobrepresupuesto';
+        title = 'Indice de Costos';
     }
 
     const data = {

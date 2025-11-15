@@ -166,6 +166,7 @@ const InputCostosList = ({
                             <Form.Label>
                                 Presupuesto Total Real (vs. Estimado: <span className={desviacionColor}>{porcentajeDesviacion}%</span>)
                             </Form.Label>
+                            <Form.Label><span className="fw-bold"> &nbsp; Fórmula: (Real / Estimado) * 100 </span></Form.Label>
                             <InputGroup>
                                 <InputGroup.Prepend>
                                     <InputGroup.Text><strong>$</strong></InputGroup.Text>

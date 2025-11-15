@@ -1,63 +1,106 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useMemo } from "react";
-import { Col, Form, ListGroup, Button, InputGroup, Row } from "react-bootstrap"
-import { CriticalBadgeFromText } from "../badge/Badge";
+import { Col, Form, ListGroup, Button, InputGroup, Row, Alert, ProgressBar } from "react-bootstrap"
+import { CriticalBadgeFromText, CriticalBadgeFromTextValue } from "../badge/Badge";
 import PlanRespuestaModal from "./PlanRespuestaModal";
 
 
 const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabled = false, ejecutado, interesados = [], onSummaryChange = () => { } }) => {
+    // Definición de estados con valores iniciales para M (Medio = 2)
     const [riesgosDesc, setRiesgoDesc] = useState("")
-    const [riesgoVal, setRiesgoVal] = useState("")
-    const [probabilidad, setProbabilidad] = useState("M")
-    const [impacto, setImpacto] = useState("M")
+    const [probabilidad, setProbabilidad] = useState("M") // Clave para el <select>
+    const [impacto, setImpacto] = useState("M") // Clave para el <select>
+    const [riesgoVal, setRiesgoVal] = useState(4) // Valor inicial M*M = 4 (Cálculo numérico)
     // Estado para el modal
     const [showModal, setShowModal] = useState(false);
     const [selectedRiesgo, setSelectedRiesgo] = useState(null);
+
+    const [isOldFormatDetected, setIsOldFormatDetected] = useState(false);
 
     const values = [
         { clave: "H", valor: "Alto", num: 3 },
         { clave: "M", valor: "Medio", num: 2 },
         { clave: "L", valor: "Bajo", num: 1 },
     ]
-    const resultMap = {
-        'HL': 'M', 'HM': 'H', 'HH': 'H',
-        'ML': 'L', 'MM': 'M', 'LL': 'L',
-        'LM': 'L', 'LH': 'M', 'MH': 'H' 
+    // Mapeos útiles para la lógica
+    const claveToNum = useMemo(() => values.reduce((acc, val) => ({ ...acc, [val.clave]: val.num }), {}), [values]);
+    const numToClave = useMemo(() => values.reduce((acc, val) => ({ ...acc, [val.num]: val.clave }), {}), [values]);
+
+
+    const getBadgeClaveFromValue = (numValue) => {
+        if (typeof numValue === 'string') return numValue; // Para retrocompatibilidad temporal
+        if (numValue >= 7) return 'H'; // 7, 8, 9 -> Alto
+        if (numValue >= 4) return 'M'; // 4, 5, 6 -> Medio
+        return 'L'; // 1, 2, 3 -> Bajo
     };
+
+    const getClaveForDisplay = (numValue) => {
+        // Si el valor es una clave (H, M, L) lo devuelve, si no, lo busca por número.
+        if (typeof numValue === 'string') return numValue;
+        return numToClave[numValue] || 'L';
+    };
+
+    useEffect(() => {
+        const probNum = claveToNum[probabilidad] || 0;
+        const impactNum = claveToNum[impacto] || 0;
+        // Cálculo: probabilidad * impacto (Valor numérico 1-9)
+        const newRiesgoVal = probNum * impactNum;
+        setRiesgoVal(newRiesgoVal);
+    }, [probabilidad, impacto, claveToNum])
 
 
     useEffect(() => {
-        const key1 = [probabilidad, impacto].sort().join('');
-        const value = resultMap[key1];
-        setRiesgoVal(value || "");
-    }, [probabilidad, impacto])
+        const list = riesgosList || [];
+        // El formato antiguo tenía 'valor' como string ('H', 'M', 'L')
+        const oldFormatFound = list.some(item => typeof item.valor === 'string' && ['H', 'M', 'L'].includes(item.valor));
+
+        setIsOldFormatDetected(oldFormatFound);
+        if (oldFormatFound) {
+            console.error("Se detectó un formato de riesgo antiguo. Por favor, borre y recree los riesgos.");
+        }
+    }, [riesgosList]);
+
 
     const riesgoPromedio = useMemo(() => {
-        const list = riesgosList || []; 
-        if (list.length === 0) return null;
-        const claveToNum = values.reduce((acc, val) => ({ ...acc, [val.clave]: val.num }), {});
+        const list = riesgosList || [];
+        // Si hay formato antiguo o la lista está vacía, no se puede calcular.
+        if (list.length === 0 || isOldFormatDetected) return null;
+
+        const maxRiesgo = 9;
 
         const totalNumValue = list.reduce((sum, item) => {
-            const numValue = claveToNum[item.valor] || 0; 
+            // Se asume que item.valor es un número (1-9)
+            const numValue = (typeof item.valor === 'number' && item.valor > 0) ? item.valor : 0;
             return sum + numValue;
         }, 0);
 
         const averageNum = totalNumValue / list.length;
 
-        if (averageNum >= 2.5) return 'H'; 
-        if (averageNum >= 1.5) return 'M'; 
-        if (averageNum > 0) return 'L';    
-        return null;
-    }, [riesgosList, values]);
+        // Conversión a porcentaje: (Valor promedio / Máximo (9)) * 100
+        const porcentaje = Math.round((averageNum / maxRiesgo) * 100);
+
+        // Redondeamos y devolvemos el string con el porcentaje
+        return porcentaje;
+    }, [riesgosList, isOldFormatDetected]);
+
+    const getProgressVariant = (percentage) => {
+        // Definimos los umbrales de riesgo en base al porcentaje (0-100)
+        if (percentage >= 67) return 'danger'; // 67-100% (Alto) -> Rojo
+        if (percentage >= 34) return 'warning'; // 34-66% (Medio) -> Amarillo
+        return 'success'; // 0-33% (Bajo) -> Verde
+    }
 
     const handleSubmit = (e) => {
         e.preventDefault()
 
+        const probNum = claveToNum[probabilidad] || 0;
+        const impactNum = claveToNum[impacto] || 0;
+
         const riesgo = {
             descripcion: riesgosDesc,
-            valor: riesgoVal,
-            probabilidad,
-            impacto,
+            valor: riesgoVal, // Ahora es el resultado numérico (1-9)
+            probabilidad: probNum, // Ahora es el número (1, 2, 3)
+            impacto: impactNum, // Ahora es el número (1, 2, 3)
             plan_descripcion: '',
             fecha_realizacion: '',
             responsable_id: '',
@@ -71,13 +114,13 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
 
     const resetFields = () => {
         setRiesgoDesc("");
-        setRiesgoVal("");
         setProbabilidad("M");
         setImpacto("M");
+        setRiesgoVal(4); // Resetear al valor calculado M*M
     }
 
     const enableSubmit = () => {
-        return riesgosDesc.length > 0 && riesgoVal.length > 0
+        return riesgosDesc.length > 0 && riesgoVal > 0
     }
 
     const deleteItemHandle = (index) => {
@@ -113,16 +156,16 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
         return (
             <div className="mt-1 p-1" style={{ borderTop: '1px dotted #ccc', fontSize: '0.8rem', backgroundColor: '#f9f9f9' }}>
                 <Row>
-                    <Col xs={4}> 
+                    <Col xs={6}>
                         Plan: <span className="text-muted text-break" title={item.plan_descripcion}>{item.plan_descripcion || 'Pendiente'}</span>
                     </Col>
-                    <Col xs={3}>
+                    <Col xs={2}>
                         Fecha: <span className="text-muted">{fecha}</span>
                     </Col>
                     <Col xs={3}>
                         Resp.: <span className="text-muted">{responsable}</span>
                     </Col>
-                    <Col xs={2} className="text-end">
+                    <Col xs={1} className="text-end">
                         <span className={`fw-bold ${item.completado ? 'text-success' : 'text-danger'}`}>{completadoText}</span>
                     </Col>
                 </Row>
@@ -130,16 +173,15 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
         );
     };
 
-
     useEffect(() => {
-        if (ejecutado) {
+        if (ejecutado && !isOldFormatDetected) {
             onSummaryChange(riesgoPromedio);
         }
-    }, [riesgoPromedio, ejecutado, onSummaryChange]);
+    }, [riesgoPromedio, ejecutado, onSummaryChange, isOldFormatDetected]);
+
 
     return (
         <div>
-            {/* Modal para Plan de Respuesta */}
             {selectedRiesgo && (
                 <PlanRespuestaModal
                     show={showModal}
@@ -150,11 +192,16 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                     disabled={disabled}
                 />
             )}
+            {isOldFormatDetected && (
+                <Alert variant="danger" className="mt-3">
+                    <strong>¡Advertencia de Formato de Riesgo!</strong> Se detectaron riesgos en un formato anterior.
+                    Por favor, <strong>elimine y vuelva a crear</strong> todos los riesgos para que se aplique la nueva lógica de cálculo (Probabilidad x Impacto) y el Promedio se muestre correctamente.
+                </Alert>
+            )}
 
             <Form>
-                {/* Formulario de Adición (Sin cambios en diseño) */}
                 <Form.Row>
-                    <Col xs={5}> {/* Reducimos a 5 para agregar columna */}
+                    <Col xs={5}>
                         <Form.Label>Descripcion</Form.Label>
                         {!disabled && <Form.Control
                             autoComplete="off"
@@ -163,13 +210,13 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                             onChange={(e) => { setRiesgoDesc(e.target.value) }}
                         />}
                     </Col>
-                    {/* ... (resto de Probabilidad e Impacto) */}
                     <Col xs={2}>
                         <Form.Label>Probabilidad</Form.Label>
                         {!disabled && <Form.Control as="select" size="sm" custom onChange={e => { setProbabilidad(e.target.value) }} value={probabilidad}>
                             {
                                 values.map(
                                     (val, index) => (
+                                        // Se usa val.clave para el estado (H, M, L)
                                         <option value={val.clave} key={index}>{val.valor.replace(/.$/, 'a')}</option>
                                     )
                                 )
@@ -182,6 +229,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                             {
                                 values.map(
                                     (val, idx) => (
+                                        // Se usa val.clave para el estado (H, M, L)
                                         <option value={val.clave} key={idx}>{val.valor}</option>
                                     )
                                 )
@@ -189,9 +237,9 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                         </Form.Control>}
                     </Col>
                     <Col xs={1}>
-                        <Form.Label>Valor</Form.Label>
+                        <Form.Label>Valor ({riesgoVal})</Form.Label>
                         <InputGroup>
-                            {!disabled && <CriticalBadgeFromText value={riesgoVal}></CriticalBadgeFromText>}
+                            {!disabled && <CriticalBadgeFromTextValue value={getBadgeClaveFromValue(riesgoVal)} />}
                         </InputGroup>
                     </Col>
                     <Col xs={2} className='d-flex align-items-end justify-content-end'>
@@ -201,25 +249,28 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
             </Form>
 
             <div className={riesgosList?.length > 0 ? "mt-4" : ""}>
-                {/* Cabecera de Riesgos */}
                 <ListGroup horizontal className="fw-bold d-flex p-0 list-risk-header" style={{ borderBottom: '2px solid #ccc' }}>
-                    <ListGroup.Item className="col-5">Descripción</ListGroup.Item>
+                    <ListGroup.Item className="col-4">Descripción</ListGroup.Item>
                     <ListGroup.Item className="col-2 text-center">Prob.</ListGroup.Item>
                     <ListGroup.Item className="col-2 text-center">Impac.</ListGroup.Item>
-                    <ListGroup.Item className="col-1 text-center">Valor</ListGroup.Item>
+                    <ListGroup.Item className="col-2 text-center">Valor</ListGroup.Item>
                     {ejecutado && <ListGroup.Item className="col-2 text-center">Plan Respuesta</ListGroup.Item>}
                 </ListGroup>
 
                 <ListGroup variant="flush">
-                    {(riesgosList || []).map((item, index) => ( // Usamos `|| []` para robustez
+                    {(riesgosList || []).map((item, index) => (
                         <ListGroup.Item key={index} className='p-0'>
                             <div className='d-flex align-items-center p-2'>
-                                <div className="col-5 text-break">{item.descripcion}</div>
-                                <div className="col-2 text-center"><CriticalBadgeFromText value={item.probabilidad} femenize></CriticalBadgeFromText></div>
-                                <div className="col-2 text-center"><CriticalBadgeFromText value={item.impacto}></CriticalBadgeFromText></div>
-                                <div className="col-1 text-center"><CriticalBadgeFromText value={item.valor} /> </div>
+                                <div className="col-4 text-break">{item.descripcion}</div>
+                                <div className="col-2 text-center"><CriticalBadgeFromText value={getClaveForDisplay(item.probabilidad)} femenize /></div>
+                                <div className="col-2 text-center"><CriticalBadgeFromText value={getClaveForDisplay(item.impacto)} /></div>
+                                <div className="col-2 text-center">
+                                    <span className="d-flex justify-content-center align-items-center">
+                                        ({item.valor}) &nbsp;
+                                        <CriticalBadgeFromTextValue value={getBadgeClaveFromValue(item.valor)} number={item.valor} className="ml-1" />
+                                    </span>
+                                </div>
 
-                                {/* Columna de Plan de Respuesta (Punto 2) */}
                                 {ejecutado && !disabled && (
                                     <div className="col-2 text-center pr-0">
                                         <Button variant="outline-primary" size="sm" onClick={() => handleOpenModal(item)}>
@@ -228,25 +279,26 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                                     </div>
                                 )}
 
-                                {/* Botón Eliminar */}
-                                <div className={`col-${ejecutado ? 1 : 2} text-end pr-0`}>
+                                <div className={`col-${ejecutado && !disabled ? 1 : 2} text-end pr-0`}>
                                     {!disabled && <span className="bi bi-x-lg pull-end" style={{ cursor: 'pointer' }} onClick={() => deleteItemHandle(index)} ></span>}
                                 </div>
                             </div>
 
-                            {/* Información sutil del Plan de Respuesta (Punto 3) */}
                             {renderPlanInfo(item)}
                         </ListGroup.Item>
                     ))}
 
-                    {/* Fila de Promedio de Riesgo (Punto 5) */}
-                    {ejecutado && (riesgosList || []).length > 0 && (
-                        <ListGroup.Item className='d-flex fw-bold p-2 total-risk-row'>
-                            <div className="col-9 text-end">RIESGO PROMEDIO:</div>
-                            <div className="col-1 text-center">
-                                <CriticalBadgeFromText value={riesgoPromedio} />
+                    {ejecutado && !isOldFormatDetected && (riesgosList || []).length > 0 && (
+                        <ListGroup.Item className='fw-bold p-2 total-risk-row'>
+                            <div className="mb-3">
+                                <Form.Label>RIESGO PROMEDIO: <span className="fw-bold">{riesgoPromedio}%</span></Form.Label><br></br>
+                                <Form.Label><span className="fw-bold">Fórmula: ((Suma_Valores/Riesgos_totales) / 9) * 100</span></Form.Label>
+                                <ProgressBar
+                                    now={riesgoPromedio}
+                                    label={`${riesgoPromedio}%`}
+                                    variant={getProgressVariant(riesgoPromedio)} // Usa la función para el color
+                                />
                             </div>
-                            <div className="col-2"></div> {/* Espacio para el botón de Plan de Respuesta */}
                         </ListGroup.Item>
                     )}
 

@@ -5,7 +5,7 @@ import { useParams } from "react-router-dom";
 import "./Whiteboard.css";
 
 const Whiteboard = ({cerrado}) => {
-    const isBoardEnabled = !cerrado;
+    const disabled = cerrado ? 'disabled' : 'enabled';
     const canvasRef = useRef(null);
     const wrapperRef = useRef(null); // canvas-wrapper DOM node (for postits/images)
     const containerRef = useRef(null); // canvas-container DOM node
@@ -355,6 +355,16 @@ const Whiteboard = ({cerrado}) => {
         const feedback = document.createElement("div");
         feedback.className = "wb-clear-feedback";
         feedback.textContent = "🧹 ¡Pizarra limpiada!";
+        document.body.appendChild(feedback);
+        setTimeout(() => {
+            if (feedback.parentNode) feedback.remove();
+        }, 1600);
+    };
+    // feedback on Save
+    const showSaveFeedback = () => {
+        const feedback = document.createElement("div");
+        feedback.className = "wb-clear-feedback";
+        feedback.textContent = "💾 ¡Pizarra guardada!";
         document.body.appendChild(feedback);
         setTimeout(() => {
             if (feedback.parentNode) feedback.remove();
@@ -743,12 +753,8 @@ const Whiteboard = ({cerrado}) => {
         const saveLocal = () => {
             try {
                 const canvas = canvasRef.current;
-                const ctx = ctxRef.current;
-                if (!canvas || !ctx) return;
-                const dpr = dprRef.current;
-                ctx.setTransform(1, 0, 0, 1, 0, 0); // Resetear escala/transformación
+                if (!canvas) return;
                 const imageData = canvas.toDataURL("image/png");
-                ctx.scale(dpr, dpr);
                 const wrapper = wrapperRef.current;
                 const postits = [];
                 const images = [];
@@ -809,10 +815,7 @@ const Whiteboard = ({cerrado}) => {
             // restaurar imagen
             if (data.canvas?.image) {
                 const img = new Image();
-                img.onload = () => {
-                    const dpr = dprRef.current;
-                    ctx.drawImage(img, 0, 0);
-                }
+                img.onload = () => ctx.drawImage(img, 0, 0);
                 img.src = data.canvas.image;
             }
 
@@ -857,7 +860,7 @@ const Whiteboard = ({cerrado}) => {
 
     const loading = useSelector((state) => state.whiteboard.loading);
     useEffect(() => {
-        if (loading) return; 
+        if (loading) return;
         // Esperar a que el canvas esté listo antes de cargar contenido
         const tryLoad = () => {
             const canvas = canvasRef.current;
@@ -890,32 +893,29 @@ const Whiteboard = ({cerrado}) => {
 
     // render UI
     return (
-        <div className="whiteboard-container">
+        <div className={`whiteboard-container ${disabled}`}>
             <header className="whiteboard-header">
                 <h1>🎨 Pizarra Goru</h1>
                 <div className="toolbar">
                     <div className="tool-section">
                         <button
                             id="drawBtn"
-                            className={`tool-btn ${currentTool === "pen" || currentTool === "eraser" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
+                            className={`tool-btn ${currentTool === "pen" || currentTool === "eraser" ? "active" : ""}`}
                             onClick={() => {
-                                if (isBoardEnabled) {
-                                    setCurrentTool("pen");
-                                    setDrawMode("free");
-                                }
+                                setCurrentTool("pen");
+                                setDrawMode("free");
                             }}
-                            disabled={!isBoardEnabled}
                         >
                             ✏️ Dibujar
                         </button>
 
                         <div className={`draw-tools ${currentTool === "pen" ? "active" : ""}`} id="drawTools">
-                            
-                            <button id="freeDrawBtn" className={`shape-btn ${drawMode === "free" ? "active" : ""}`} title="Dibujo libre" onClick={() => isBoardEnabled && handleSetDrawMode("free")} disabled={!isBoardEnabled}>✏️</button>
-                            <button id="rectBtn" className={`shape-btn ${drawMode === "rect" ? "active" : ""}`} title="Rectángulo" onClick={() => isBoardEnabled && handleSetDrawMode("rect")} disabled={!isBoardEnabled}>▢</button>
-                            <button id="circleBtn" className={`shape-btn ${drawMode === "circle" ? "active" : ""}`} title="Círculo" onClick={() => isBoardEnabled && handleSetDrawMode("circle")} disabled={!isBoardEnabled}>⭕</button>
-                            <button id="triangleBtn" className={`shape-btn ${drawMode === "triangle" ? "active" : ""}`} title="Triángulo" onClick={() => isBoardEnabled && handleSetDrawMode("triangle")} disabled={!isBoardEnabled}>▲</button>
-                            <button id="eraserBtn" className={`shape-btn ${drawMode === "eraser" ? "active" : ""}`} title="Borrador" onClick={() => isBoardEnabled && handleSetDrawMode("eraser")} disabled={!isBoardEnabled}>🧹</button>
+
+                            <button id="freeDrawBtn" className={`shape-btn ${drawMode === "free" ? "active" : ""}`} title="Dibujo libre" onClick={() => handleSetDrawMode("free")}>✏️</button>
+                            <button id="rectBtn" className={`shape-btn ${drawMode === "rect" ? "active" : ""}`} title="Rectángulo" onClick={() => handleSetDrawMode("rect")}>▢</button>
+                            <button id="circleBtn" className={`shape-btn ${drawMode === "circle" ? "active" : ""}`} title="Círculo" onClick={() => handleSetDrawMode("circle")}>⭕</button>
+                            <button id="triangleBtn" className={`shape-btn ${drawMode === "triangle" ? "active" : ""}`} title="Triángulo" onClick={() => handleSetDrawMode("triangle")}>▲</button>
+                            <button id="eraserBtn" className={`shape-btn ${drawMode === "eraser" ? "active" : ""}`} title="Borrador" onClick={() => handleSetDrawMode("eraser")}>🧹</button>
                         </div>
                     </div>
 
@@ -923,12 +923,7 @@ const Whiteboard = ({cerrado}) => {
                         <button
                             id="postitBtn"
                             className={`tool-btn ${currentTool === "postit" ? "active" : ""}`}
-                            onClick={() => {
-                                if (isBoardEnabled) {
-                                    setCurrentTool((prev) => (prev === "postit" ? "pen" : "postit"));
-                                }
-                            }}
-                            disabled={!isBoardEnabled}
+                            onClick={() => setCurrentTool((prev) => (prev === "postit" ? "pen" : "postit"))}
                         >
                             📝 Post-it
                         </button>
@@ -937,18 +932,15 @@ const Whiteboard = ({cerrado}) => {
                             id="imageBtn"
                             className={`tool-btn ${currentTool === "image" ? "active" : ""}`}
                             onClick={() => {
-                                if (isBoardEnabled) {
-                                    setCurrentTool("image");
-                                    const input = document.getElementById("imageInput");
-                                    if (input) input.click();
-                                }
+                                setCurrentTool("image");
+                                const input = document.getElementById("imageInput");
+                                if (input) input.click();
                             }}
-                            disabled={!isBoardEnabled}
                         >
                             🖼️ Imagen
                         </button>
 
-                        <button id="clearBtn" className={`tool-btn ${!isBoardEnabled ? "disabled" : ""}`} onClick={() => isBoardEnabled && clearCanvas()} disabled={!isBoardEnabled}>🗑️ Limpiar</button>
+                        <button id="clearBtn" className="tool-btn" onClick={() => clearCanvas()}>🗑️ Limpiar</button>
                         <button
                             className="tool-btn"
                             onClick={() => {
@@ -992,6 +984,7 @@ const Whiteboard = ({cerrado}) => {
                                     console.log(localData)
                                     dispatch(actions.updateContent({ content: localData }));
                                     dispatch(actions.sync({ projectId }));
+                                    showSaveFeedback();
 
                                 } catch (err) {
                                     console.error("Error forzando guardado manual:", err);
@@ -1010,10 +1003,10 @@ const Whiteboard = ({cerrado}) => {
                                 style={{ background: c }}
                                 data-color={c}
                                 onClick={() => {
-                                    if (isBoardEnabled) {
-                                        setBrushColor(c);
-                                        if (drawMode === "eraser") setDrawMode("free");
-                                    }
+                                    setBrushColor(c);
+                                    // remove eraser
+                                    if (drawMode === "eraser") setDrawMode("free");
+                                    // update visual active handled by class
                                 }}
                             />
                         ))}
@@ -1027,11 +1020,11 @@ const Whiteboard = ({cerrado}) => {
                 </div>
             </header>
 
-            <div className={`canvas-container ${!isBoardEnabled ? "disabled-interaction" : ""}`} ref={containerRef}>
+            <div className="canvas-container" ref={containerRef}>
                 <div className="canvas-wrapper" id="canvasWrapper" ref={wrapperRef}>
                     <canvas id="whiteboard" ref={canvasRef} />
                 </div>
-                <input id="imageInput" className="file-input" type="file" accept="image/*" disabled={!isBoardEnabled} />
+                <input id="imageInput" className="file-input" type="file" accept="image/*" />
             </div>
 
             <div className="zoom-controls">
@@ -1041,47 +1034,41 @@ const Whiteboard = ({cerrado}) => {
                 <button className="zoom-btn" id="zoomReset" title="Restablecer zoom (Ctrl + 0)">⌂</button>
             </div>
 
-            <div className={`floating-menu ${currentTool === "postit" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`} id="postitMenu">
+            <div className={`floating-menu ${currentTool === "postit" ? "active" : ""}`} id="postitMenu">
                 <h3>Crear Post-it</h3>
                 <div style={{ display: "flex", gap: 8, marginBottom: 16, justifyContent: "center" }}>
                     <button
-                        className={`color-btn ${postitColor === "yellow" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
+                        className={`color-btn ${postitColor === "yellow" ? "active" : ""}`}
                         style={{ background: "#fef08a", borderColor: "rgba(217, 119, 6, 0.3)" }}
                         data-postit-color="yellow"
-                        onClick={() => isBoardEnabled && setPostitColor("yellow")}
-                        disabled={!isBoardEnabled}
+                        onClick={() => setPostitColor("yellow")}
                     />
                     <button
-                        className={`color-btn ${postitColor === "green" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
+                        className={`color-btn ${postitColor === "green" ? "active" : ""}`}
                         style={{ background: "#bbf7d0", borderColor: "rgba(34, 197, 94, 0.3)" }}
                         data-postit-color="green"
-                        onClick={() => isBoardEnabled && setPostitColor("green")}
-                        disabled={!isBoardEnabled}
+                        onClick={() => setPostitColor("green")}
                     />
-                    {/* ... (otros botones de color) ... */}
                     <button
-                        className={`color-btn ${postitColor === "blue" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
+                        className={`color-btn ${postitColor === "blue" ? "active" : ""}`}
                         style={{ background: "#bfdbfe", borderColor: "rgba(59, 130, 246, 0.3)" }}
                         data-postit-color="blue"
-                        onClick={() => isBoardEnabled && setPostitColor("blue")}
-                        disabled={!isBoardEnabled}
+                        onClick={() => setPostitColor("blue")}
                     />
                     <button
-                        className={`color-btn ${postitColor === "pink" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
+                        className={`color-btn ${postitColor === "pink" ? "active" : ""}`}
                         style={{ background: "#fce7f3", borderColor: "rgba(236, 72, 153, 0.3)" }}
                         data-postit-color="pink"
-                        onClick={() => isBoardEnabled && setPostitColor("pink")}
-                        disabled={!isBoardEnabled}
+                        onClick={() => setPostitColor("pink")}
                     />
                     <button
-                        className={`color-btn ${postitColor === "purple" ? "active" : ""} ${!isBoardEnabled ? "disabled" : ""}`}
+                        className={`color-btn ${postitColor === "purple" ? "active" : ""}`}
                         style={{ background: "#e9d5ff", borderColor: "rgba(147, 51, 234, 0.3)" }}
                         data-postit-color="purple"
-                        onClick={() => isBoardEnabled && setPostitColor("purple")}
-                        disabled={!isBoardEnabled}
+                        onClick={() => setPostitColor("purple")}
                     />
                 </div>
-                <button id="createPostit" disabled={!isBoardEnabled}>Crear Post-it</button>
+                <button id="createPostit">Crear Post-it</button>
             </div>
         </div>
     );

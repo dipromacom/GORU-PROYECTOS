@@ -786,21 +786,21 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         <span role="img" aria-label="resumen">📝</span> Resumen de Ejecución
                                     </h3>
 
-                                    <Row className="mb-4" style={{ rowGap: "40px", alignItems: "end" }}>
+                                    <Row className="mb-4" style={{ rowGap: "50px", alignItems: "end" }}>
                                         {/* GRÁFICOS QUE SOLO APARECEN EN PROYECTOS (!esActividad) */}
                                         {!esActividad && (
                                             <>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="alcance" value={resumenEjecucion.alcance} />
+                                                    <SummaryChart type="Indice de Alcance" value={resumenEjecucion.alcance} />
                                                 </Col>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="hitos" value={resumenEjecucion.hitos} />
+                                                    <SummaryChart type="Indice de Hitos" value={resumenEjecucion.hitos} />
                                                 </Col>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
                                                     <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
                                                 </Col>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="calidad" value={resumenEjecucion.calidad} />
+                                                    <SummaryChart type="Indice de Calidad" value={resumenEjecucion.calidad} />
                                                 </Col>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
                                                     <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
@@ -811,7 +811,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             <>
                                                 {/* GRÁFICO GANTT (APARECE SIEMPRE QUE ESTÉ EJECUTADO, SIN IMPORTAR esActividad) */}
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="gantt" value={resumenEjecucion.gantt} />
+                                                    <SummaryChart type="Avance de Gantt" value={resumenEjecucion.gantt} />
                                                 </Col>
                                             </>
                                         )}

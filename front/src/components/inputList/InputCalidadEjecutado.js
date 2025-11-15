@@ -46,7 +46,8 @@ const InputCalidadEjecutado = ({ calidadMetricas, setCalidadMetricas, editMode, 
     return (
         <div className="input-calidad-ejecutado mt-3">
             <div className="mb-3">
-                <Form.Label>Progreso de Calidad: <span className="fw-bold">{porcentajeCompletado}%</span></Form.Label>
+                <Form.Label>Progreso de Calidad: <span className="fw-bold">{porcentajeCompletado}%</span></Form.Label><br></br>
+                <Form.Label><span className="fw-bold">Fórmula: (entregables_finalizados / total_entregables) * 100 </span></Form.Label>
                 <ProgressBar now={porcentajeCompletado} label={`${porcentajeCompletado}%`} />
             </div>
 
@@ -54,7 +55,7 @@ const InputCalidadEjecutado = ({ calidadMetricas, setCalidadMetricas, editMode, 
                 {/* Cabecera: 70% Métrica / Entregable / 30% Finalizado */}
                 <Row className="calidad-header fw-bold pb-2">
                     <Col xs={8} md={9} lg={9}>Métrica / Entregable</Col>
-                    <Col xs={4} md={3} lg={3} className="text-center">Finalizado</Col>
+                    <Col xs={4} md={3} lg={3} className="text-center">Validado</Col>
                 </Row>
 
                 <ListGroup variant="flush">

@@ -245,6 +245,12 @@ export const ProyectoListPDF = ({ proyectosList, dateFrom = '', dateTo = '' }) =
                                 ? 'Creado'
                                 : item.estado === 'S' 
                                     ? 'Iniciado'
+                                : item.estado === 'P' 
+                                    ? 'Planificado'
+                                : item.estado === 'X'
+                                    ? 'Ejecutado'
+                                : item.estado === 'E'
+                                    ? 'Cerrado'
                                     : 'No definido'
                         }</Text>
                     </View>

@@ -22,6 +22,8 @@ function PriorizacionResultados({ dispatch, isLoading, usuario, evaluacionList, 
   const tipoEvaluacionId = "1";
   const [selectedBatch, setSelectedBatch] = useState("");
 
+  const [proyectosIniciados, setProyectosIniciados] = useState({});
+
   const columns = useMemo(
     () => [
       {
@@ -49,7 +51,18 @@ function PriorizacionResultados({ dispatch, isLoading, usuario, evaluacionList, 
 
   function handleIniciarProyecto(event,projectId){
     event.preventDefault()
-    dispatch(projectActions.startProject(projectId, true, false))
+
+    const confirmacion = window.confirm(
+      "¿Está seguro que desea pasar el proyecto a desarrollo?"
+    );
+
+    if (confirmacion) {
+      dispatch(projectActions.startProject(projectId, true, false));
+      setProyectosIniciados(prev => ({
+        ...prev,
+        [projectId]: 'D'
+      }));
+    }
   }
 
   const data = useMemo(
@@ -57,20 +70,23 @@ function PriorizacionResultados({ dispatch, isLoading, usuario, evaluacionList, 
       return evaluacionList.map(evaluacion => {
         const persona = evaluacion.Proyecto.DirectorProyecto.Persona;
         const departamento = evaluacion.Proyecto.Departamento;
+
+        const estadoActual = proyectosIniciados[evaluacion.Proyecto.id] || evaluacion.Proyecto.estado;
+
         return {
           proyecto: evaluacion.Proyecto.nombre,
           director: persona.nombre + ' ' + persona.apellido,
           departamento: departamento.nombre,
           prioridad: evaluacion.peso_total + '%',
-          accion: evaluacion.Proyecto.estado==='C' || evaluacion.Proyecto.estado === null 
+          accion: estadoActual === 'C' || estadoActual === null
             ? <a href="" data-bs-toggle="tooltip" data-bs-title="Iniciar Proyecto" className="btn btn-lg play" 
                 onClick={e => {
                   handleIniciarProyecto(e, evaluacion.Proyecto.id)
                 }} /> 
-            :<a/> 
+            : < span className = "text-success fw-bold" > En Desarrollo</span > 
         }
       })
-    }, [evaluacionList]);
+    }, [evaluacionList, proyectosIniciados]);
 
   useEffect(() => {
     async function onLoad() {

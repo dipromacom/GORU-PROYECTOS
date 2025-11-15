@@ -52,7 +52,8 @@ const InputHitosEjecutado = ({ tiempoFechasCriticas, setTiempoFechasCriticas, ed
     return (
         <div className="input-hitos-ejecutado mt-3">
             <div className="mb-3">
-                <Form.Label>Progreso de Hitos: <span className="fw-bold">{porcentajeCompletado}%</span></Form.Label>
+                <Form.Label>Progreso de Hitos: <span className="fw-bold">{porcentajeCompletado}%</span></Form.Label><br></br>
+                <Form.Label><span className="fw-bold">Fórmula: (entregables_hitos / total_hitos) * 100 </span></Form.Label>
                 <ProgressBar now={porcentajeCompletado} label={`${porcentajeCompletado}%`} />
             </div>
 

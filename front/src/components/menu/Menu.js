@@ -11,14 +11,14 @@ export default function Menu() {
         <MenuLogo 
           menuName="Goru" 
           menuAlt="Goru"
-          redirectTo="desktop"
+          redirectTo="home"
         />
 
         <MenuItem 
           menuName="Inicio" 
           menuAlt="Inicio"
           menuToolTip="HOME"
-          redirectTo="home"
+          redirectTo="membership"
         />
       </div>
 
