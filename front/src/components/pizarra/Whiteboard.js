@@ -113,11 +113,9 @@ const Whiteboard = ({cerrado}) => {
             canvas.style.height = `${h}px`;
 
             const newCtx = canvas.getContext("2d");
-            newCtx.scale(dpr, dpr);
+            newCtx.setTransform(1, 0, 0, 1, 0, 0);
             newCtx.lineCap = "round";
             newCtx.lineJoin = "round";
-            newCtx.strokeStyle = brushColor;
-            newCtx.lineWidth = brushSize;
 
             // Restaurar imagen (ajustando tamaño si es necesario)
             try {
@@ -125,6 +123,10 @@ const Whiteboard = ({cerrado}) => {
             } catch {
                 /* Si el tamaño cambia mucho, ignoramos error */
             }
+
+            newCtx.scale(dpr, dpr);
+            newCtx.strokeStyle = brushColor;
+            newCtx.lineWidth = brushSize;
 
             ctxRef.current = newCtx;
         };
@@ -814,8 +816,19 @@ const Whiteboard = ({cerrado}) => {
 
             // restaurar imagen
             if (data.canvas?.image) {
+                const dpr = dprRef.current;
                 const img = new Image();
-                img.onload = () => ctx.drawImage(img, 0, 0);
+                img.onload = () => {
+                    // 1. Resetear transformación para dibujar en píxeles de dispositivo
+                    ctx.setTransform(1, 0, 0, 1, 0, 0);
+
+                    // 2. Dibujar la imagen sobre el tamaño real del canvas
+                    // (canvas.width y canvas.height ya son w * dpr)
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+
+                    // 3. Reaplicar la escala DPR para los nuevos dibujos
+                    ctx.scale(dpr, dpr);
+                };
                 img.src = data.canvas.image;
             }
 
