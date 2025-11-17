@@ -15,7 +15,7 @@ function Instrumentos() {
             <h1 className="orange">Instrumentos</h1>
             
             <div className="subtitle-container">
-            <h2 className="blue">Gestión de proyectos y preparación para certificaciones</h2>
+                <h2 className="blue">Herramientas de Gestión de Proyectro</h2>
             </div>
 
             <ContactPopup />
@@ -57,7 +57,7 @@ function Instrumentos() {
                 />
 
                 <WidgetTool
-                    title="Herramienta de Estilo de Liderazgo"
+                    title="Assessment de Estilo de Liderazgo"
                     description="Permite conocer nuestro estímulo de liderazgo preponderante y con ello conocernos en nuestros estilos de liderazgos."
                     hasDisccount={false}
                     externalUrl={"https://recursos.escueladeproyectos.dipromacom.net/estiloLiderazgo"}
@@ -65,7 +65,7 @@ function Instrumentos() {
                 />
 
                 <WidgetTool
-                    title="Herramienta de Estilo de Liderazgo (tarea - persona)"
+                    title="Assessment de Estilo de Liderazgo (tarea - persona)"
                     description="Esta herramientas permite conocernos si nuestro liderazgo se enfoca más en la tarea o en la persona y como ello nos lleva a nuestra toma de decisiones diarias."
                     hasDisccount={false}
                     externalUrl={"https://recursos.escueladeproyectos.dipromacom.net/estiloLiderazgoTareaPersona"}
@@ -73,7 +73,7 @@ function Instrumentos() {
                 />
 
                 <WidgetTool
-                    title="Prácticas Gerenciales"
+                    title="Assessment Prácticas Gerenciales"
                     description="La presente autoevaluación nos ayuda a analizar cuales son las prácticas generales más usadas por nosotros y cuales se deben fortalecer."
                     hasDisccount={false}
                     externalUrl={"https://recursos.escueladeproyectos.dipromacom.net/practicasGerenciales"}
@@ -81,7 +81,7 @@ function Instrumentos() {
                 />
 
                 <WidgetTool
-                    title="Estilo de Resolución de Problemas"
+                    title="Assessment de Resolución de Problemas"
                     description="La presenta autoevaluación nos ayuda a conocer cuales son los principales esquemas de resolución de problemas que nos enfocamos."
                     hasDisccount={false}
                     externalUrl={"https://recursos.escueladeproyectos.dipromacom.net/resolucionProblemas"}
