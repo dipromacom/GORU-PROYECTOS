@@ -253,6 +253,7 @@ const mapStateToProps = state => ({
   newUser: sessionSelectors.getAwsUser(state),
   isAuthenticating: sessionSelectors.getIsAuthenticating(state),
   emailAvailable: sessionSelectors.getEmailAvailable(state),
+
   errorMessage: sessionSelectors.getErrorMessage(state),
 });
 
