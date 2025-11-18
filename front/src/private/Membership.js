@@ -18,7 +18,8 @@ function Membership({ dispatch, isLoading, user, persona }) {
 
   useEffect(() => {
     function onLoad() {
-      if (user !== null) {
+      console.log(user);
+      if (!(user === null || user === undefined)) {
         dispatch(personaActions.getProfile(user.id));
       }
     }
@@ -67,7 +68,7 @@ function Membership({ dispatch, isLoading, user, persona }) {
         </h1>
       }
       <p>
-        Falta poco para comenzar en GORU Portfalolio y Proyectos
+        Falta poco para comenzar en GORU Programas y Proyectos
       </p>
     </div>
 

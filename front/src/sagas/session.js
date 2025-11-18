@@ -75,11 +75,12 @@ function* signUp({ email, password }) {
     const userAws = yield* innerSignUp(email, password);
     const { userSub: awsId } = userAws;
     
-    const response = yield* innerCreateUsuario(email, password, awsId);
-    const { page, usuario } = response.data.data;
+    //const response = yield* innerCreateUsuario(email, password, awsId);
+    //const { page, usuario } = response.data.data;
 
-    yield put({ type: types.SIGN_UP_SUCCESS, userAws, userSystem: usuario });
-    yield put(push(page));
+    //yield put({ type: types.SIGN_UP_SUCCESS, userAws, userSystem: usuario });
+    yield put({ type: types.SIGN_UP_SUCCESS, userAws: userAws.user });
+    //yield put(push(page));
   } catch(e) {
     onError(e);
     let message = "Ocurrio un error al crear su cuenta";
