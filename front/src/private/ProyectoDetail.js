@@ -578,70 +578,67 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         <div className="page-menu-container">
             <Tab.Container defaultActiveKey="general" activeKey={activeKey} onSelect={setActiveKey}>
 
-                <div className="submenu-container">
-                    <div className="title-container">
-                        <h1 className="blue text-capitalize">{nombreProyecto}</h1>
-                    </div>
-                    <div className="widget-container d-inline-flex">
-                        {/* Verificar si estamos en el modo de editar o visualizar, pero no mostrar en 'Crear-Interesado' ni en 'Matriz-Interesados' */}
-                        {!isTodoOrKanban() && !(activeKey === 'Crear-Interesado' || activeKey === 'Matriz-Interesados') && (
-                            <>
-                                {/* Mostrar el botón de editar o visualizar dependiendo del estado de editMode */}
-                                {!cerrado && (
-                                    <>
-                                        <div className="green" style={{ cursor: 'pointer' }} onClick={() => toggleEdit()}>
-                                            <i className={`bi ${!editMode ? 'bi-pencil-square' : 'bi-eye'} mr-2`} />
-                                            {editMode ? 'Visualizar' : 'Editar'}
-                                        </div>
-                                        <div className="vertical-separator mx-2" ></div>
-                                    </>
-                                )}
-                                {/* Mostrar el botón para descargar el acta solo si estamos en 'general' o 'constitution' */}
-                                <div className="download-document">
-                                    {(activeKey === 'general' || activeKey === 'constitution' || activeKey === 'riesgos' || activeKey === 'alcance' || activeKey === 'hitos' || activeKey === 'costos' || activeKey === 'calidad') && (
-                                        <DownloadPdfButton reportPrefix="Proyecto" pdfReport={<ProyectoPdf proyecto={projectDetail} disabled />}>
-                                            <div className="green" style={{ cursor: 'pointer' }}><i className="bi bi-cloud-download mr-2 disabled" />Descargar Acta</div>
-                                        </DownloadPdfButton>
-                                    )}
-                                </div>
-                            </>
-                        )}
+                <div className="header-wrapper">
+                    {/* Fila Superior: Título y Botones */}
+                    <div className="d-flex justify-content-between align-items-center flex-wrap px-4 pt-3 pb-2">
 
-                        {/* Condición para mostrar "Crear Interesado" solo cuando estamos en 'Matriz-Interesados' */}
-                        {activeKey === 'Matriz-Interesados' && !cerrado && (
-                            <>
-                                <div
-                                    className="green"
-                                    style={{ cursor: 'pointer' }}
-                                    onClick={() => setActiveKey('Crear-Interesado')} // Cambiar a "Crear-Interesado"
-                                >
+                        {/* Título */}
+                        <div className="title-container mb-2 mb-md-0">
+                            <h1 className="blue text-capitalize mb-0">{nombreProyecto}</h1>
+                        </div>
+
+                        {/* Botones de Acción (widget-container) */}
+                        <div className="widget-container d-inline-flex align-items-center flex-wrap flex-shrink-0 gap-2">
+
+                            {!isTodoOrKanban() && !(activeKey === 'Crear-Interesado' || activeKey === 'Matriz-Interesados') && (
+                                <>
+                                    {!cerrado && (
+                                        <>
+                                            <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => toggleEdit()}>
+                                                <i className={`bi ${!editMode ? 'bi-pencil-square' : 'bi-eye'} mr-2`} />
+                                                <span>{editMode ? 'Visualizar' : 'Editar'}</span>
+                                            </div>
+                                            <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
+                                        </>
+                                    )}
+                                    <div className="download-document">
+                                        {(activeKey === 'general' || activeKey === 'constitution' || activeKey === 'riesgos' || activeKey === 'alcance' || activeKey === 'hitos' || activeKey === 'costos' || activeKey === 'calidad') && (
+                                            <DownloadPdfButton reportPrefix="Proyecto" pdfReport={<ProyectoPdf proyecto={projectDetail} disabled />}>
+                                                <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }}>
+                                                    <i className="bi bi-cloud-download mr-2 disabled" />
+                                                    <span>Descargar Acta</span>
+                                                </div>
+                                            </DownloadPdfButton>
+                                        )}
+                                    </div>
+                                </>
+                            )}
+
+                            {/* Botones de Interesados */}
+                            {activeKey === 'Matriz-Interesados' && !cerrado && (
+                                <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => setActiveKey('Crear-Interesado')}>
                                     <i className="bi bi-plus-circle mr-2" /> Crear Interesado
                                 </div>
-                            </>
-                        )}
+                            )}
 
-                        {/* Cuando estamos en 'Crear-Interesado', permitir volver */}
-                        {activeKey === 'Crear-Interesado' && !cerrado && (
-                            <>
-                                <div className="vertical-separator mx-2"></div>
-                                <div
-                                    className="green"
-                                    style={{ cursor: 'pointer' }}
-                                    onClick={() => setActiveKey('Matriz-Interesados')} // Cambiar a "Matriz-Interesados"
-                                >
-                                    <i className="bi bi-arrow-left mr-2" /> Volver a Ver Interesados
-                                </div>
-                            </>
-                        )}
+                            {activeKey === 'Crear-Interesado' && !cerrado && (
+                                <>
+                                    <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
+                                    <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => setActiveKey('Matriz-Interesados')}>
+                                        <i className="bi bi-arrow-left mr-2" /> Volver a Ver Interesados
+                                    </div>
+                                </>
+                            )}
+                        </div>
                     </div>
 
-
-                    <div className="tabbed-form mx-auto">
+                    {/* Fila Inferior: Navegación de Pestañas */}
+                    <div className="tabbed-form-responsive px-4">
                         <Nav
                             activeKey={activeKey}
-                            className="nav-tabs blue"
+                            className="nav-tabs blue nav-responsive-scroll"
                             onSelect={handleChangeTab}
-                        >   
+                        >
                             <Nav.Item>
                                 <Nav.Link eventKey="general">Datos Generales</Nav.Link>
                             </Nav.Item>
@@ -650,52 +647,26 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             </Nav.Item>
                             {(planificado || ejecutado || cerrado) && (
                                 <>
-                                    <Nav.Item>
-                                        <Nav.Link eventKey="Matriz-Interesados">Interesados </Nav.Link>
-                                    </Nav.Item>
+                                    <Nav.Item><Nav.Link eventKey="Matriz-Interesados">Interesados</Nav.Link></Nav.Item>
                                     {!esActividad && (
                                         <>
-                                        <Nav.Item>
-                                            <Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link>
-                                        </Nav.Item>
-                                        <Nav.Item>
-                                            <Nav.Link eventKey="alcance">Alcance</Nav.Link>
-                                        </Nav.Item>
-                                        <Nav.Item>
-                                            <Nav.Link eventKey="hitos">Hitos</Nav.Link>
-                                        </Nav.Item>
-                                        <Nav.Item>
-                                            <Nav.Link eventKey="costos">Costos</Nav.Link>
-                                        </Nav.Item>
-                                        <Nav.Item>
-                                            <Nav.Link eventKey="calidad">Calidad</Nav.Link>
-                                        </Nav.Item>
-                                        <Nav.Item>
-                                            <Nav.Link eventKey="riesgos">Riesgos</Nav.Link>
-                                        </Nav.Item>
+                                            <Nav.Item><Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link></Nav.Item>
+                                            <Nav.Item><Nav.Link eventKey="alcance">Alcance</Nav.Link></Nav.Item>
+                                            <Nav.Item><Nav.Link eventKey="hitos">Hitos</Nav.Link></Nav.Item>
+                                            <Nav.Item><Nav.Link eventKey="costos">Costos</Nav.Link></Nav.Item>
+                                            <Nav.Item><Nav.Link eventKey="calidad">Calidad</Nav.Link></Nav.Item>
+                                            <Nav.Item><Nav.Link eventKey="riesgos">Riesgos</Nav.Link></Nav.Item>
                                         </>
                                     )}
-                                    <Nav.Item>
-                                        <Nav.Link eventKey="gantt">Gantt</Nav.Link>
-                                    </Nav.Item>
-                                    <Nav.Item>
-                                        <Nav.Link eventKey="to-do" >To Do</Nav.Link>
-                                    </Nav.Item>
-                                    <Nav.Item>
-                                        <Nav.Link eventKey="project-management">Kanban</Nav.Link>
-                                    </Nav.Item>                        
-                                    <Nav.Item>
-                                        <Nav.Link eventKey="pizarra">Pizarra</Nav.Link>
-                                    </Nav.Item>
+                                    <Nav.Item><Nav.Link eventKey="gantt">Gantt</Nav.Link></Nav.Item>
+                                    <Nav.Item><Nav.Link eventKey="to-do" >To Do</Nav.Link></Nav.Item>
+                                    <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
+                                    <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
                                 </>
                             )}
                             {(cerrado) && (
-                                <Nav.Item>
-                                    <Nav.Link eventKey="leccionesAprendidas">lecciones Aprendidas</Nav.Link>
-                                </Nav.Item>
+                                <Nav.Item><Nav.Link eventKey="leccionesAprendidas">lecciones Aprendidas</Nav.Link></Nav.Item>
                             )}
-                            
-                            
                         </Nav>
                     </div>
                 </div>
@@ -707,7 +678,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                     <Tab.Content>
                         <Tab.Pane eventKey="general"><Form className="blue" >
                             <Form.Group controlId="proyecto">
-                                <Form.Label>{esActividad ? "Actividad" : "Proyecto"}</Form.Label>
+                                <Form.Label>{esActividad ? "Proyecto Personal" : "Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     disabled={!editMode}
                                     autoComplete="off"
@@ -717,7 +688,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 />
                             </Form.Group>
                             <Form.Group controlId="directorProyecto">
-                                <Form.Label>{esActividad ? "Director de la Actividad" : "Director del Proyecto"}</Form.Label>
+                                <Form.Label>{esActividad ? "Director del Proyecto Personal" : "Director del Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     disabled={!editMode}
                                     autoComplete="off"
@@ -728,7 +699,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             </Form.Group>
 
                             <Form.Group controlId="patrocinadorProyecto">
-                                <Form.Label>{esActividad ? "Patrocinador de la Actividad" : "Patrocinador del Proyecto"}</Form.Label>
+                                <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : "Patrocinador del Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     disabled={!editMode}
                                     autoComplete="off"
@@ -763,7 +734,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             </Form.Group>
 
                             <Form.Group controlId="tipoProyecto">
-                                <Form.Label>{esActividad ? "Tipo de Actividad" : "Tipo de Proyecto"}</Form.Label>
+                                <Form.Label>{esActividad ? "Tipo del Proyecto Personal" : "Tipo de Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     disabled={!editMode}
                                     as="select"
@@ -771,7 +742,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     value={tipoProyecto}
                                     onChange={(e) => { setTipoProyecto(e.target.value)}}
                                 >
-                                    <option value="">Elija el tipo de {esActividad ? "actividad" : "proyecto"}...</option>
+                                    <option value="">Elija el tipo de {esActividad ? "Proyecto Personal" : "Proyecto Equipo"}...</option>
                                     {tipoProyectoList.map(tipo => (
                                         <option value={tipo.id}>{tipo.nombre}</option>
                                     ))}
@@ -915,7 +886,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             <Collapse in={openPrimeraParte} >
                                 <div>
                                     <Form.Group controlId="justificacion">
-                                        <Form.Label>{esActividad ? "Justificación de la Actividad" : "Justificación del Proyecto"}</Form.Label>
+                                        <Form.Label>{esActividad ? "Justificación del Proyecto Personal" : "Justificación del Proyecto Equipo"}</Form.Label>
                                         <Form.Control
                                             disabled={!editMode}
                                             autoFocus
@@ -927,7 +898,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         />
                                     </Form.Group>
                                     <Form.Group controlId="descripcion">
-                                        <Form.Label>{esActividad ? "Descripción de la Actividad" : "Descripción del Proyecto"}</Form.Label>
+                                        <Form.Label>{esActividad ? "Descripción del Proyecto Personal" : "Descripción del Proyecto Equipo"}</Form.Label>
                                         <Form.Control
                                             disabled={!editMode}
                                             autoFocus
@@ -962,7 +933,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     <Row>
                                         <Col>
                                             <Form.Group controlId="objetivoDescripcion">
-                                                <Form.Label>Objetivos {esActividad ? "de la Actividad" : "del Proyecto"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
+                                                <Form.Label>Objetivos {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
                                                 <Form.Control
                                                     disabled={!editMode}
                                                     autoFocus
@@ -1094,7 +1065,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 onClick={() => setOpenSextaParte(!openSextaParte)}
                                 aria-controls="quinta-parte-expand"
                                 aria-expanded={openSextaParte}
-                            >Nivel De Autoridad Y Decisión Del Director De {esActividad ? "Actividad" : "Proyecto"} 
+                            >Nivel De Autoridad Y Decisión Del Director De {esActividad ? "Proyecto Personal" : "Proyecto Equipo"} 
 
                                 <span className={`bi ${openSextaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
                             <Collapse in={openSextaParte} >

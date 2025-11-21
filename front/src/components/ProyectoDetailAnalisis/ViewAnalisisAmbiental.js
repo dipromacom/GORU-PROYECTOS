@@ -110,6 +110,10 @@ export const ViewAnalisisAmbiental = ({ analysisData, respuestaAnalisisAmbiental
                                     <tr><td>Muy Alto</td><td className="text-center">4</td></tr>
                                 </tbody>
                             </table>
+                            <div className="fade mt-3 alert alert-warning show">
+                                <strong>La siguiente autoevaluación permite identificar la necesidad de tener un estudio ambiental</strong>
+                            </div>
+                                
                         </Card.Body>
                     </Card>
                 </Col>

@@ -59,13 +59,13 @@ const Whiteboard = ({cerrado}) => {
     useEffect(() => {
         if (!projectId || !isVisible) return;
 
-        // Limpieza completa inmediata (canvas + Redux + local)
+        // Limpieza completa inmediata (canvas + Redux)
         clearCanvas();
         const wrapper = wrapperRef.current;
         if (wrapper) {
             wrapper.querySelectorAll(".postit, .uploaded-image").forEach((el) => el.remove());
         }
-        localStorage.removeItem(`whiteboard_${projectId}`);
+        //localStorage.removeItem(`whiteboard_${projectId}`);
         dispatch(actions.clean());
 
         // 🔹 Pequeño delay para asegurar que se renderice el canvas vacío
@@ -750,7 +750,7 @@ const Whiteboard = ({cerrado}) => {
     }, [isDrawing, drawMode, currentTool, brushColor, brushSize]);
 
     // === Auto-guardado local ===
-    useEffect(() => {
+    /*useEffect(() => {
         if (!isVisible) return;
         const saveLocal = () => {
             try {
@@ -801,7 +801,7 @@ const Whiteboard = ({cerrado}) => {
         // guardar cada 10 segundo
         const interval = setInterval(saveLocal, 10000);
         return () => clearInterval(interval);
-    }, [projectId, dispatch, isVisible]);
+    }, [projectId, dispatch, isVisible]);*/
 
     const loadWhiteboardContent = (data) => {
         try {
@@ -887,17 +887,8 @@ const Whiteboard = ({cerrado}) => {
             // Canvas listo: restaurar contenido del servidor o localStorage
             if (whiteboard?.content) {
                 loadWhiteboardContent(whiteboard.content);
-            } else {
-                const saved = localStorage.getItem(`whiteboard_${projectId}`);
-                if (saved) {
-                    try {
-                        const parsed = JSON.parse(saved);
-                        loadWhiteboardContent(parsed);
-                    } catch (err) {
-                        console.error("Error cargando pizarra local:", err);
-                    }
-                }
             }
+
         };
 
         tryLoad();
@@ -960,6 +951,14 @@ const Whiteboard = ({cerrado}) => {
                                 // Forzar actualización del contenido actual
                                 try {
                                     const canvas = canvasRef.current;
+                                    const ctx = ctxRef.current; // Obtener el contexto
+
+                                    if (ctx) {
+                                        ctx.globalCompositeOperation = "source-over";
+                                        ctx.strokeStyle = brushColor;
+                                        ctx.lineWidth = brushSize;
+                                    }
+
                                     const imageData = canvas.toDataURL("image/png");
                                     const wrapper = wrapperRef.current;
                                     const postits = [];

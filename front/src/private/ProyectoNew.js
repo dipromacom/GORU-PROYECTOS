@@ -568,13 +568,13 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                 </div>
 
                 <div className="container">
-                    <h1 className="orange">Creación de {esActividad ? "Nueva Actividad" : "Nuevo Proyecto"}</h1>
+                    <h1 className="orange">Creación de {esActividad ? "Nuevo Proyecto Personal" : "Nuevo Proyecto Equipo"}</h1>
                     <br />
                     <Tab.Content>
                         <Tab.Pane eventKey="general"><Form className="blue" >
 
                             <Form.Group controlId="proyecto">
-                                <Form.Label>{esActividad ? "Actividad" : "Proyecto"}</Form.Label>
+                                <Form.Label>{esActividad ? "Proyecto Personal" : "Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     autoComplete="off"
                                     type="text"
@@ -584,7 +584,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                             </Form.Group>
 
                             <Form.Group controlId="directorProyecto">
-                                <Form.Label>{esActividad ? "Director de la Actividad" : "Director del Proyecto"}</Form.Label>
+                                <Form.Label>{esActividad ? "Director del Proyecto Personal" : "Director del Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     autoComplete="off"
                                     type="text"
@@ -594,7 +594,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                             </Form.Group>
 
                             <Form.Group controlId="patrocinadorProyecto">
-                                <Form.Label>{esActividad ? "Patrocinador de la Actividad" : "Patrocinador del Proyecto"}</Form.Label>
+                                <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : "Patrocinador del Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     autoComplete="off"
                                     type="text"
@@ -626,14 +626,14 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                             </Form.Group>
 
                             <Form.Group controlId="tipoProyecto">
-                                <Form.Label>{esActividad ? "Tipo de Actividad" : "Tipo de Proyecto"}</Form.Label>
+                                <Form.Label>{esActividad ? "Tipo de Proyecto Personal" : "Tipo de Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     as="select"
                                     className="form-select"
                                     value={tipoProyecto}
                                     onChange={(e) => { setTipoProyecto(e.target.value)}}
                                 >
-                                    <option value="">Elija el tipo de {esActividad ? "actividad" : "proyecto"}...</option>
+                                    <option value="">Elija el tipo de {esActividad ? "Proyecto Personal" : "Proyecto Equipo"}...</option>
                                     {tipoProyectoList.map(tipo => (
                                         <option value={tipo.id}>{tipo.nombre}</option>
                                     ))}
@@ -717,7 +717,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                             <Collapse in={openPrimeraParte} >
                                 <div>
                                     <Form.Group controlId="justificacion">
-                                        <Form.Label>Justificación {esActividad ? "de la Actividad" : "del Proyecto"}</Form.Label>
+                                        <Form.Label>Justificación {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"}</Form.Label>
                                         <Form.Control
                                             autoFocus
                                             autoComplete="off"
@@ -728,7 +728,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                                         />
                                     </Form.Group>
                                     <Form.Group controlId="descripcionNoDisponibilidad">
-                                        <Form.Label>Descripción {esActividad ? "de la Actividad" : "del Proyecto"}</Form.Label>
+                                        <Form.Label>Descripción {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"}</Form.Label>
                                         <Form.Control
                                             autoFocus
                                             autoComplete="off"
@@ -755,13 +755,13 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                                 onClick={() => setOpenSegundaParte(!openSegundaParte)}
                                 aria-controls="segunda-parte-expand"
                                 aria-expanded={openSegundaParte}
-                            >Objetivos {esActividad ? "de la Actividad" : "del Proyecto"}<span className={`bi ${openSegundaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
+                            >Objetivos {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"}<span className={`bi ${openSegundaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
                             <Collapse in={openSegundaParte} >
                                 <div>
                                     <Row>
                                         <Col>
                                             <Form.Group controlId="objetivoDescripcion">
-                                                <Form.Label>Objetivos {esActividad ? "de la Actividad" : "del Proyecto"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
+                                                <Form.Label>Objetivos {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
                                                 <Form.Control
                                                     autoFocus
                                                     autoComplete="off"
