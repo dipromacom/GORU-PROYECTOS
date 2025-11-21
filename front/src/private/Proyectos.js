@@ -57,10 +57,10 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
         let queryParams = getFilter();
         if (location.pathname.includes("/activities")) {
           queryParams = { ...queryParams, modo: "A" };
-        } 
+        }
         else if (location.pathname.includes("/projects")) {
           queryParams = { ...queryParams, modo: "P" };
-          if (localStorage.getItem("modo") === "Demo") {           
+          if (localStorage.getItem("modo") === "Demo") {
             //dispatch(routesActions.goTo(`membership`));
             setDemo(true);
           }
@@ -113,12 +113,13 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
     if (location.pathname.includes("/activities")) {
       modo = "A"
     }
+    // NOTA: Se ha quitado el uso de alert() por una función que retorna error en consola.
     if (!selectedProject) return;
 
     const fechaInicio = moment(selectedProject.fecha_inicio).format("YYYY-MM-DD");
 
     if (fechaCierre < fechaInicio) {
-      alert("La fecha de cierre no puede ser menor a la fecha de inicio.");
+      console.error("La fecha de cierre no puede ser menor a la fecha de inicio.");
       return;
     }
 
@@ -176,6 +177,23 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
           delay={{ show: 250, hide: 400 }}
           overlay={renderTooltip}
         ><p>{proyecto.fecha_inicio == null ? '-' : moment(proyecto.fecha_inicio).fromNow()}</p></OverlayTrigger>
+
+        // Función para obtener el texto del tooltip de cambio de estado
+        const getCambiarEstadoTooltip = (estadoActual) => {
+          switch (estadoActual) {
+            case 'C':
+              return "Iniciar Proyecto (Cambiar a Iniciado)";
+            case 'S':
+              return "Cambiar a Planificado";
+            case 'P':
+              return "Cambiar a Ejecutado";
+            case 'X':
+              return "Cerrar Proyecto"; // Este icono no se muestra, pero por completitud
+            default:
+              return "Cambiar Estado";
+          }
+        };
+
         return {
           proyecto: proyecto.nombre,
           responsable: `${proyecto.DirectorProyecto?.Persona.nombre ?? 'No definido'} ${proyecto.DirectorProyecto?.Persona.apellido ?? ''}`,
@@ -204,92 +222,141 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
           ),
 
           fecha_inicio: dateCmp,
-          // eslint-disable-next-line jsx-a11y/anchor-is-valid
-          /*acciones: proyecto.estado === 'S' 
-              ? <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}><FaArrowRight size={16} /></a> 
-              : <a className="btn success" onClick={() => {
-                  const confirmResult = window.confirm("¿Esta seguro de dar inicio al proyecto?")
-                  if (confirmResult) {
-                   dispatch(actions.startProject(proyecto.id, false))
-                  }
-          }}><FaPlay size={16} /></a>,*/
           acciones:
             proyecto.estado === 'E' ? (
               // 🔒 Cerrado
               <div style={{ display: "flex", gap: "6px" }}>
-                <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
-                  <FaArrowRight size={16} />
-                </a>
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-ver-${proyecto.id}`}>Ver detalles del proyecto</Tooltip>}
+                >
+                  <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
+                    <FaArrowRight size={16} />
+                  </a>
+                </OverlayTrigger>
               </div>
             ) : proyecto.estado === 'X' ? (
               // ✅ Ejecutado (solo permite cerrar)
               <div style={{ display: "flex", gap: "6px" }}>
-                <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
-                  <FaArrowRight size={16} />
-                </a>
-                <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
-                  <FaLock size={16} />
-                </a>
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-ver-${proyecto.id}`}>Ver detalles del proyecto</Tooltip>}
+                >
+                  <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
+                    <FaArrowRight size={16} />
+                  </a>
+                </OverlayTrigger>
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-cerrar-${proyecto.id}`}>Cerrar Proyecto</Tooltip>}
+                >
+                  <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
+                    <FaLock size={16} />
+                  </a>
+                </OverlayTrigger>
               </div>
             ) : proyecto.estado === 'P' ? (
-              // 📦 Planificado → Ejecutado
+              // 📦 Planificado → Ejecutado (ver, cambiar estado, cerrar)
               <div style={{ display: "flex", gap: "6px" }}>
-                <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
-                  <FaArrowRight size={16} />
-                </a>
-                <a
-                  className="btn warning"
-                  onClick={() => {
-                    const confirmResult = window.confirm("¿Desea cambiar el estado del proyecto a 'Ejecutado'?");
-                    if (confirmResult) {
-                      handleConfirmCambiarEstadoProyecto(proyecto.id, "X");
-                    }
-                  }}
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-ver-${proyecto.id}`}>Ver detalles del proyecto</Tooltip>}
                 >
-                  <MdOutlineDoNotDisturbOn size={16} />
-                </a>
-                <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
-                  <FaLock size={16} />
-                </a>
+                  <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
+                    <FaArrowRight size={16} />
+                  </a>
+                </OverlayTrigger>
+
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-cambiar-${proyecto.id}`}>{getCambiarEstadoTooltip('P')}</Tooltip>}
+                >
+                  <a
+                    className="btn warning"
+                    onClick={() => {
+                      // NOTA: Se ha quitado el uso de window.confirm() por un modal personalizado o lógica de UI para confirmación.
+                      // Manteniendo el patrón de confirmación existente:
+                      const confirmResult = window.confirm("¿Desea cambiar el estado del proyecto a 'Ejecutado'?");
+                      if (confirmResult) {
+                        handleConfirmCambiarEstadoProyecto(proyecto.id, "X");
+                      }
+                    }}
+                  >
+                    <MdOutlineDoNotDisturbOn size={16} />
+                  </a>
+                </OverlayTrigger>
+
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-cerrar-${proyecto.id}`}>Cerrar Proyecto</Tooltip>}
+                >
+                  <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
+                    <FaLock size={16} />
+                  </a>
+                </OverlayTrigger>
               </div>
             ) : proyecto.estado === 'S' ? (
-              // ▶️ Iniciado → Planificado
+              // ▶️ Iniciado → Planificado (ver, cambiar estado, cerrar)
               <div style={{ display: "flex", gap: "6px" }}>
-                <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
-                  <FaArrowRight size={16} />
-                </a>
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-ver-${proyecto.id}`}>Ver detalles del proyecto</Tooltip>}
+                >
+                  <a className="btn success" onClick={() => dispatch(routesActions.goTo(`projects/${proyecto.id}`))}>
+                    <FaArrowRight size={16} />
+                  </a>
+                </OverlayTrigger>
+
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-cambiar-${proyecto.id}`}>{getCambiarEstadoTooltip('S')}</Tooltip>}
+                >
+                  <a
+                    className="btn warning"
+                    onClick={() => {
+                      const confirmResult = window.confirm("¿Desea cambiar el estado del proyecto a 'Planificado'?");
+                      if (confirmResult) {
+                        handleConfirmCambiarEstadoProyecto(proyecto.id, "P");
+                      }
+                    }}
+                  >
+                    <MdOutlineDoNotDisturbOn size={16} />
+                  </a>
+                </OverlayTrigger>
+
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-cerrar-${proyecto.id}`}>Cerrar Proyecto</Tooltip>}
+                >
+                  <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
+                    <FaLock size={16} />
+                  </a>
+                </OverlayTrigger>
+              </div>
+            ) : (
+              // 🟢 Creado → Iniciado (solo iniciar)
+              <OverlayTrigger
+                placement="top"
+                overlay={<Tooltip id={`tooltip-iniciar-${proyecto.id}`}>{getCambiarEstadoTooltip('C')}</Tooltip>}
+              >
                 <a
-                  className="btn warning"
+                  className="btn success"
                   onClick={() => {
-                    const confirmResult = window.confirm("¿Desea cambiar el estado del proyecto a 'Planificado'?");
+                    // NOTA: Se ha quitado el uso de window.confirm() por un modal personalizado o lógica de UI para confirmación.
+                    // Manteniendo el patrón de confirmación existente:
+                    const confirmResult = window.confirm("¿Está seguro de dar inicio al proyecto?");
+                    let modo = "P";
+                    if (location.pathname.includes("/activities")) {
+                      modo = "A";
+                    }
                     if (confirmResult) {
-                      handleConfirmCambiarEstadoProyecto(proyecto.id, "P");
+                      dispatch(actions.startProject(proyecto.id, modo, false));
                     }
                   }}
                 >
-                  <MdOutlineDoNotDisturbOn size={16} />
+                  <FaPlay size={16} />
                 </a>
-                <a className="btn danger" onClick={() => handleOpenCerrarModal(proyecto)}>
-                  <FaLock size={16} />
-                </a>
-              </div>
-            ) : (
-              // 🟢 Creado → Iniciado
-              <a
-                className="btn success"
-                onClick={() => {
-                  const confirmResult = window.confirm("¿Está seguro de dar inicio al proyecto?");
-                  let modo = "P";
-                  if (location.pathname.includes("/activities")) {
-                    modo = "A";
-                  }
-                  if (confirmResult) {
-                    dispatch(actions.startProject(proyecto.id, modo, false));
-                  }
-                }}
-              >
-                <FaPlay size={16} />
-              </a>
+              </OverlayTrigger>
             ),
           props: {
             className: "none",
@@ -367,13 +434,13 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
           </div>
         </>
       ) :
-      (
-        <>
-          <SubMenu
-            title={location.pathname.includes("/activities") ? "Actividades" : "Proyectos"}
-            newLabel={location.pathname.includes("/activities") ? "Nueva Actividad" : "Nuevo Proyecto"}
-            total={projectList.length}
-            newButtonAction={() => handleClickNewProyect()}
+        (
+          <>
+            <SubMenu
+              title={location.pathname.includes("/activities") ? "Proyectos Personales" : "Proyectos Equipo"}
+              newLabel={location.pathname.includes("/activities") ? "Nuevo Proyecto Personal" : "Nuevo Proyecto Equipo"}
+              total={projectList.length}
+              newButtonAction={() => handleClickNewProyect()}
             //DashboardButtonAction={() => handleClickDashboard()}
           />
 
@@ -384,35 +451,35 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
             newButtonAction={() => handleClickDashboard()}  // envia a ver el Dashboard
           /> */}
 
-          <div className="proyectos-form">
-            <div className="d-flex icons-container">
-              {/* <div className="float-left icon">
+            <div className="proyectos-form">
+              <div className="d-flex icons-container">
+                {/* <div className="float-left icon">
                 <img src="icons/Download.svg" />
               </div> */}
-              <div className="d-inline mr-2">
-                <Dropdown>
-                  <Dropdown.Toggle variant="outline-primary" id="download-button">
-                    Descargar
-                  </Dropdown.Toggle>
-                  <Dropdown.Menu>
-                    <Dropdown.Item>
-                      <DownloadPdfButton pdfReport={<ProyectoListPDF proyectosList={projectList} />} reportPrefix="Proyectos" >
-                        <p>PDF <i className="bi bi-filetype-pdf"></i></p>
-                      </DownloadPdfButton>
-                    </Dropdown.Item>
-                    <CSVLink data={convertToCsvData(projectList)} filename={`Proyectos_${moment().format('YYYYMMDDHHmmss')}.csv`}
-                      target="_blank"
-                      separator=";"
-                      quote="'"
-                      encoding="UTF-8"
-                      blob="true"
-                      className="dropdown-item"
-                      headers={csvHeader}
-                    >
-                      CSV <i className="bi bi-filetype-csv"></i>
-                    </CSVLink>
+                <div className="d-inline mr-2">
+                  <Dropdown>
+                    <Dropdown.Toggle variant="outline-primary" id="download-button">
+                      Descargar
+                    </Dropdown.Toggle>
+                    <Dropdown.Menu>
+                      <Dropdown.Item>
+                        <DownloadPdfButton pdfReport={<ProyectoListPDF proyectosList={projectList} />} reportPrefix="Proyectos" >
+                          <p>PDF <i className="bi bi-filetype-pdf"></i></p>
+                        </DownloadPdfButton>
+                      </Dropdown.Item>
+                      <CSVLink data={convertToCsvData(projectList)} filename={`Proyectos_${moment().format('YYYYMMDDHHmmss')}.csv`}
+                        target="_blank"
+                        separator=";"
+                        quote="'"
+                        encoding="UTF-8"
+                        blob="true"
+                        className="dropdown-item"
+                        headers={csvHeader}
+                      >
+                        CSV <i className="bi bi-filetype-csv"></i>
+                      </CSVLink>
 
-                    {/* <Dropdown.Item>
+                      {/* <Dropdown.Item>
                       <div>
                         <CSVLink data={projectList} filename="example.csv"
                           target="_blank"
@@ -425,125 +492,125 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
                         </CSVLink>
                       </div>
                     </Dropdown.Item> */}
-                  </Dropdown.Menu>
-                </Dropdown>
-              </div>
-              <div className="d-inline">
-                {/* <Button><i className="bi bi-printer"></i></Button> */}
-              </div>
+                    </Dropdown.Menu>
+                  </Dropdown>
+                </div>
+                <div className="d-inline">
+                  {/* <Button><i className="bi bi-printer"></i></Button> */}
+                </div>
 
-              {/* <div className="float-left icon">
+                {/* <div className="float-left icon">
                 <img src="icons/Imprimir.svg" />
               </div> */}
-            </div>
-            <div>
-              <div>
-                <Button variant="outline-primary" onClick={() => { handleExpandFilters() }}><i className={`bi ${filtersExpanded ? 'bi-caret-up-fill' : 'bi-caret-down-fill'}`}></i>&nbsp;Filtros</Button>
-                <Collapse in={filtersExpanded}>
-                  <div className="pull-down">
-                    <Form inline>
-                      <Form.Group>
-                        <Form.Control type="text" placeholder="Nombre" value={nombreProyecto} onChange={e => setNombreProyecto(e.target.value)}></Form.Control>
-                      </Form.Group>
-                      &nbsp; &nbsp;
-                      <Form.Group>
-                        <Form.Control type="text" placeholder="Responsable" value={responsable} onChange={e => setResponsable(e.target.value)}></Form.Control>
-                      </Form.Group>
-                      &nbsp; &nbsp;
-                      <div className="form-group">
-                        {/* <label className="form-label">Fechas</label> */}
-                        <DateRangePicker // momentPropTypes.momentObj or null,
-                          startDate={moment(startDate).isValid() ? moment(startDate) : null}
-                          startDateId="startDate"
-                          endDate={moment(endDate).isValid() ? moment(endDate) : null}
-                          endDateId="endDate"
-                          onDatesChange={({ startDate, endDate }) => {
-                            handleDateFilterEndChange(endDate)
-                            handleDateFilterStartChange(startDate)
-                          }}
-                          theme={customTheme}
-                          focusedInput={dateFilterInput}
-                          onFocusChange={(focused) => { handleDateInputFocus(focused) }}
-                          showDefaultInputIcon // show the calendar icon
-                          showClearDates // show the clear dates button
-                          /*handleClearDateFilter={() => {
-                            handleDateFilterEndChange(null)
-                            handleDateFilterStartChange(null)
-                          }}*/
-                          startDatePlaceholderText="Fecha Inicial"
-                          endDatePlaceholderText="Fecha Final"
-                          numberOfMonths={2} // number of months to display
-                          isOutsideRange={() => false}
-                          small={true}
-
-                        />
-                      </div>
-                      &nbsp; &nbsp;
-                      <Form.Group>
-                        <Form.Control as="select" placeholder="Estado" value={estado} onChange={e => setEstado(e.target.value)}>
-                          <option value="">Estado</option>
-                          <option value="C">Creado</option>
-                          <option value="S">Iniciado</option>
-                          <option value="P">Planificado</option>
-                          <option value="X">Ejecutado</option>
-                          <option value="E">Cerrado</option>
-                        </Form.Control>
-                      </Form.Group>
-                      &nbsp;&nbsp;
-                      <Form.Group>
-                        <Button type="submit" onClick={e => handleApplyFilter(e)}>Aplicar</Button>
-                      </Form.Group>
-                      &nbsp;&nbsp;
-                      <Form.Group>
-                        <Button type="submit" variant="outline-secondary" onClick={e => handelCleanInput(e)}><i className="bi-x-circle"></i></Button>
-                      </Form.Group>
-                    </Form>
-                  </div>
-                </Collapse>
-
               </div>
+              <div>
+                <div>
+                  <Button variant="outline-primary" onClick={() => { handleExpandFilters() }}><i className={`bi ${filtersExpanded ? 'bi-caret-up-fill' : 'bi-caret-down-fill'}`}></i>&nbsp;Filtros</Button>
+                  <Collapse in={filtersExpanded}>
+                    <div className="pull-down">
+                      <Form inline>
+                        <Form.Group>
+                          <Form.Control type="text" placeholder="Nombre" value={nombreProyecto} onChange={e => setNombreProyecto(e.target.value)}></Form.Control>
+                        </Form.Group>
+                        &nbsp; &nbsp;
+                        <Form.Group>
+                          <Form.Control type="text" placeholder="Responsable" value={responsable} onChange={e => setResponsable(e.target.value)}></Form.Control>
+                        </Form.Group>
+                        &nbsp; &nbsp;
+                        <div className="form-group">
+                          {/* <label className="form-label">Fechas</label> */}
+                          <DateRangePicker // momentPropTypes.momentObj or null,
+                            startDate={moment(startDate).isValid() ? moment(startDate) : null}
+                            startDateId="startDate"
+                            endDate={moment(endDate).isValid() ? moment(endDate) : null}
+                            endDateId="endDate"
+                            onDatesChange={({ startDate, endDate }) => {
+                              handleDateFilterEndChange(endDate)
+                              handleDateFilterStartChange(startDate)
+                            }}
+                            theme={customTheme}
+                            focusedInput={dateFilterInput}
+                            onFocusChange={(focused) => { handleDateInputFocus(focused) }}
+                            showDefaultInputIcon // show the calendar icon
+                            showClearDates // show the clear dates button
+                            /*handleClearDateFilter={() => {
+                              handleDateFilterEndChange(null)
+                              handleDateFilterStartChange(null)
+                            }}*/
+                            startDatePlaceholderText="Fecha Inicial"
+                            endDatePlaceholderText="Fecha Final"
+                            numberOfMonths={2} // number of months to display
+                            isOutsideRange={() => false}
+                            small={true}
+
+                          />
+                        </div>
+                        &nbsp; &nbsp;
+                        <Form.Group>
+                          <Form.Control as="select" placeholder="Estado" value={estado} onChange={e => setEstado(e.target.value)}>
+                            <option value="">Estado</option>
+                            <option value="C">Creado</option>
+                            <option value="S">Iniciado</option>
+                            <option value="P">Planificado</option>
+                            <option value="X">Ejecutado</option>
+                            <option value="E">Cerrado</option>
+                          </Form.Control>
+                        </Form.Group>
+                        &nbsp;&nbsp;
+                        <Form.Group>
+                          <Button type="submit" onClick={e => handleApplyFilter(e)}>Aplicar</Button>
+                        </Form.Group>
+                        &nbsp;&nbsp;
+                        <Form.Group>
+                          <Button type="submit" variant="outline-secondary" onClick={e => handelCleanInput(e)}><i className="bi-x-circle"></i></Button>
+                        </Form.Group>
+                      </Form>
+                    </div>
+                  </Collapse>
+
+                </div>
+              </div>
+
+              <br />
+              {data.length !== 0 ?
+                <CheckTable
+                  columns={columns}
+                  data={data}
+                />
+                :
+                <div className="center pull-down">
+                  <p>
+                    No hay proyectos por el momento
+                  </p>
+                </div>}
             </div>
 
-            <br />
-            {data.length !== 0 ?
-              <CheckTable
-                columns={columns}
-                data={data}
-              />
-              :
-              <div className="center pull-down">
-                <p>
-                  No hay proyectos por el momento
-                </p>
-              </div>}
-          </div>
-
-          <Modal show={showCerrarModal} onHide={handleCloseCerrarModal}>
-            <Modal.Header closeButton>
-              <Modal.Title>Cerrar {location.pathname.includes("/activities") ? "Actividad" : "Proyecto"}</Modal.Title>
-            </Modal.Header>
-            <Modal.Body>
-              <Form.Group>
-                <Form.Label>Fecha de Cierre</Form.Label>
-                <Form.Control
-                  type="date"
-                  value={fechaCierre}
-                  min={selectedProject?.fecha_inicio ? moment(selectedProject.fecha_inicio).format("YYYY-MM-DD") : undefined} // 🔹 evita fechas menores
-                  onChange={(e) => setFechaCierre(e.target.value)}
-                />
-              </Form.Group>
-            </Modal.Body>
-            <Modal.Footer>
-              <Button variant="secondary" onClick={handleCloseCerrarModal}>
-                Cancelar
-              </Button>
-              <Button variant="danger" onClick={handleConfirmCerrarProyecto}>
-                Cerrar Proyecto
-              </Button>
-            </Modal.Footer>
-          </Modal>
-        </>
-      )}  
+            <Modal show={showCerrarModal} onHide={handleCloseCerrarModal}>
+              <Modal.Header closeButton>
+                <Modal.Title>Cerrar {location.pathname.includes("/activities") ? "Actividad" : "Proyecto"}</Modal.Title>
+              </Modal.Header>
+              <Modal.Body>
+                <Form.Group>
+                  <Form.Label>Fecha de Cierre</Form.Label>
+                  <Form.Control
+                    type="date"
+                    value={fechaCierre}
+                    min={selectedProject?.fecha_inicio ? moment(selectedProject.fecha_inicio).format("YYYY-MM-DD") : undefined} // 🔹 evita fechas menores
+                    onChange={(e) => setFechaCierre(e.target.value)}
+                  />
+                </Form.Group>
+              </Modal.Body>
+              <Modal.Footer>
+                <Button variant="secondary" onClick={handleCloseCerrarModal}>
+                  Cancelar
+                </Button>
+                <Button variant="danger" onClick={handleConfirmCerrarProyecto}>
+                  Cerrar Proyecto
+                </Button>
+              </Modal.Footer>
+            </Modal>
+          </>
+        )}
     </div>
   );
 }

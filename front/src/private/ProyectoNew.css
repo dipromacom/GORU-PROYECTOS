@@ -1,11 +1,52 @@
+
+.header-wrapper {
+    padding: 15px 30px 30px 50px;
+    background-color: #f1f4f8;
+    padding-bottom: 0;
+    border-bottom: 1px solid #dee2e6;
+    width: 100%;
+}
+
+/* 
 .tabbed-form {
     left: 120px;
     position: absolute;
     bottom: 0;
-  }
+}
+*/
+
+/* --- 2. Navegación Responsiva con Scroll Horizontal --- */
+.nav-responsive-scroll {
+    display: flex;
+    /*flex-wrap: nowrap !important;*/
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+    border-bottom: none !important;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    padding-bottom: 2px;
+}
+
+.nav-responsive-scroll .nav-item {
+    flex: 0 0 auto;
+}
+
+.nav-responsive-scroll::-webkit-scrollbar {
+    display: none;
+}
+
 
 .nav-link {
-    color: #122544
+    color: #122544;
+    padding: 0.75rem 1rem;
+    border: none !important;
+    border-bottom: 2px solid transparent !important;
+    transition: border-color 0.2s ease-in-out;
+}
+
+.nav-link:hover {
+    color: #122544;
 }
 
 .nav-link.active {
@@ -48,4 +89,7 @@ span.pull-end{
 input[type="number"] {
     -moz-appearance: textfield;
 }
-  
+
+.widget-container {
+    min-width: 0;
+}

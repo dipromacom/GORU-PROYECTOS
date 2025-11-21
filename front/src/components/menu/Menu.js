@@ -39,13 +39,13 @@ export default function Menu() {
         <MenuItem
           menuName="Proyecto"
           menuAlt="Proyecto"
-          menuToolTip="PROYECTOS"
+          menuToolTip="PROYECTOS EQUIPO"
           redirectTo="projects"
         />
         <MenuItem
           menuName="Portafolio"
           menuAlt="Actividades"
-          menuToolTip="ACTIVIDADES"
+          menuToolTip="PROYECTOS PERSONALES"
           redirectTo="activities"
         />
 

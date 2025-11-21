@@ -18,7 +18,6 @@ function Membership({ dispatch, isLoading, user, persona }) {
 
   useEffect(() => {
     function onLoad() {
-      console.log(user);
       if (!(user === null || user === undefined)) {
         dispatch(personaActions.getProfile(user.id));
       }
