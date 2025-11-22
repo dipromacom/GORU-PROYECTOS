@@ -59,21 +59,29 @@ function Nosotros({ dipatch }) {
         </p>
       </div> */}
 
-      <div className="text-placeholder">
+      <div>
         <div >
             <p style={{ "font-size": "1.5rem", "font-weight": "bold" }}>
               Contamos con Softwares de desarrollo nacional que pueden ser personalizados a cada empresa, tales como:
           </p>
         </div>
-      </div>   
+      </div> 
+        <div style={{ "textAlign": "center" }}><a href="https://spitze-soft.dipromacom.net/productos" target="_blank"><img style={{ "height": "90px" }} src={`/img/GoruEcosistema.png`} alt="GoruEcosistema" ></img></a></div>
+        <hr></hr>
         <div className="home-tools">
-          <img src={`/img/GoruBancos.png`} alt="goruBancos"></img>
-          <img src={`/img/GoruContable.png`} alt="GoruContable" ></img>
           <img src={`/img/GoruEmpresarial.png`} alt="GoruEmpresarial" ></img>
+          <img src={`/img/GoruRecursosHumanos.png`} alt="GoruRecursosHumanos" ></img>
+          <img src={`/img/GoruGestion.png`} alt="GoruGestion" ></img>
+          <img src={`/img/GoruPuntoVenta.png`} alt="GoruPuntoVenta" ></img>
+          <img src={`/img/GoruControl.png`} alt="GoruControl" ></img>
+          <img src={`/img/GoruBancos.png`} alt="goruBancos"></img>
+          <img src={`/img/GoruFacturacion.png`} alt="GoruFacturacion" ></img>
+          <img src={`/img/GoruCRM.png`} alt="GoruCRM" ></img>
           <img src={`/img/GoruPagoProveedores.png`} alt="GoruPagoProveedores" ></img>
           <img src={`/img/GoruProfesionales.png`} alt="GoruProfesionales" ></img>
-          <img src={`/img/GoruPuntoVenta.png`} alt="GoruPuntoVenta" ></img>
-          <img src={`/img/GoruRecursosHumanos.png`} alt="GoruRecursosHumanos" ></img>
+          <img src={`/img/GoruTicket.png`} alt="GoruTicket" ></img>
+          <img src={`/img/GoruContable.png`} alt="GoruContable" ></img>
+          <img src={`/img/GoruCitas.png`} alt="GoruCitas" ></img>
       </div>  
     </div>
     </div>

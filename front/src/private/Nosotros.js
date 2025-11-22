@@ -91,16 +91,30 @@ function Nosotros({ dipatch }) {
         responsive={responsive}
       >
         <StaffCard
-          title="Gerente General"
+          name="Víctor Gabriel González Rugel"
           photo="Gerente_General.jpeg"
+          title="Gerente General del Grupo González"
         />
 
         <StaffCard
-          title="Master en Administración de Empresas"
+          name="José Luis González Rugel"
           photo="JoseLuis.jpeg"
+          title="Master en Administración de Empresas"
         />
 
         <StaffCard
+          name="Nathalie Melissa Rosero Recalde"
+          photo="NathalieRosero.jpeg"
+          title="Magíster en Dirección de Proyectos"
+        />
+
+        <StaffCard
+          name="Daniel Andrés Borja Cárdenas"
+          photo="DanielBorja.jpeg"
+          title="Master en Desarrollo de Aplicaciones Web"
+        />
+
+        {/*<StaffCard
           title="Master en Administración de Empresas"
           photo="LuisGonzalez.jpeg"
         />
@@ -110,7 +124,7 @@ function Nosotros({ dipatch }) {
           photo="GenesisRuiz.jpeg"
         />
 
-        {/* <StaffCard
+         <StaffCard
           title="Master en Administración de Empresas"
           photo="persona.jpg"
         />
@@ -118,7 +132,7 @@ function Nosotros({ dipatch }) {
         <StaffCard
           title="Master en Administración de Empresas"
           photo="persona.jpg"
-        />   
+        />
 
         <StaffCard
           title="Master en Ciencia de Datos"

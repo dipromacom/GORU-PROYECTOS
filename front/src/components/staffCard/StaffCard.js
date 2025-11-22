@@ -3,7 +3,7 @@ import { connect } from "react-redux";
 import "./StaffCard.css";
 import "../../css/Commons.css";
 
-function StaffCard({ title, photo }) {
+function StaffCard({ name, title, photo }) {
   return (
     <div className="card-container">
       <div className="photo-container">
@@ -11,8 +11,8 @@ function StaffCard({ title, photo }) {
           <img src={`/img/${photo}`} alt="Staff Photo" className="photo"></img>
         </div>
       </div>
-
       <div className="titulo-container">
+        <h4 className="blue">{name}</h4>
         <p className="blue">{title}</p>
       </div>
     </div>
