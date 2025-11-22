@@ -70,9 +70,9 @@ function Default({ dispatch, component, isAuthenticated, ...props }) {
                   <button type="button" className="btn btn-success btn-login" onClick={goToLogin}>Iniciar sesión</button>
                   </div>
     
-                  <div className="float-left">
+                  {/*<div className="float-left">
                   <button type="button" className="btn btn-outline-success btn-signup green" onClick={goToCreateUser}>Crear una cuenta</button>
-                  </div>
+                  </div>*/}
                   </div>
                 }
     
