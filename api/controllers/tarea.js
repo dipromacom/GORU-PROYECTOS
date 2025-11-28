@@ -28,7 +28,10 @@ const createTarea = async (req,res) => {
         console.log("Nuevo req.body recibido:", req.body);
         await TareaUtils.createTarea(task)
         const { proyectoId } = task
-        const tareas = await TareaUtils.getTareas(undefined,undefined,{proyectoId: parseInt(proyectoId), dueDate: new Date()})
+        const tareas = await TareaUtils.getTareas(undefined, undefined, {
+            proyectoId: parseInt(proyectoId),
+            isDone: false // <--- ¡Esto es lo crucial!
+        })
         return res.status(201).json({success:true, data: tareas})
     }catch(error){
         return res.status(500).json({ success: false, message: error.message });
@@ -42,7 +45,10 @@ const createTareaBatch = async (req, res) => {
         for(const task of tasks){
             await TareaUtils.createTarea(task)
         }
-        const tareas = await TareaUtils.getTareas(undefined,undefined,{proyectoId, dueDate: new Date()})
+        const tareas = await TareaUtils.getTareas(undefined, undefined, {
+            proyectoId,
+            isDone: false // <--- ¡Esto es lo crucial!
+        })
         return res.status(201).json({success:true, data: tareas})
     }catch(error){
         return res.status(500).json({ success: false, message: error.message });

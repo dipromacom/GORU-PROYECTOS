@@ -30,7 +30,6 @@ const InputHitosList = ({
 
     return (
         <div>
-            <h3>Tiempo / Plazo</h3>
             <Form.Group controlId="plazoProyecto">
                 <Form.Label>Duración de Proyecto: {showDuration(tiempoDuracion)}</Form.Label>
                 <Form.Control

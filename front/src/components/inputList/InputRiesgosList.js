@@ -18,9 +18,9 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
     const [isOldFormatDetected, setIsOldFormatDetected] = useState(false);
 
     const values = [
-        { clave: "H", valor: "Alto", num: 3 },
-        { clave: "M", valor: "Medio", num: 2 },
-        { clave: "L", valor: "Bajo", num: 1 },
+        { clave: "H", valor: "Alto (3)", num: 3 },
+        { clave: "M", valor: "Medio (2)", num: 2 },
+        { clave: "L", valor: "Bajo (1)", num: 1 },
     ]
     // Mapeos útiles para la lógica
     const claveToNum = useMemo(() => values.reduce((acc, val) => ({ ...acc, [val.clave]: val.num }), {}), [values]);
@@ -217,7 +217,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                                 values.map(
                                     (val, index) => (
                                         // Se usa val.clave para el estado (H, M, L)
-                                        <option value={val.clave} key={index}>{val.valor.replace(/.$/, 'a')}</option>
+                                        <option value={val.clave} key={index}>{val.valor}</option>
                                     )
                                 )
                             }
