@@ -8,6 +8,7 @@ const TodoItem = ({
     id, title, description, prioridad, interesado, label, done,
     onComplete, dueDate, duedate, onDelete, enableCheck, interesadoId,
     close, cerrado// 🔹 nuevo prop que viene desde la API
+    , closeDate: taskCloseDate
 }) => {
     const [doneItem, setDoneItem] = useState(done);
     const [hover, setHover] = useState(false);
@@ -128,6 +129,14 @@ const TodoItem = ({
                         ) : (
                             <div>
                                 <strong>Responsable:</strong> sin responsable designado
+                            </div>
+                        )}
+                        {/* 🎯 MODIFICACIÓN AQUÍ: Mostrar fecha de cierre si está cerrada */}
+                        {taskCloseDate &&  (
+                            <div className='flex-fill mt-2'>
+                                <div>
+                                    <strong>Fecha de Cierre:</strong> {moment(taskCloseDate).format('DD/MM/YYYY')}
+                                </div>
                             </div>
                         )}
                     </div>

@@ -540,6 +540,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
     const addTaskHandler = task => {
         dispatch(actions.insertToDoTask({...task, proyectoId: routeParams.id, dueDate: moment(task.dueDate,'DD/MM/YYYY').format('YYYY-MM-DD')}))
+        setTaskFilter("false");
     }
 
     const doneTask = (taskId, closeDate) => {

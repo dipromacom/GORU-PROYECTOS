@@ -206,16 +206,43 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
     };
 
     const hasChanges = () => {
+        // Si no tenemos la data original, no hay nada con qué comparar.
         if (!originalData) return false;
-        return (
+
+        // 1. Comparación de campos de texto y selección simples
+        const simpleFieldsChanged = (
             interesado !== originalData.interesado ||
             rol !== originalData.rol ||
             cargo !== originalData.cargo ||
             companiaClasificacion !== originalData.companiaClasificacion ||
             telefono !== originalData.telefono ||
             email !== originalData.email ||
-            !arraysAreEqual(fechasNoDisponibilidad, originalData.fechasNoDisponibilidad)
+            otrosDatosContacto !== originalData.otrosDatosContacto || // <-- Campo agregado
+            expectativasProyecto !== originalData.expectativasProyecto // <-- Campo agregado
         );
+
+        if (simpleFieldsChanged) return true;
+
+        // 2. Comparación de métricas de Evaluación (compromiso, poder, etc.)
+        const evaluationFieldsChanged = (
+            compromiso !== originalData.compromiso || // <-- Campo agregado
+            poder !== originalData.poder ||           // <-- Campo agregado
+            influencia !== originalData.influencia || // <-- Campo agregado
+            conocimiento !== originalData.conocimiento || // <-- Campo agregado
+            interesActitud !== originalData.interesActitud || // <-- Campo agregado
+            // Nota: 'valoracion' es típicamente calculado, pero lo incluimos por la estructura de originalData
+            valoracion !== originalData.valoracion
+        );
+
+        if (evaluationFieldsChanged) return true;
+
+        // 3. Comparación profunda del array de fechas de no disponibilidad
+        const datesChanged = !arraysAreEqual(fechasNoDisponibilidad, originalData.fechasNoDisponibilidad);
+
+        if (datesChanged) return true;
+
+        // Si pasamos todas las revisiones sin encontrar diferencias, no hay cambios.
+        return false;
     };
 
     const arraysAreEqual = (arr1, arr2) => {
@@ -225,6 +252,11 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
             item.fechaInicio === arr2[index]?.fechaInicio &&
             item.fechaFin === arr2[index]?.fechaFin
         );
+    };
+
+    const handleDeleteFecha = (indexToDelete) => {
+        const newFechas = fechasNoDisponibilidad.filter((_, index) => index !== indexToDelete);
+        setFechasNoDisponibilidad(newFechas);
     };
 
 
@@ -439,6 +471,19 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
                                     <td>{new Date(fecha.fechaInicio).toLocaleDateString()}</td>
                                     <td>{new Date(fecha.fechaFin).toLocaleDateString()}</td>
                                     {/*<td>{fecha.diasTotales}</td>*/}
+
+                                    {isEditable && ( // <-- ¡Añade esta condicional!
+                                        <td>
+                                            <Button
+                                                variant="danger"
+                                                size="sm"
+                                                onClick={() => handleDeleteFecha(index)}
+                                            >
+                                                Eliminar
+                                            </Button>
+                                        </td>
+                                    )} {/* <-- ¡Cierra la condicional! */}
+
                                 </tr>
                             ))}
                         </tbody>

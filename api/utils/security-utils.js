@@ -15,6 +15,7 @@ const validateToken = (callback) => (req, res) => {
     if (error) {
       res.status(403).json({ success: false, message: "No posee permisos para esta operación" });
     } else {
+      req.userPayload = payload;
       callback(req, res);
     }
   })

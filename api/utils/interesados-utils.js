@@ -9,6 +9,14 @@ const evaluacionInteresados = require('../models/evaluacion-interesados');
 const { access } = require('fs');
 const file = path.basename(__filename);
 
+const normalizeNumericField = (value) => {
+    // Si el valor es una cadena vacía, retornamos null
+    if (value === "") {
+        return null;
+    }
+    return value;
+}
+
 const createInteresados = async (data) => {
     const transaction = await db.transaction();
     console.log('Enviando a la API:', JSON.stringify(data, null, 2));
@@ -167,8 +175,8 @@ const updateInteresado = async (id, data) => {
             companiaClasificacion,
             expectativasProyecto,
             fechasNoDisponibilidad,
-            evaluacion,    // singular
-            evaluaciones,  // plural
+            evaluacion,
+            evaluaciones,
             accionEstrategica,
             responsableEstrategia,
             id_interesados
@@ -199,10 +207,29 @@ const updateInteresado = async (id, data) => {
             { transaction }
         );
 
-        // Manejo de fechas de no disponibilidad
-        if (fechasNoDisponibilidad && fechasNoDisponibilidad.length > 0) {
+        if (fechasNoDisponibilidad) {
+
+            // 1. Obtener los IDs de las fechas que DEBEN MANTENERSE (las que vienen en el payload y ya tienen un ID real)
+            const datesToKeepIds = fechasNoDisponibilidad
+                // Filtramos por ID y excluimos IDs temporales que genera el frontend (ej: 'temp-1000')
+                .filter(noDisp => noDisp.id && !String(noDisp.id).startsWith('temp-'))
+                .map(noDisp => noDisp.id);
+
+            // 2. ELIMINAR todos los registros de NoDisponibilidad que NO están en la lista `datesToKeepIds`
+            // Esto borra los elementos que fueron eliminados desde el frontend.
+            await NoDisponibilidad.destroy({
+                where: {
+                    interesadoId: id_interesados,
+                    id: { [Op.notIn]: datesToKeepIds } // Usamos Op.notIn para borrar los IDs que NO están en la lista
+                },
+                transaction,
+            });
+
+            // 3. Crear/Actualizar las fechas restantes
             for (const noDisp of fechasNoDisponibilidad) {
-                if (noDisp.id) {
+                // Verificar si es una fecha existente (tiene ID real) o una nueva (no tiene ID o tiene ID temporal)
+                if (noDisp.id && !String(noDisp.id).startsWith('temp-')) {
+                    // Actualizar existente
                     await NoDisponibilidad.update(
                         {
                             fechaInicio: noDisp.fechaInicio,
@@ -210,11 +237,12 @@ const updateInteresado = async (id, data) => {
                             motivo: noDisp.motivo,
                         },
                         {
-                            where: { id: noDisp.id, interesadoId: id_interesados }, // usamos id del interesado real
+                            where: { id: noDisp.id, interesadoId: id_interesados },
                             transaction,
                         }
                     );
                 } else {
+                    // Crear nueva
                     await NoDisponibilidad.create(
                         {
                             interesadoId: id_interesados,
@@ -227,8 +255,9 @@ const updateInteresado = async (id, data) => {
                 }
             }
         }
+        // =========================================================
 
-        // Normalizar evaluaciones
+        // Normalizar evaluaciones (El resto de tu código no necesita cambios)
         let evaluacionesToProcess = [];
         if (Array.isArray(evaluaciones)) {
             evaluacionesToProcess = evaluaciones;
@@ -237,22 +266,25 @@ const updateInteresado = async (id, data) => {
         }
 
         // Manejo de evaluaciones del interesado
-        for (const eval of evaluacionesToProcess) {
-            if (eval.id) {
+        // FIX: Cambiar 'eval' por 'evaluationData' para evitar el error de 'strict mode'.
+        for (const evaluationData of evaluacionesToProcess) {
+            // ... (Lógica de Actualizar/Crear EvaluacionInteresado - Mantenida igual)
+            if (evaluationData.id) {
                 await EvaluacionInteresado.update(
                     {
-                        compromiso: eval.compromiso,
-                        poder: eval.poder,
-                        influencia: eval.influencia,
-                        conocimiento: eval.conocimiento,
-                        interesActitud: eval.interesActitud,
-                        valoracion: eval.valoracion,
-                        accionEstrategica: eval.accionEstrategica || accionEstrategica,
-                        responsableEstrategia: eval.responsableEstrategia || responsableEstrategia,
-                        fechaEvaluacion: eval.fechaEvaluacion || new Date(),
+                        compromiso: normalizeNumericField(evaluationData.compromiso),
+                        poder: normalizeNumericField(evaluationData.poder),
+                        influencia: normalizeNumericField(evaluationData.influencia),
+                        conocimiento: normalizeNumericField(evaluationData.conocimiento),
+                        interesActitud: normalizeNumericField(evaluationData.interesActitud),
+                        valoracion: normalizeNumericField(evaluationData.valoracion),
+
+                        accionEstrategica: evaluationData.accionEstrategica || accionEstrategica,
+                        responsableEstrategia: evaluationData.responsableEstrategia || responsableEstrategia,
+                        fechaEvaluacion: evaluationData.fechaEvaluacion || new Date(),
                     },
                     {
-                        where: { id: eval.id, interesadoId: id_interesados },
+                        where: { id: evaluationData.id, interesadoId: id_interesados },
                         transaction,
                     }
                 );
@@ -260,15 +292,16 @@ const updateInteresado = async (id, data) => {
                 await EvaluacionInteresado.create(
                     {
                         interesadoId: id_interesados,
-                        compromiso: eval.compromiso,
-                        poder: eval.poder,
-                        influencia: eval.influencia,
-                        conocimiento: eval.conocimiento,
-                        interesActitud: eval.interesActitud,
-                        valoracion: eval.valoracion,
-                        accionEstrategica: eval.accionEstrategica || accionEstrategica,
-                        responsableEstrategia: eval.responsableEstrategia || responsableEstrategia,
-                        fechaEvaluacion: eval.fechaEvaluacion || new Date(),
+                        compromiso: normalizeNumericField(evaluationData.compromiso),
+                        poder: normalizeNumericField(evaluationData.poder),
+                        influencia: normalizeNumericField(evaluationData.influencia),
+                        conocimiento: normalizeNumericField(evaluationData.conocimiento),
+                        interesActitud: normalizeNumericField(evaluationData.interesActitud),
+                        valoracion: normalizeNumericField(evaluationData.valoracion),
+
+                        accionEstrategica: evaluationData.accionEstrategica || accionEstrategica,
+                        responsableEstrategia: evaluationData.responsableEstrategia || responsableEstrategia,
+                        fechaEvaluacion: evaluationData.fechaEvaluacion || new Date(),
                     },
                     { transaction }
                 );
