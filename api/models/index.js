@@ -24,6 +24,8 @@ const models = {
   Menu: require('./menu')(db, Sequelize),
   PermisoLicencia: require('./permiso-licencia')(db, Sequelize),
   Usuario: require('./usuario')(db, Sequelize),
+  Rol: require('./rol')(db, Sequelize),
+  Permiso: require('./permiso')(db, Sequelize),
   Ciudad: require('./ciudad')(db, Sequelize),
   Evaluacion: require('./evaluacion')(db, Sequelize),
   EvaluacionDetalle: require('./evaluacion-detalle')(db, Sequelize),

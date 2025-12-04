@@ -40,6 +40,9 @@ const createUsuario = async (req, res) => {
     }
 
     let usuario = await UsuarioUtils.createUsuario(data);
+
+    usuario = await UsuarioUtils.getUsuarioById(usuario.id);
+
     usuario = usuario.get({ plain: true });
     delete usuario.clave;
 
@@ -72,6 +75,8 @@ const generateToken = async (req, res) => {
       }
 
       usuario = await UsuarioUtils.createUsuario({ username: email, clave, awsId });
+
+      usuario = await UsuarioUtils.getUsuarioById(usuario.id);
     }
     const page = UsuarioUtils.getOnbStep(usuario);
     const jwtToken = await SecurityUtils.generateToken(usuario);
@@ -193,6 +198,49 @@ const updatePassword = async (req, res) => {
   }
 }
 
+const updateUsuarioRol = async (req, res) => {
+  // Asumimos que el middleware ya verificó el permiso 'rol_gestionar'
+  const { id } = req.params; // ID del usuario a modificar
+  const { rolId } = req.body; // Nuevo ID del rol
+
+  try {
+    if (!rolId) {
+      return res.status(400).json({ success: false, message: 'El rolId es obligatorio.' });
+    }
+
+    // Validación y parseo de IDs
+    const userId = parseInt(id, 10);
+    const newRolId = parseInt(rolId, 10);
+
+    if (isNaN(userId) || isNaN(newRolId)) {
+      return res.status(400).json({ success: false, message: 'IDs de usuario y rol deben ser números válidos.' });
+    }
+
+    const updatedUsuario = await UsuarioUtils.updateUsuarioRol(userId, newRolId);
+
+    // Formatear el objeto para la respuesta
+    const usuarioData = updatedUsuario.get({ plain: true });
+    delete usuarioData.clave; // Nunca devolver la clave
+
+    logger.info({ message: `Rol de usuario ${id} actualizado a Rol ID ${rolId} exitosamente.` });
+    return res.status(200).json({ success: true, data: usuarioData });
+
+  } catch (error) {
+    // Manejo de errores 404 de rol o usuario no encontrado
+    if (error.message.includes('no encontrado')) {
+      return res.status(404).json({ success: false, message: error.message });
+    }
+
+    logger.error({
+      message: error.message,
+      source: file,
+      method: "updateUsuarioRol()",
+      params: { id, body: req.body },
+    });
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getUsuarioById,
   createUsuario,
@@ -201,4 +249,5 @@ module.exports = {
   updatePersonaProfile,
   isEmailAvalaible,
   updatePassword,
+  updateUsuarioRol,
 };

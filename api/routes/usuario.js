@@ -1,8 +1,11 @@
 const express = require('express');
 const UsuarioController = require('../controllers/usuario');
 const SecurityUtils = require('../utils/security-utils');
+const PermisoMiddleware = require('../utils/permiso-middleware');
 
 const router = express.Router();
+
+const GESTIONAR_ROLES = 'rol_gestionar';
 
 router.post('/usuario', UsuarioController.createUsuario);
 router.post('/usuario/getToken', UsuarioController.generateToken);
@@ -11,5 +14,12 @@ router.post('/usuario/setMembresia', SecurityUtils.validateToken(UsuarioControll
 router.put('/usuario/:id/profile', SecurityUtils.validateToken(UsuarioController.updatePersonaProfile));
 router.get('/usuario/email/available/:email', UsuarioController.isEmailAvalaible);
 router.put('/usuario/:email/password/update', UsuarioController.updatePassword);
+
+router.put(
+    '/usuario/:id/rol',
+    SecurityUtils.validateToken(
+        PermisoMiddleware.check(GESTIONAR_ROLES)(UsuarioController.updateUsuarioRol)
+    )
+);
 
 module.exports = router;

@@ -90,10 +90,18 @@ module.exports = (db, Sequelize) => {
       foreignKey: 'proyecto',
     });
 
-    Proyecto.Usuario = Proyecto.belongsTo(Usuario, {
+    /*Proyecto.Usuario = Proyecto.belongsTo(Usuario, {
       as: 'Usuario',
       foreignKey: 'usuario_creador',
+    });*/
+
+    Proyecto.Usuarios = Proyecto.belongsToMany(Usuario, {
+      as: 'Usuarios',
+      through: 'usuario_proyecto', // Nombre de la tabla pivote que creamos
+      foreignKey: 'proyecto_id', // Clave foránea en la tabla pivote que apunta a Proyecto
+      otherKey: 'usuario_id', // Clave foránea en la tabla pivote que apunta a Usuario
     });
+    
   };
 
   return Proyecto;

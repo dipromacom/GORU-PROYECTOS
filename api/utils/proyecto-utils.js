@@ -2,7 +2,7 @@
 const {
   Op, fn, col, literal
 } = require('sequelize');
-const { Proyecto } = require('../models/index');
+const { Proyecto, Usuario } = require('../models/index');
 const {
   Persona, DirectorProyecto, Patrocinador, Departamento,
   TipoProyecto, Empresa,
@@ -13,9 +13,19 @@ const { getNombreApellidoFromStr } = require('./string-utils');
 const getAllProyecto = async (usuarioId) => {
   const items = await Proyecto.findAll({
     where: {
-      usuario_creador: usuarioId
+      [Op.or]: [
+        { usuario_creador: usuarioId },
+        { '$Usuarios.id$': usuarioId } // <-- Acceso a través de la tabla pivote
+      ]
     },
     include: [
+      {
+        model: Usuario,
+        as: 'Usuarios',
+        required: false, // Usar 'required: true' si solo quieres proyectos compartidos
+        through: { attributes: [] },
+        attributes: ['id'] // Solo necesitamos el ID para el WHERE
+      },
       {
         model: DirectorProyecto,
         as: 'DirectorProyecto',
@@ -307,6 +317,9 @@ const createProyectoGeneralData = async (data, usuarioId) => {
 
   const proyecto = await Proyecto.create(proyectoPayload);
 
+  // Sequelize automáticamente añade la entrada en la tabla 'usuario_proyecto'
+  await proyecto.addUsuario(usuarioId);
+
   return proyecto;
 };
 
@@ -441,11 +454,29 @@ const getFilteredProjects = async (query, usuarioId) => {
   }
 
   if (usuarioId) {
-    filter = { ...filter, usuario_creador: usuarioId };
+    //filter = { ...filter, usuario_creador: usuarioId };
+    filter = {
+      ...filter,
+      [Op.or]: [
+        { usuario_creador: usuarioId },
+        // La búsqueda por asociación se manejará en el include. 
+        // Aquí solo se necesita la condición del creador.
+        // La condición del usuario asignado debe estar en el JOIN y el WHERE de la asociación.
+      ]
+    };
   }
 
   const items = await Proyecto.findAll({
     include: [
+      {
+        model: Usuario,
+        as: 'Usuarios',
+        required: true, // Esto actúa como un JOIN INNER
+        through: { attributes: [] },
+        // Filtramos la asociación para que solo coincida con el usuario logueado
+        where: { id: usuarioId },
+        attributes: ['id']
+      },
       {
         model: DirectorProyecto,
         as: 'DirectorProyecto',
@@ -476,7 +507,18 @@ const getFilteredProjects = async (query, usuarioId) => {
         as: 'TipoProyecto',
       },
     ],
-    where: filter,
+    //where: filter,
+    where: {
+      ...filter,
+      // Re-aplicar la lógica de OR para el creador
+      // Para simplificar, si el usuario está en la tabla pivote, ya tiene acceso.
+      // Si mantenemos usuario_creador, la lógica en el JOIN es más limpia:
+      // Aseguramos que el usuario es creador *O* está en la tabla pivote.
+      [Op.or]: [
+        { usuario_creador: usuarioId },
+        { '$Usuarios.id$': usuarioId }
+      ],
+    },
     order: [
       [literal(`CASE 
         WHEN estado = 'X' THEN 1
@@ -491,6 +533,31 @@ const getFilteredProjects = async (query, usuarioId) => {
   return items;
 };
 
+const assignCreatorToProject = async (projectId, usuarioId) => {
+  try {
+    const proyecto = await Proyecto.findByPk(projectId);
+
+    if (!proyecto) {
+      throw new Error(`Proyecto con ID ${projectId} no encontrado.`);
+    }
+
+    // Usamos addUsuario, que añade la relación en la tabla pivote
+    // 'usuario_proyecto' sin afectar a las ya existentes.
+    await proyecto.addUsuario(usuarioId);
+
+  } catch (error) {
+    // En un entorno de producción, es crucial registrar este error.
+    logger.error({
+      message: `Error al asignar el creador al proyecto ${projectId} en la tabla pivote: ${error.message}`,
+      source: file,
+      method: "assignCreatorToProject()",
+      params: { projectId, usuarioId },
+    });
+
+    throw error;
+  }
+};
+
 module.exports = {
   getAllProyecto,
   getActiveProyecto,
@@ -499,5 +566,6 @@ module.exports = {
   createProyectoGeneralData,
   updateProyecto,
   getFilteredProjects,
-  updateProyectoGeneralData
+  updateProyectoGeneralData,
+  assignCreatorToProject,
 };

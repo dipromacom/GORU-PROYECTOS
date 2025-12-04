@@ -7,7 +7,7 @@ const { Usuario } = require('../models/index');
 const {
   Empresa, Persona, TipoLicencia, NivelPermiso, DirectorProyecto,
   Proyecto, Menu, ContactoTelefonico, Direccion, TipoTelefono,
-  TipoDireccion, Ciudad,
+  TipoDireccion, Ciudad, Rol, Permiso,
 } = require('../models/index');
 
 const logger = require('../logger/logger');
@@ -16,6 +16,21 @@ const file = path.basename(__filename);
 
 const DateUils = require('./date-utils');
 const TipoLicenciaUtils = require('./tipo-licencia-utils');
+
+let DEFAULT_ROL_ID = null;
+
+(async () => {
+  try {
+    const defaultRol = await Rol.findOne({ where: { nombre: 'colaborador' } });
+    if (defaultRol) {
+      DEFAULT_ROL_ID = defaultRol.id;
+    } else {
+      logger.warn({ message: 'Rol por defecto "colaborador" no encontrado. Esto puede causar errores de FK.' });
+    }
+  } catch (e) {
+    logger.error({ message: `Error al obtener Rol por defecto: ${e.message}` });
+  }
+})();
 
 const getUsuarioById = async (id) => {
   const item = await Usuario.findOne({
@@ -69,6 +84,17 @@ const getUsuarioById = async (id) => {
         ],
       },
       {
+        model: Rol,
+        as: 'Rol',
+        attributes: ['id', 'nombre'], // Sólo nombre del rol
+        include: { // Incluir los permisos del rol (opcional, pero útil)
+          model: Permiso,
+          as: 'permisos',
+          attributes: ['nombre'],
+          through: { attributes: [] } // No incluir campos de la tabla pivote
+        }
+      },
+      {
         model: Empresa,
         as: 'Empresa',
         attributes: ['id', 'nombre'],
@@ -102,6 +128,11 @@ const createUsuario = async (data) => {
       empresa, persona, tipoLicencia, nivelPermiso, username, clave, awsId,
     } = data;
 
+    const rol_id = data.rol_id || DEFAULT_ROL_ID;
+    if (!rol_id) {
+      throw new Error('No se pudo determinar el ID del rol para el nuevo usuario.');
+    }
+
     const hashedPassword = bcrypt.hashSync(clave, Number(process.env.SALT_ROUNDS));
 
     const usuario = await Usuario.create({
@@ -120,6 +151,7 @@ const createUsuario = async (data) => {
       eliminado: false,
       aws_id: awsId,
       confirmado: false,
+      rol_id: rol_id,
     });
 
     return usuario;
@@ -139,6 +171,17 @@ const getUsuarioByEmail = async (email) => {
   try {
     const usuario = await Usuario.findOne({
       where: { username: email },
+      include: { // <-- Añadimos la inclusión del rol
+        model: Rol,
+        as: 'Rol',
+        attributes: ['id', 'nombre'],
+        include: {
+          model: Permiso,
+          as: 'permisos',
+          attributes: ['nombre'],
+          through: { attributes: [] }
+        }
+      },
     });
 
     return usuario;
@@ -221,6 +264,45 @@ const updatePassword = async (usuario, password) => {
   }
 }
 
+/**
+ * Actualiza el rol de un usuario existente.
+ * @param {number} userId - ID del usuario a modificar.
+ * @param {number} rolId - Nuevo ID del rol a asignar.
+ * @returns {Promise<Usuario>} El objeto Usuario actualizado (con su rol y permisos cargados).
+ */
+const updateUsuarioRol = async (userId, rolId) => {
+  try {
+    const usuario = await Usuario.findByPk(userId);
+
+    if (!usuario) {
+      throw new Error(`Usuario con ID ${userId} no encontrado.`);
+    }
+
+    // Verificación de existencia del Rol
+    const rolExiste = await Rol.findByPk(rolId);
+
+    if (!rolExiste) {
+      throw new Error(`Rol con ID ${rolId} no encontrado.`);
+    }
+
+    // Actualizar el rol_id
+    await usuario.update({ rol_id: rolId });
+
+    // Obtener el usuario completo con las nuevas asociaciones (rol y permisos) para la respuesta
+    const updatedUsuario = await getUsuarioById(userId);
+
+    return updatedUsuario;
+  } catch (error) {
+    logger.error({
+      message: error.message,
+      source: file,
+      method: "updateUsuarioRol()",
+      params: { userId, rolId },
+    });
+    throw error;
+  }
+};
+
 module.exports = {
   getUsuarioById,
   createUsuario,
@@ -229,4 +311,5 @@ module.exports = {
   setTipoLicencia,
   updatePassword,
   getUsuarioByAwsId,
+  updateUsuarioRol,
 };

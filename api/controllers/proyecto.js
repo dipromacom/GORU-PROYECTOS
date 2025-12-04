@@ -83,6 +83,8 @@ const activarProyecto = async (req, res) => {
         fecha_inicio: DateUtils.getLocalDate()
       }, projectId
     )
+    // Nueva utilidad para manejar la lógica de asignación N:M
+    await ProyectoUtils.assignCreatorToProject(projectId, usuarioId);
     return res.status(201).json({ success: true, data: proyecto });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
