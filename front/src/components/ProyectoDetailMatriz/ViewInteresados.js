@@ -8,7 +8,7 @@ import { selectors } from "../../reducers/project";
 import { Interesado } from "../ProyectoDetailMatriz/Interesado";
 import './ViewInteresados.css';
 
-export const ViewInteresados = ({ interesados, toDo, usuario, markAsDoneCallback, cerrado }) => {
+export const ViewInteresados = ({ interesados, toDo, usuario, markAsDoneCallback, cerrado, esPrograma }) => {
     const [filteredData, setFilteredData] = useState([]);
     const [verInteresado, setVerInteresado] = useState(null); // Estado para alternar vista
     // Columnas de la tabla
@@ -17,7 +17,10 @@ export const ViewInteresados = ({ interesados, toDo, usuario, markAsDoneCallback
             { Header: 'Nombre del Interesado', accessor: 'nombre_interesado' },
             { Header: 'Rol', accessor: 'rol' },
             { Header: 'Cargo', accessor: 'cargo' },
-            { Header: 'Compañía', accessor: 'compania_clasificacion' },
+            {
+                Header: esPrograma ? 'Componente' : 'Compañía',
+                accessor: 'compania_clasificacion'
+            },
             { Header: 'Correo', accessor: 'email' },
             { Header: 'Evaluación', accessor: 'valoracion' },
             {
@@ -43,7 +46,7 @@ export const ViewInteresados = ({ interesados, toDo, usuario, markAsDoneCallback
                 ),
             },
         ],
-        [cerrado]
+        [cerrado, esPrograma]
     );
 
     useEffect(() => {
@@ -88,7 +91,7 @@ export const ViewInteresados = ({ interesados, toDo, usuario, markAsDoneCallback
                     </button>
 
                     {/* Mostrar componente `Interesado` */}
-                        <Interesado Interesadoid={verInteresado.id} toDo={toDo} markAsDoneCallback={markAsDoneCallback} />
+                        <Interesado Interesadoid={verInteresado.id} toDo={toDo} markAsDoneCallback={markAsDoneCallback} esPrograma={esPrograma} />
                 </>
             )}
         </div>

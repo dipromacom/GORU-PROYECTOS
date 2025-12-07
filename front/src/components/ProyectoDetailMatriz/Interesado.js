@@ -8,7 +8,7 @@ import TodoItem from '../todoList/TodoItem'
 import { actions, selectors } from "../../reducers/project";
 import './Interesado.css';
 
-export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enableCheck = true, markAsDoneCallback }) => {
+export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enableCheck = true, markAsDoneCallback, esPrograma }) => {
     const dispatch = useDispatch();
     const interesados = useSelector(state => state.project.interesados);
 
@@ -41,6 +41,8 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
     const [valoracion, setValoracion] = useState('');
 
     const [originalData, setOriginalData] = useState(null);
+    const labelText = esPrograma ? "Componente" : "Compañía / Clasificación";
+    const placeholderText = esPrograma ? "Ingrese el componente" : "Ingrese la compañía o clasificación";
 
     // Cargar interesados al montar el componente
     useEffect(() => {
@@ -340,13 +342,12 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
             <div className="row">
                 <div className="col-md-6">
                     <Form.Group controlId="companiaClasificacion">
-                        <Form.Label>Compañía / Clasificación</Form.Label>
+                        <Form.Label>{labelText}</Form.Label>
                         <Form.Control
                             type="text"
-                            placeholder="Ingrese la compañía o clasificación"
+                            placeholder={placeholderText}
                             value={companiaClasificacion}
                             onChange={e => setCompaniaClasificacion(e.target.value)}
-                            readOnly={!isEditable}
                         />
                     </Form.Group>
                 </div>
@@ -497,7 +498,7 @@ export const Interesado = ({ props, setToDos, Interesadoid, tareas, toDo, enable
             </div>
 
                 <Form.Group controlId="expectativasProyecto">
-                    <h5>Expectativas sobre el Proyecto</h5>
+                    <h5>Expectativas sobre el {esPrograma? "Componente" : "Proyecto"}</h5>
                     <Form.Label>Expectativas del Proyecto</Form.Label>
                     <Form.Control
                         as="textarea"

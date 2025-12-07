@@ -30,7 +30,7 @@ const InputHitosList = ({
 
     return (
         <div>
-            <Form.Group controlId="plazoProyecto">
+            {/*<Form.Group controlId="plazoProyecto">
                 <Form.Label>Duración de Proyecto: {showDuration(tiempoDuracion)}</Form.Label>
                 <Form.Control
                     disabled={!editMode}
@@ -42,7 +42,7 @@ const InputHitosList = ({
                     min={1}
                     max={365 * 5}
                 />
-            </Form.Group>
+            </Form.Group>*/}
 
             <Form.Group controlId="fechas-criticas">
                 <Form.Label>Fechas Críticas</Form.Label>

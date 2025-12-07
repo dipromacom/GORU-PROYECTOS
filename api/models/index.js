@@ -40,7 +40,8 @@ const models = {
   KanbanTask: require('./kanbanTask')(db, Sequelize),
   GanttTask: require('./ganttTask')(db, Sequelize),
   Whiteboard: require('./whiteboard')(db, Sequelize),
-  RespuestaAnalisis: require('./resultado-analisis') (db, Sequelize)
+  RespuestaAnalisis: require('./resultado-analisis') (db, Sequelize),
+  Log: require('./log')(db, Sequelize),
 };
 
 Object.keys(models).forEach((modelKey) => {

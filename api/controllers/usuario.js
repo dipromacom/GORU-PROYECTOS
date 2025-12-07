@@ -3,6 +3,7 @@ const path = require('path');
 const UsuarioUtils = require('../utils/usuario-utils');
 const PersonaUtils = require('../utils/persona-utils');
 const SecurityUtils = require('../utils/security-utils');
+const { saveLog } = require('../utils/log-service');
 
 const logger = require('../logger/logger');
 
@@ -77,9 +78,24 @@ const generateToken = async (req, res) => {
       usuario = await UsuarioUtils.createUsuario({ username: email, clave, awsId });
 
       usuario = await UsuarioUtils.getUsuarioById(usuario.id);
+      actionType = 'USER_CREATED_VIA_SSO';
+    } else if (awsId) {
+      actionType = 'USER_LOGIN_SSO'; // Si existe y usa AWS, es un login SSO
     }
+
     const page = UsuarioUtils.getOnbStep(usuario);
     const jwtToken = await SecurityUtils.generateToken(usuario);
+
+    await saveLog({
+      userId: usuario.id,
+      actionType: actionType, // USER_LOGIN_EMAIL, USER_LOGIN_SSO, o USER_CREATED_VIA_SSO
+      resourceType: 'Usuario',
+      resourceId: usuario.id,
+      details: {
+        email: usuario.username,
+        ip: req.ip // Opcional: Si tu entorno expone la IP del cliente en req.ip
+      }
+    });
 
     usuario = usuario.get({ plain: true });
     delete usuario.clave;
@@ -128,11 +144,25 @@ const updatePersonaProfile = async (req, res) => {
     const usuario = await UsuarioUtils.getUsuarioById(id);
     let persona = await usuario.getPersona();
 
+    const action = persona == null ? 'PROFILE_CREATED' : 'PROFILE_UPDATED';
+
     if (persona == null) {
       persona = await PersonaUtils.createPersonaProfile(usuario, body);
     } else {
       persona = await PersonaUtils.updatePersonaProfile(usuario, persona, body);
-    }
+
+      await saveLog({
+        userId: parseInt(id, 10),
+        actionType: action,
+        resourceType: 'Persona',
+        resourceId: persona.id,
+        details: {
+          // Registramos los campos que llegaron en el body como indicio de lo actualizado
+          fields: Object.keys(body),
+        }
+      });
+    }   
+
     persona = await PersonaUtils.getPersonaById(persona.id);
     return res.status(200).json({ success: true, data: persona });
   } catch (error) {
@@ -203,6 +233,8 @@ const updateUsuarioRol = async (req, res) => {
   const { id } = req.params; // ID del usuario a modificar
   const { rolId } = req.body; // Nuevo ID del rol
 
+  const adminUserId = req.user.id;
+
   try {
     if (!rolId) {
       return res.status(400).json({ success: false, message: 'El rolId es obligatorio.' });
@@ -216,7 +248,7 @@ const updateUsuarioRol = async (req, res) => {
       return res.status(400).json({ success: false, message: 'IDs de usuario y rol deben ser números válidos.' });
     }
 
-    const updatedUsuario = await UsuarioUtils.updateUsuarioRol(userId, newRolId);
+    const updatedUsuario = await UsuarioUtils.updateUsuarioRol(userId, newRolId, adminUserId);
 
     // Formatear el objeto para la respuesta
     const usuarioData = updatedUsuario.get({ plain: true });

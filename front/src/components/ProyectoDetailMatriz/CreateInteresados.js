@@ -9,7 +9,7 @@ import './matrizComponents.css';
 import TodoListForm from '../todoList/TodoListForm';
 import ViewInteresados from './ViewInteresados';
 
-export const CreateInteresados = ({ onNavigate, nombreinteresado, codInteresado, SetInteresado,  }) => {
+export const CreateInteresados = ({ onNavigate, nombreinteresado, codInteresado, SetInteresado, esPrograma }) => {
     const dispatch = useDispatch();
     const routeParams = useParams();
 
@@ -52,6 +52,9 @@ export const CreateInteresados = ({ onNavigate, nombreinteresado, codInteresado,
     const [fechaInicioAccion, setFechaInicioAccion] = useState('');
     const [verInteresados, setVerInteresados] = useState(false);
     const [mostrarInteresados, setMostrarInteresados] = useState(false); 
+
+    const labelText = esPrograma ? "Componente" : "Compañía / Clasificación";
+    const placeholderText = esPrograma ? "Ingrese el componente" : "Ingrese la compañía o clasificación";
 
 
     useEffect(() => {
@@ -351,10 +354,10 @@ export const CreateInteresados = ({ onNavigate, nombreinteresado, codInteresado,
                 <div className="row">
                     <div className="col-md-6">
                         <Form.Group controlId="companiaClasificacion">
-                            <Form.Label>Compañía / Clasificación</Form.Label>
-                            <Form.Control
+                            <Form.Label>{labelText}</Form.Label>
+                           <Form.Control
                                 type="text"
-                                placeholder="Ingrese la compañía o clasificación"
+                                placeholder={placeholderText}
                                 value={companiaClasificacion}
                                 onChange={e => setCompaniaClasificacion(e.target.value)}
                             />
@@ -499,7 +502,7 @@ export const CreateInteresados = ({ onNavigate, nombreinteresado, codInteresado,
 
                 {/* Expectativas sobre el Proyecto */}
                 <Form.Group controlId="expectativasProyecto">
-                    <h5>Expectativas sobre el Proyecto</h5>
+                    <h5>Expectativas sobre el {esPrograma? "Componente" : "Proyecto"}</h5>
                     <Form.Label>Expectativas del Proyecto</Form.Label>
                     <Form.Control
                         as="textarea"

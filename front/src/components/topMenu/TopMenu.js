@@ -36,15 +36,22 @@ function TopMenu({ dispatch, persona, user }) {
 
   useEffect(() => {
     if (isProfileMenuClicked) {
-      // Add the event listener when the div is visible
-      document.addEventListener('click', handleClickOutside);
+      const timer = setTimeout(() => {
+        document.addEventListener('click', handleClickOutside);
+      }, 0); // 0ms de retraso es suficiente para diferir la ejecución
+
+      return () => {
+        clearTimeout(timer); // Limpia el timer si el componente se desmonta antes de que se ejecute
+        document.removeEventListener('click', handleClickOutside);
+      };
+
     } else {
-      // Clean up the event listener
+      // Limpia el event listener
       document.removeEventListener('click', handleClickOutside);
     }
 
     return () => {
-      // Cleanup the event listener on component unmount
+      // Cleanup del unmount
       document.removeEventListener('click', handleClickOutside);
     };
   }, [isProfileMenuClicked]);

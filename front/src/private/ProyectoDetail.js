@@ -60,6 +60,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     // const [interesado, setInteresado] = useState([]);
     const [taskFilter, setTaskFilter] = useState("");
     const esActividad = projectDetail?.modo === "A";
+    const esPrograma= projectDetail?.modo === "PR";
+    const esProyecto = projectDetail?.modo === "P";
+    const mostrarPestanasEstandar = esProyecto || esPrograma; // Muestra todas las pestañas excepto las restringidas para PR
+    const ocultarAnalisisAmbientalCalidadPizarra = esActividad || esPrograma;
+
     const cerrado = projectDetail?.estado === "E";
     const iniciado = projectDetail?.estado === "S";
     const planificado = projectDetail?.estado === "P";
@@ -649,20 +654,28 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             {(planificado || ejecutado || cerrado) && (
                                 <>
                                     <Nav.Item><Nav.Link eventKey="Matriz-Interesados">Interesados</Nav.Link></Nav.Item>
-                                    {!esActividad && (
+                                    {(!esActividad && !esPrograma) && (
+                                        <Nav.Item><Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link></Nav.Item>
+                                    )}
+                                    {mostrarPestanasEstandar && (
                                         <>
-                                            <Nav.Item><Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link></Nav.Item>
                                             <Nav.Item><Nav.Link eventKey="alcance">Alcance</Nav.Link></Nav.Item>
                                             <Nav.Item><Nav.Link eventKey="hitos">Hitos</Nav.Link></Nav.Item>
                                             <Nav.Item><Nav.Link eventKey="costos">Costos</Nav.Link></Nav.Item>
-                                            <Nav.Item><Nav.Link eventKey="calidad">Calidad</Nav.Link></Nav.Item>
-                                            <Nav.Item><Nav.Link eventKey="riesgos">Riesgos</Nav.Link></Nav.Item>
                                         </>
                                     )}
-                                    <Nav.Item><Nav.Link eventKey="gantt">Gantt</Nav.Link></Nav.Item>
+                                    {(!esActividad && !esPrograma) && (
+                                        <Nav.Item><Nav.Link eventKey="calidad">Calidad</Nav.Link></Nav.Item>
+                                    )}
+                                    {mostrarPestanasEstandar && (
+                                        <Nav.Item><Nav.Link eventKey="riesgos">Riesgos</Nav.Link></Nav.Item>
+                                    )}
+                                    <Nav.Item><Nav.Link eventKey="gantt">{esPrograma? "Roadmap" : "Gantt"}</Nav.Link></Nav.Item>
                                     <Nav.Item><Nav.Link eventKey="to-do" >To Do</Nav.Link></Nav.Item>
                                     <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
-                                    <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
+                                    {(!esActividad && !esPrograma) && (
+                                        <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
+                                    )}
                                 </>
                             )}
                             {(cerrado) && (
@@ -679,7 +692,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                     <Tab.Content>
                         <Tab.Pane eventKey="general"><Form className="blue" >
                             <Form.Group controlId="proyecto">
-                                <Form.Label>{esActividad ? "Proyecto Personal" : "Proyecto Equipo"}</Form.Label>
+                                <Form.Label>{esActividad ? "Proyecto Personal" : esPrograma ? "Nombre del Programa" : "Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     disabled={!editMode}
                                     autoComplete="off"
@@ -689,7 +702,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 />
                             </Form.Group>
                             <Form.Group controlId="directorProyecto">
-                                <Form.Label>{esActividad ? "Director del Proyecto Personal" : "Director del Proyecto Equipo"}</Form.Label>
+                                <Form.Label>{esActividad ? "Director del Proyecto Personal" : esPrograma ? "Director del Programa" : "Director del Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     disabled={!editMode}
                                     autoComplete="off"
@@ -700,7 +713,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             </Form.Group>
 
                             <Form.Group controlId="patrocinadorProyecto">
-                                <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : "Patrocinador del Proyecto Equipo"}</Form.Label>
+                                <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : esPrograma ? "Patrocinador del Programa" : "Patrocinador del Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     disabled={!editMode}
                                     autoComplete="off"
@@ -734,22 +747,23 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 />
                             </Form.Group>
 
-                            <Form.Group controlId="tipoProyecto">
-                                <Form.Label>{esActividad ? "Tipo del Proyecto Personal" : "Tipo de Proyecto Equipo"}</Form.Label>
-                                <Form.Control
-                                    disabled={!editMode}
-                                    as="select"
-                                    className="form-select"
-                                    value={tipoProyecto}
-                                    onChange={(e) => { setTipoProyecto(e.target.value)}}
-                                >
-                                    <option value="">Elija el tipo de {esActividad ? "Proyecto Personal" : "Proyecto Equipo"}...</option>
-                                    {tipoProyectoList.map(tipo => (
-                                        <option value={tipo.id}>{tipo.nombre}</option>
-                                    ))}
-                                </Form.Control>
-                            </Form.Group>
-
+                            {!esPrograma && (
+                                <Form.Group controlId="tipoProyecto">
+                                    <Form.Label>{esActividad ? "Tipo de Proyecto Personal" : esPrograma ? "Tipo de Programa" : "Tipo de Proyecto Equipo"}</Form.Label>
+                                    <Form.Control
+                                        disabled={!editMode}
+                                        as="select"
+                                        className="form-select"
+                                        value={tipoProyecto}
+                                        onChange={(e) => { setTipoProyecto(e.target.value)}}
+                                    >
+                                        <option value="">Elija el tipo de {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"}...</option>
+                                        {tipoProyectoList.map(tipo => (
+                                            <option value={tipo.id}>{tipo.nombre}</option>
+                                        ))}
+                                    </Form.Control>
+                                </Form.Group>
+                            )}
                             {ejecutado && (
                                 <div className="summary-section">
                                     <hr className="mb-4" />
@@ -763,16 +777,16 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         {!esActividad && (
                                             <>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="Indice de Alcance" value={resumenEjecucion.alcance} />
+                                                    <SummaryChart type="Avance de Alcance" value={resumenEjecucion.alcance} />
                                                 </Col>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="Indice de Hitos" value={resumenEjecucion.hitos} />
+                                                    <SummaryChart type="Avance de Hitos" value={resumenEjecucion.hitos} />
                                                 </Col>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
                                                     <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
                                                 </Col>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="Indice de Calidad" value={resumenEjecucion.calidad} />
+                                                    <SummaryChart type="Avance de Calidad" value={resumenEjecucion.calidad} />
                                                 </Col>
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
                                                     <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
@@ -818,13 +832,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             <Row>
                                 <Col>
                                     <Form.Group>
-                                        <Form.Label>Director del Proyecto</Form.Label>
+                                        <Form.Label>{esActividad ? "Director del Proyecto Personal" : esPrograma ? "Director del Programa" : "Director del Proyecto Equipo"}</Form.Label>
                                         <Form.Control type="text" value={directorProyecto} disabled />
                                     </Form.Group>
                                 </Col>
                                 <Col>
                                     <Form.Group>
-                                        <Form.Label>Patrocinador del Proyecto</Form.Label>
+                                        <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : esPrograma ? "Patrocinador del Programa" : "Patrocinador del Proyecto Equipo"}</Form.Label>
                                         <Form.Control type="text" value={patrocinadorProyecto} disabled />
                                     </Form.Group>
                                 </Col>
@@ -836,12 +850,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         <GoogleDocInputCheckerComponent link={documentacionAdjunta} setLink={setDocumentacionAdjunta} disabled={!editMode} />
                                     </Form.Group>
                                 </Col>
-                                <Col>
-                                    <Form.Group>
-                                        <Form.Label>Contrato</Form.Label>
-                                        <GoogleDocInputCheckerComponent link={contrato} setLink={setContrato} disabled={!editMode} />
-                                    </Form.Group>
-                                </Col>
+                                {!esPrograma && (
+                                    <Col>
+                                        <Form.Group>
+                                            <Form.Label>Contrato</Form.Label>
+                                            <GoogleDocInputCheckerComponent link={contrato} setLink={setContrato} disabled={!editMode} />
+                                        </Form.Group>
+                                    </Col>
+                                )}
                             </Row>
                             <Row>
                                 <Col>
@@ -850,12 +866,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         <GoogleDocInputCheckerComponent link={casoNegocio} setLink={setCasoNegocio} disabled={!editMode} />
                                     </Form.Group>
                                 </Col>
-                                <Col>
-                                    <Form.Group>
-                                        <Form.Label>Enunciado trabajo</Form.Label>
-                                        <GoogleDocInputCheckerComponent link={enunciadoTrabajo} setLink={setEnunciadoTrabajo} disabled={!editMode} />
-                                    </Form.Group>
-                                </Col>
+                                {!esPrograma && (
+                                    <Col>
+                                        <Form.Group>
+                                            <Form.Label>Enunciado trabajo</Form.Label>
+                                            <GoogleDocInputCheckerComponent link={enunciadoTrabajo} setLink={setEnunciadoTrabajo} disabled={!editMode} />
+                                        </Form.Group>
+                                    </Col>
+                                )}
                             </Row>
                             {/*<Form.Group controlId="portafolio">
                                 <Form.Label>Portafolio</Form.Label>
@@ -869,7 +887,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 />
                             </Form.Group>*/}
                             <Form.Group controlId="programa">
-                                <Form.Label>Programa</Form.Label>
+                                <Form.Label>{esPrograma ? "Portafolio" : "Programa"}</Form.Label>
                                 <Form.Control
                                     disabled={!editMode}
                                     autoFocus
@@ -887,7 +905,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             <Collapse in={openPrimeraParte} >
                                 <div>
                                     <Form.Group controlId="justificacion">
-                                        <Form.Label>{esActividad ? "Justificación del Proyecto Personal" : "Justificación del Proyecto Equipo"}</Form.Label>
+                                        <Form.Label>{esActividad ? "Justificación del Proyecto Personal" : esPrograma ? "Justificación del Programa" : "Justificación del Proyecto Equipo"}</Form.Label>
                                         <Form.Control
                                             disabled={!editMode}
                                             autoFocus
@@ -899,7 +917,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         />
                                     </Form.Group>
                                     <Form.Group controlId="descripcion">
-                                        <Form.Label>{esActividad ? "Descripción del Proyecto Personal" : "Descripción del Proyecto Equipo"}</Form.Label>
+                                        <Form.Label>{esActividad ? "Descripción del Proyecto Personal" : esPrograma ? "Descripción del Programa" : "Descripción del Proyecto Equipo"}</Form.Label>
                                         <Form.Control
                                             disabled={!editMode}
                                             autoFocus
@@ -910,31 +928,33 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             onChange={e => setDescripcion(e.target.value)}
                                         />
                                     </Form.Group>
-                                    <Form.Group controlId="analisisViabilidad">
-                                        <Form.Label>Análisis previo de viabilidad / Caso de Negocio / Criterios de negocio</Form.Label>
-                                        <Form.Control
-                                            disabled={!editMode}
-                                            autoFocus
-                                            autoComplete="off"
-                                            type="text"
-                                            as="textarea"
-                                            value={analisisViabilidad}
-                                            onChange={e => setAnalisisViabilidad(e.target.value)}
-                                        />
-                                    </Form.Group>
+                                    {!esPrograma && (
+                                        <Form.Group controlId="analisisViabilidad">
+                                            <Form.Label>Análisis previo de viabilidad / Caso de Negocio / Criterios de negocio</Form.Label>
+                                            <Form.Control
+                                                disabled={!editMode}
+                                                autoFocus
+                                                autoComplete="off"
+                                                type="text"
+                                                as="textarea"
+                                                value={analisisViabilidad}
+                                                onChange={e => setAnalisisViabilidad(e.target.value)}
+                                            />
+                                        </Form.Group>
+                                    )}
                                 </div>
                             </Collapse>
                             <h2
                                 onClick={() => setOpenSegundaParte(!openSegundaParte)}
                                 aria-controls="segunda-parte-expand"
                                 aria-expanded={openSegundaParte}
-                            >{esActividad ? "Objetivos de la Actividad" : "Objetivos del Proyecto"} <span className={`bi ${openSegundaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
+                            >{esActividad ? "Objetivos de la Actividad" : esPrograma ? "Objetivos del Programa" : "Objetivos del Proyecto"} <span className={`bi ${openSegundaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
                             <Collapse in={openSegundaParte} >
                                 <div>
                                     <Row>
                                         <Col>
                                             <Form.Group controlId="objetivoDescripcion">
-                                                <Form.Label>Objetivos {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
+                                                <Form.Label>Objetivos {esActividad ? "del Proyecto Personal" : esPrograma ? "del Programa" : "del Proyecto Equipo"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
                                                 <Form.Control
                                                     disabled={!editMode}
                                                     autoFocus
@@ -1021,11 +1041,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 onClick={() => setOpenQuintaParte(!openQuintaParte)}
                                 aria-controls="quinta-parte-expand"
                                 aria-expanded={openQuintaParte}
-                            >Alcance <span className={`bi ${openQuintaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
+                            >Alcance {esPrograma && "General"} <span className={`bi ${openQuintaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
                             <Collapse in={openQuintaParte} >
                                 <div>
                                     <Form.Group controlId="recursosRequeridos">
-                                        <Form.Label>Recuros Requeridos</Form.Label>
+                                        <Form.Label>Recuros Requeridos {esPrograma && "General"}</Form.Label>
                                         <Form.Control
                                             disabled={!editMode}
                                             autoFocus
@@ -1037,7 +1057,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         />
                                     </Form.Group>
                                     <Form.Group controlId="supuestos">
-                                        <Form.Label>Supuestos</Form.Label>
+                                        <Form.Label>Supuestos {esPrograma && "General"}</Form.Label>
                                         <Form.Control
                                             disabled={!editMode}
                                             autoFocus
@@ -1049,7 +1069,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         />
                                     </Form.Group>
                                     <Form.Group controlId="restricciones">
-                                        <Form.Label>Restricciones</Form.Label>
+                                        <Form.Label>Restricciones {esPrograma && "General"}</Form.Label>
                                         <Form.Control
                                             disabled={!editMode}
                                             autoFocus
@@ -1066,7 +1086,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 onClick={() => setOpenSextaParte(!openSextaParte)}
                                 aria-controls="quinta-parte-expand"
                                 aria-expanded={openSextaParte}
-                            >Nivel De Autoridad Y Decisión Del Director De {esActividad ? "Proyecto Personal" : "Proyecto Equipo"} 
+                            >Nivel De Autoridad Y Decisión Del Director De {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"} 
 
                                 <span className={`bi ${openSextaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
                             <Collapse in={openSextaParte} >
@@ -1216,10 +1236,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                         </Tab.Pane>
                         <Tab.Pane eventKey="Matriz-Interesados">
-                            <ViewInteresados interesados={interesado} toDo={todo} markAsDoneCallback={id => doneTask(id)} cerrado={cerrado} />
+                            <ViewInteresados interesados={interesado} toDo={todo} markAsDoneCallback={id => doneTask(id)} cerrado={cerrado} esPrograma={esPrograma} />
                         </Tab.Pane>
                         <Tab.Pane eventKey="Crear-Interesado">
-                            <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} />
+                            <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} esPrograma={esPrograma}/>
                         </Tab.Pane>
                         <Tab.Pane eventKey="to-do">
 
@@ -1263,6 +1283,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 editMode={editMode}
                                 ejecutado={ejecutado}
                                 onSummaryChange={setPorcentajeCompletado}
+                                esPrograma={esPrograma}
                             />
                             <div className="mt-5 pb-5">
                                 {

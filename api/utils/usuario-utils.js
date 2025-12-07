@@ -9,6 +9,7 @@ const {
   Proyecto, Menu, ContactoTelefonico, Direccion, TipoTelefono,
   TipoDireccion, Ciudad, Rol, Permiso,
 } = require('../models/index');
+const { saveLog } = require('./log-service');
 
 const logger = require('../logger/logger');
 
@@ -154,6 +155,17 @@ const createUsuario = async (data) => {
       rol_id: rol_id,
     });
 
+    await saveLog({
+      userId: usuario.id, // El ID del usuario que fue creado
+      actionType: 'USER_CREATED',
+      resourceType: 'Usuario',
+      resourceId: usuario.id,
+      details: {
+        email: usuario.username,
+        rol_id: usuario.rol_id
+      }
+    });
+
     return usuario;
   } catch (error) {
     logger.error({
@@ -251,6 +263,17 @@ const updatePassword = async (usuario, password) => {
   try {
     const hashedPassword = bcrypt.hashSync(password, Number(process.env.SALT_ROUNDS));
     await usuario.update({ clave: hashedPassword });
+
+    await saveLog({
+      userId: usuario.id,
+      actionType: 'PASSWORD_UPDATED',
+      resourceType: 'Usuario',
+      resourceId: usuario.id,
+      details: {
+        message: `Contraseña de usuario ${usuario.username} cambiada.`
+      }
+    });
+    
     return usuario;
   } catch (error) {
     logger.error({
@@ -287,6 +310,19 @@ const updateUsuarioRol = async (userId, rolId) => {
 
     // Actualizar el rol_id
     await usuario.update({ rol_id: rolId });
+
+    await saveLog({
+      userId: userId, // Usuario afectado. Mejorar si tienes el ID del admin.
+      actionType: 'USER_ROL_UPDATED',
+      resourceType: 'Usuario',
+      resourceId: userId,
+      details: {
+        rol_id: {
+          old: oldRolId,
+          new: rolId
+        }
+      }
+    });
 
     // Obtener el usuario completo con las nuevas asociaciones (rol y permisos) para la respuesta
     const updatedUsuario = await getUsuarioById(userId);

@@ -68,7 +68,10 @@ export default function Routes() {
       <Desktop exact path="/activities" component={Proyectos} />
       <Desktop exact path="/activities/new" component={ProyectoNew} />
       <Desktop exact path="/activities/:id" component={ProyectoDetail} />
-      <Desktop exact path="/programs" component={Programas} />
+      <Desktop exact path="/programs" component={Proyectos} />
+      <Desktop exact path="/programs/new" component={ProyectoNew} />
+      <Desktop exact path="/programs/:id" component={ProyectoDetail} />
+      {/*<Desktop exact path="/programs" component={Programas} />*/}
       <Desktop exact path="/portfolios" component={Portafolios} />
       <Desktop exact path="/batch" component={Batch} />
       <Desktop exact path="/priorization/result" component={PriorizacionResultados} />

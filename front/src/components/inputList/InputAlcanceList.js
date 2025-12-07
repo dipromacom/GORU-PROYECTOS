@@ -23,7 +23,7 @@ const transformToNewFormat = (alcanceEntregables) => {
     }));
 };
 
-const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode, ejecutado, onSummaryChange = () => { } }) => {
+const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode, ejecutado, onSummaryChange = () => { }, esPrograma }) => {
 
     const totalAlcances = alcanceEntregables?.length || 0;
     const completados = (isNewFormat(alcanceEntregables) ? alcanceEntregables.filter(a => a.completado).length : 0);
@@ -53,7 +53,7 @@ const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode,
     if (ejecutado && isNewFormat(alcanceEntregables)) {
         return (
             <div className="alcance-container">
-                <h3>Alcance del Proyecto</h3>
+                <h3>Alcance del {esPrograma? "Componente" : "Proyecto"}</h3>
                 <div className="mb-3">
                     <Form.Label>Progreso de Entregables: <span className="fw-bold">{porcentajeCompletado}%</span></Form.Label><br></br>
                     <Form.Label><span className="fw-bold">Fórmula: (entregables_finalizados / total_entregables) * 100 </span></Form.Label>
@@ -71,7 +71,7 @@ const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode,
 
     return (
         <div className="alcance-container">
-            <h3>Alcance del Proyecto</h3>
+            <h3>Alcance del {esPrograma ? "Componente" : "Proyecto"}</h3>
             <Form.Group controlId="principales-entregables">
                 <Form.Label>Principales Entregables</Form.Label>
                 <InputTextList

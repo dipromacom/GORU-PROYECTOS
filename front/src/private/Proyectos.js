@@ -29,6 +29,23 @@ import Modal from "react-bootstrap/Modal";
 
 
 function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, dateFilterInput, filtersExpanded }) {
+
+  const MODO_CONFIG = {
+    "/activities": { modo: "A", isDemoRestricted: false, newLabel: "Nuevo Proyecto Personal", title: "Proyectos Personales" },
+    "/projects": { modo: "P", isDemoRestricted: true, newLabel: "Nuevo Proyecto Equipo", title: "Proyectos Equipo" },
+    "/programs": { modo: "PR", isDemoRestricted: true, newLabel: "Nuevo Programa", title: "Programas Equipo" }, // ¡Nuevo modo agregado!
+  };
+
+  const getCurrentMode = () => {
+    const currentPath = location.pathname;
+    for (const pathKey in MODO_CONFIG) {
+      if (currentPath.includes(pathKey)) {
+        return MODO_CONFIG[pathKey].modo;
+      }
+    }
+    return "P"; // Modo por defecto
+  };
+
   const location = useLocation()
   const [nombreProyecto, setNombreProyecto] = useState("");
   const [responsable, setResponsable] = useState("");
@@ -38,6 +55,17 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   const [selectedProject, setSelectedProject] = useState(null);
   const [fechaCierre, setFechaCierre] = useState(moment().format("YYYY-MM-DD"));
   const [demo, setDemo] = useState(false)
+
+  const currentConfig = useMemo(() => {
+    const currentPath = location.pathname;
+
+    for (const pathKey in MODO_CONFIG) {
+      if (currentPath.includes(pathKey)) {
+        return MODO_CONFIG[pathKey];
+      }
+    }
+    return MODO_CONFIG['/projects'];
+  }, [location.pathname]);
 
   const getFilter = () => {
     const searchParams = new URLSearchParams(location.search);
@@ -55,15 +83,24 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
       }
       try {
         let queryParams = getFilter();
-        if (location.pathname.includes("/activities")) {
-          queryParams = { ...queryParams, modo: "A" };
+        const currentPath = location.pathname;
+        const demoMode = localStorage.getItem("modo") === "Demo";
+
+        let foundConfig = null;
+        for (const pathKey in MODO_CONFIG) {
+          if (currentPath.includes(pathKey)) {
+            foundConfig = MODO_CONFIG[pathKey];
+            break; // Salimos tan pronto como encontramos una coincidencia
+          }
         }
-        else if (location.pathname.includes("/projects")) {
-          queryParams = { ...queryParams, modo: "P" };
-          if (localStorage.getItem("modo") === "Demo") {
-            //dispatch(routesActions.goTo(`membership`));
+
+        if (foundConfig) {
+          queryParams = { ...queryParams, modo: foundConfig.modo };
+          if (demoMode && foundConfig.isDemoRestricted) {
             setDemo(true);
           }
+        } else {
+          dispatch(routesActions.goTo("Membership"))
         }
 
 
@@ -86,9 +123,14 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   }, [location])
 
   const handleClickNewProyect = () => {
-    let modo = "P";
-    if (location.pathname.includes("/activities")) modo = "A"
-    else modo = "P"
+    const currentPath = location.pathname;
+    let modo = "P"; // Valor por defecto
+    for (const pathKey in MODO_CONFIG) {
+      if (currentPath.includes(pathKey)) {
+        modo = MODO_CONFIG[pathKey].modo;
+        break;
+      }
+    }
     dispatch(routesActions.goTo(`projects/new?modo=${modo}`));
   }
 
@@ -109,10 +151,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   };
 
   const handleConfirmCerrarProyecto = () => {
-    let modo = "P"
-    if (location.pathname.includes("/activities")) {
-      modo = "A"
-    }
+    const modo = getCurrentMode();
     // NOTA: Se ha quitado el uso de alert() por una función que retorna error en consola.
     if (!selectedProject) return;
 
@@ -128,10 +167,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   };
 
   const handleConfirmCambiarEstadoProyecto = (id, estado) => {
-    let modo = "P"
-    if (location.pathname.includes("/activities")) {
-      modo = "A"
-    }
+    const modo = getCurrentMode();
     console.log("entro la balubi")
     dispatch(actions.statusProject(id, modo, estado));
     setShowCerrarModal(false);
@@ -345,10 +381,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
                     // NOTA: Se ha quitado el uso de window.confirm() por un modal personalizado o lógica de UI para confirmación.
                     // Manteniendo el patrón de confirmación existente:
                     const confirmResult = window.confirm("¿Está seguro de dar inicio al proyecto?");
-                    let modo = "P";
-                    if (location.pathname.includes("/activities")) {
-                      modo = "A";
-                    }
+                    const modo = getCurrentMode();
                     if (confirmResult) {
                       dispatch(actions.startProject(proyecto.id, modo, false));
                     }
@@ -391,10 +424,19 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
     setResponsable("")
     setEstado("")
     dispatch(actions.handleClearDateFilter())
+    if (location.pathname.includes("/projects")) {
+      dispatch(routesActions.goTo(`projects`))
+    }
+    else if (location.pathname.includes("/activities")) {
+      dispatch(routesActions.goTo(`activities`))
+    }
+    else if (location.pathname.includes("/programs")) {
+      dispatch(routesActions.goTo(`programs`))
+    }
   }
 
   function handleApplyFilter(e) {
-    e.preventDefault();
+    if(e!="") e.preventDefault();
     //const search = getFilter()?.toString()?? ''
     let search = {}
     if (nombreProyecto || null)
@@ -412,6 +454,9 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
     else if (location.pathname.includes("/activities")) {
       dispatch(routesActions.goTo(`activities?${searchUrl.toString()}`))
     }
+    else if (location.pathname.includes("/programs")) {
+      dispatch(routesActions.goTo(`programs?${searchUrl.toString()}`))
+    }
     //dispatch(actions.getProjectsByFilter(getFilter()))
 
   }
@@ -426,7 +471,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
 
   return (
     <div className="page-menu-container">
-      {demo && location.pathname.includes("/projects") ? (
+      {demo && currentConfig.isDemoRestricted ? (
         <>
           <br /><br /><br /><br />
           <div className="center">
@@ -437,12 +482,11 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
         (
           <>
             <SubMenu
-              title={location.pathname.includes("/activities") ? "Proyectos Personales" : "Proyectos Equipo"}
-              newLabel={location.pathname.includes("/activities") ? "Nuevo Proyecto Personal" : "Nuevo Proyecto Equipo"}
+              title={currentConfig.title}
+              newLabel={currentConfig.newLabel}
               total={projectList.length}
               newButtonAction={() => handleClickNewProyect()}
-            //DashboardButtonAction={() => handleClickDashboard()}
-          />
+            />
 
           {/* <SubMenu
             title="Dashboard"
@@ -587,7 +631,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
 
             <Modal show={showCerrarModal} onHide={handleCloseCerrarModal}>
               <Modal.Header closeButton>
-                <Modal.Title>Cerrar {location.pathname.includes("/activities") ? "Actividad" : "Proyecto"}</Modal.Title>
+                <Modal.Title>Cerrar {getCurrentMode() === "A" ? "Actividad" : (getCurrentMode() === "PR" ? "Programa" : "Proyecto")}</Modal.Title>
               </Modal.Header>
               <Modal.Body>
                 <Form.Group>
