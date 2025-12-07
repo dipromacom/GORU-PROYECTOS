@@ -50,6 +50,15 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
         </div>
     );
 
+    const formatCurrency = (number) => {
+        if (isNaN(number) || number === null || number === undefined) return '0.00';
+
+        return new Intl.NumberFormat('es-EC', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(parseFloat(number));
+    };
+
     // Función para renderizar una fila de costo
     const renderCostRow = (item, index) => (
         <ListGroup.Item className='d-flex p-2' key={index}> {/* d-flex para la distribución */}
@@ -109,7 +118,7 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
                     <Form.Control
                         className='input-cost-list'
                         type="text"
-                        value={totalCostoEstimado}
+                        value={formatCurrency(totalCostoEstimado)}
                         plaintext
                         readOnly
                     />
@@ -126,7 +135,7 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
                         <Form.Control
                             className='input-cost-list'
                             type="text"
-                            value={totalCostoReal}
+                            value={formatCurrency(totalCostoReal)}
                             plaintext
                             readOnly
                         />

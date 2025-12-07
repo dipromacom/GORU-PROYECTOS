@@ -119,7 +119,7 @@ const CostDeviation = ({ deviation }) => {
 
     // 2. Determinar los colores y el mensaje
     let color = INFO_COLOR;      // Azul por defecto
-    let title = 'Indice de Costos';
+    let title = 'Avance de Costos';
     let centerText = `${numDeviation.toFixed(2)}%`; // Muestra el valor real en el centro
 
     if (numDeviation <= 100) {
@@ -128,7 +128,7 @@ const CostDeviation = ({ deviation }) => {
     } else {
         // Sobrepresupuesto (más del 100%)
         color = DANGER_COLOR;
-        title = 'Indice de Costos';
+        title = 'Avance de Costos';
     }
 
     const data = {

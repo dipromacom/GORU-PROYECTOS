@@ -103,6 +103,15 @@ const InputCostosList = ({
         </Row>
     );
 
+    const formatCurrency = (number) => {
+        if (isNaN(number) || number === null || number === undefined) return '0.00';
+
+        return new Intl.NumberFormat('es-EC', {
+            minimumFractionDigits: 2,
+            maximumFractionDigits: 2,
+        }).format(parseFloat(number));
+    };
+
     return (
         <div>
             <h3>Costos</h3>
@@ -153,7 +162,7 @@ const InputCostosList = ({
                             <Form.Control
                                 disabled
                                 type="text"
-                                value={presupuestoEstimadoTotal.toFixed(2)}
+                                value={formatCurrency(presupuestoEstimadoTotal.toFixed(2))}
                                 readOnly
                             />
                         </InputGroup>
@@ -174,7 +183,7 @@ const InputCostosList = ({
                                 <Form.Control
                                     disabled
                                     type="text"
-                                    value={presupuestoRealTotal.toFixed(2)}
+                                    value={formatCurrency(presupuestoRealTotal.toFixed(2))}
                                     readOnly
                                 />
                             </InputGroup>

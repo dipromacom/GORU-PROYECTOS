@@ -12,7 +12,7 @@ import { duration } from "moment";
 
 const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, onSummaryChange = () => { } }) => {
     const safeProjectId = projectId ?? null;
-
+    const [view, setView] = useState(ViewMode.Day);
     // Aseguramos que tasks sea un arreglo
     const tasks = Array.isArray(rawTasks)
         ? rawTasks
@@ -769,16 +769,53 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
 
     };
 
+    const handleViewChange = (newView) => {
+        setView(newView);
+    };
+
+    const renderZoom = () => (
+        <div className="gantt-zoom-controls"> {/* 🎯 Clase CSS clave para flotar */}
+            <button
+                className={`btn btn-sm ${view === ViewMode.Day ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => handleViewChange(ViewMode.Day)}
+                title="Vista por Día"
+            >
+                Día
+            </button>
+            <button
+                className={`btn btn-sm mx-1 ${view === ViewMode.Week ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => handleViewChange(ViewMode.Week)}
+                title="Vista por Semana"
+            >
+                Semana
+            </button>
+            <button
+                className={`btn btn-sm ${view === ViewMode.Month ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => handleViewChange(ViewMode.Month)}
+                title="Vista por Mes"
+            >
+                Mes
+            </button>
+            <button
+                className={`btn btn-sm ml-1 ${view === ViewMode.Year ? 'btn-primary' : 'btn-outline-secondary'}`}
+                onClick={() => handleViewChange(ViewMode.Year)}
+                title="Vista por Año"
+            >
+                Año
+            </button>
+        </div>
+    );
 
     return (
         <>
             <Row className="gantt-container">
                 <Col md={4}>{renderLeftList()}</Col>
                 <Col md={8} className="gantt-chart-wrapper">
+                    {renderZoom()}
                     {tasks.length > 0 ? (
                         <Gantt
                             tasks={ganttTasks}
-                            viewMode={ViewMode.Day}
+                            viewMode={view}
                             onDateChange={cerrado ? null : onDateChange}
                             onProgressChange={cerrado ? null : onProgressChange}
                             onClick={cerrado ? null : onTaskClick}

@@ -160,6 +160,7 @@ function* handleCreateGeneralDataProject({ payload }) {
         if (success) {
             yield put({ type: types.CREATE_PROJECT_GENERAL_DATA_SUCCESS, success })
             if(payload.modo == "P") yield put(push(`/projects`));
+            else if (payload.modo == "PR") yield put(push(`/programs`));
             else yield put(push(`/activities`));
         }
     } catch (e) {

@@ -231,12 +231,14 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
     };
     useEffect(() => {
         dispatch(tipoProyectoAction.getTipoProyecto())
+        if (esPrograma) setTipoProyecto(3);
     }, [])
 
     const location = useLocation();
     const searchParams = new URLSearchParams(location.search);
     const modo = searchParams.get("modo") || "P"; // P por defecto
     const esActividad = modo === "A";
+    const esPrograma = modo === "PR";
 
 
 
@@ -528,14 +530,16 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
         <div className="page-menu-container">
             <Tab.Container defaultActiveKey="general" >
 
-                <div className="submenu-container">
-                    <div className="title-container">
-                        <h1 className="blue">Nuevo Proyecto</h1>
+                <div className="header-wrapper">
+                    <div className="d-flex justify-content-between align-items-center flex-wrap px-4 pt-3 pb-2">
+                        <div className="title-container mb-2 mb-md-0">
+                            <h1 className="blue text-capitalize mb-0">Nuevo Proyecto</h1>
+                        </div>
                     </div>
-                    <div className="tabbed-form mx-auto">
+                    <div className="tabbed-form-responsive px-4">
                         <Nav
                             activeKey={activeKey}
-                            className="nav-tabs blue"
+                            className="nav-tabs blue nav-responsive-scroll"
                             onSelect={handleChangeTab}
                         >
                             <Nav.Item>
@@ -568,13 +572,13 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                 </div>
 
                 <div className="container">
-                    <h1 className="orange">Creación de {esActividad ? "Nuevo Proyecto Personal" : "Nuevo Proyecto Equipo"}</h1>
+                    <h1 className="orange">Creación de {esActividad ? "Nuevo Proyecto Personal" : esPrograma ? "Nuevo Programa" : "Nuevo Proyecto Equipo"}</h1>
                     <br />
                     <Tab.Content>
                         <Tab.Pane eventKey="general"><Form className="blue" >
 
                             <Form.Group controlId="proyecto">
-                                <Form.Label>{esActividad ? "Proyecto Personal" : "Proyecto Equipo"}</Form.Label>
+                                <Form.Label>{esActividad ? "Proyecto Personal" : esPrograma ? "Nombre del Programa" : "Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     autoComplete="off"
                                     type="text"
@@ -584,7 +588,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                             </Form.Group>
 
                             <Form.Group controlId="directorProyecto">
-                                <Form.Label>{esActividad ? "Director del Proyecto Personal" : "Director del Proyecto Equipo"}</Form.Label>
+                                <Form.Label>{esActividad ? "Director del Proyecto Personal" : esPrograma ? "Director del Programa" : "Director del Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     autoComplete="off"
                                     type="text"
@@ -594,7 +598,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                             </Form.Group>
 
                             <Form.Group controlId="patrocinadorProyecto">
-                                <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : "Patrocinador del Proyecto Equipo"}</Form.Label>
+                                <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : esPrograma ? "Patrocinador del Programa" : "Patrocinador del Proyecto Equipo"}</Form.Label>
                                 <Form.Control
                                     autoComplete="off"
                                     type="text"
@@ -625,20 +629,22 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                                 />
                             </Form.Group>
 
-                            <Form.Group controlId="tipoProyecto">
-                                <Form.Label>{esActividad ? "Tipo de Proyecto Personal" : "Tipo de Proyecto Equipo"}</Form.Label>
-                                <Form.Control
-                                    as="select"
-                                    className="form-select"
-                                    value={tipoProyecto}
-                                    onChange={(e) => { setTipoProyecto(e.target.value)}}
-                                >
-                                    <option value="">Elija el tipo de {esActividad ? "Proyecto Personal" : "Proyecto Equipo"}...</option>
-                                    {tipoProyectoList.map(tipo => (
-                                        <option value={tipo.id}>{tipo.nombre}</option>
-                                    ))}
-                                </Form.Control>
-                            </Form.Group>
+                            {!esPrograma && (
+                                <Form.Group controlId="tipoProyecto">
+                                    <Form.Label>{esActividad ? "Tipo de Proyecto Personal" : esPrograma ? "Tipo de Programa" : "Tipo de Proyecto Equipo"}</Form.Label>
+                                    <Form.Control
+                                        as="select"
+                                        className="form-select"
+                                        value={tipoProyecto}
+                                        onChange={(e) => { setTipoProyecto(e.target.value)}}
+                                    >
+                                        <option value="">Elija el tipo de {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"}...</option>
+                                        {tipoProyectoList.map(tipo => (
+                                            <option value={tipo.id}>{tipo.nombre}</option>
+                                        ))}
+                                    </Form.Control>
+                                </Form.Group>
+                            )}
 
                             <div className="mt-5 pb-5">
                                 <LoaderButton
@@ -717,7 +723,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                             <Collapse in={openPrimeraParte} >
                                 <div>
                                     <Form.Group controlId="justificacion">
-                                        <Form.Label>Justificación {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"}</Form.Label>
+                                        <Form.Label>Justificación {esActividad ? "del Proyecto Personal" : esPrograma ? "del Programa" : "del Proyecto Equipo"}</Form.Label>
                                         <Form.Control
                                             autoFocus
                                             autoComplete="off"
@@ -728,7 +734,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                                         />
                                     </Form.Group>
                                     <Form.Group controlId="descripcionNoDisponibilidad">
-                                        <Form.Label>Descripción {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"}</Form.Label>
+                                        <Form.Label>Descripción {esActividad ? "del Proyecto Personal" : esPrograma ? "del Programa" : "del Proyecto Equipo"}</Form.Label>
                                         <Form.Control
                                             autoFocus
                                             autoComplete="off"
@@ -755,13 +761,13 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                                 onClick={() => setOpenSegundaParte(!openSegundaParte)}
                                 aria-controls="segunda-parte-expand"
                                 aria-expanded={openSegundaParte}
-                            >Objetivos {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"}<span className={`bi ${openSegundaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
+                            >Objetivos {esActividad ? "del Proyecto Personal" : esPrograma ? "del Programa" : "del Proyecto Equipo"}<span className={`bi ${openSegundaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
                             <Collapse in={openSegundaParte} >
                                 <div>
                                     <Row>
                                         <Col>
                                             <Form.Group controlId="objetivoDescripcion">
-                                                <Form.Label>Objetivos {esActividad ? "del Proyecto Personal" : "del Proyecto Equipo"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
+                                                <Form.Label>Objetivos {esActividad ? "del Proyecto Personal" : esPrograma ? "del Programa" : "del Proyecto Equipo"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
                                                 <Form.Control
                                                     autoFocus
                                                     autoComplete="off"

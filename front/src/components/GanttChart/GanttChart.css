@@ -88,6 +88,8 @@
     max-width: 100%;
     flex: 1;
     overflow: auto;
+    position: relative;
+    padding-top: 50px;
 }
 
 /* Custom tasks */
@@ -132,6 +134,31 @@
 .gantt-task-none {
     opacity: 0.6;
     font-size: 11px;
+}
+
+/* Estilos para el contenedor de zoom (flotante) */
+.gantt-zoom-controls {
+    position: absolute;
+    /* Hace que flote sobre el contenido */
+    top: 5px;
+    /* Distancia desde la parte superior */
+    right: 5px;
+    /* Distancia desde la derecha (esquina superior derecha) */
+    z-index: 100;
+    /* Asegura que los botones estén por encima del diagrama */
+    background-color: white;
+    /* Opcional: fondo para mejorar la visibilidad */
+    border: 1px solid #ccc;
+    /* Opcional: borde ligero */
+    padding: 4px 6px;
+    border-radius: 4px;
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
+}
+
+/* Ajusta los estilos de los botones si es necesario (Bootstrap 'btn-sm' ya ayuda) */
+.gantt-zoom-controls .btn-sm {
+    padding: 0.25rem 0.5rem;
+    font-size: 0.8rem;
 }
 
 /* Responsive para móviles: lista arriba, gantt abajo */
