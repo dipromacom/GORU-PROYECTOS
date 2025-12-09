@@ -785,9 +785,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
                                                     <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
                                                 </Col>
-                                                <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="Avance de Calidad" value={resumenEjecucion.calidad} />
-                                                </Col>
+                                                {!esPrograma && (
+                                                    <Col md={4} className="d-flex justify-content-center pb-4">
+                                                        <SummaryChart type="Avance de Calidad" value={resumenEjecucion.calidad} />
+                                                    </Col>
+                                                )}
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
                                                     <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
                                                 </Col>

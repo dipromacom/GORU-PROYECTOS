@@ -13,7 +13,8 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
         if (ejecutado && costoList.length > 0) {
             const transformedList = costoList.map(item => ({
                 ...item,
-                costoReal: item.costoReal || (item.costo || '0'),
+                //costoReal: item.costoReal || (item.costo || '0'),
+                costoReal: item.costoReal || '0',
             }));
             setInputCosts(transformedList);
         } else {

@@ -85,7 +85,6 @@ function Membership({ dispatch, isLoading, user, persona }) {
       <MembershipOption
         text="Gestión Corporativa"
         value="Corporativo"
-        disabled
         onClick={handleOptionClick}
       />
     </div>

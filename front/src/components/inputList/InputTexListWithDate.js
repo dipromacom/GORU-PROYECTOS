@@ -13,7 +13,7 @@ const InputTextListWithDate = ({ list, setList, duration = 0, disabled=false }) 
     const [showAlert, setShowAlert] = useState(false)
 
 
-    const totalDuration = (date) => {
+    /*const totalDuration = (date) => {
         if (list?.length > 0) {
             const firstDateInList = list[0].date
             const duration = moment(date).diff(firstDateInList, 'days')
@@ -22,11 +22,12 @@ const InputTextListWithDate = ({ list, setList, duration = 0, disabled=false }) 
             return 0
         }
 
-    }
+    }*/
 
 
     const handleSubmit = (e) => {
         e.preventDefault()
+        /*
         if (totalDuration(date) <= duration) {
             if (!list) list =[];
             let listTemp = [...list, { description, date, completado: false }]
@@ -39,6 +40,13 @@ const InputTextListWithDate = ({ list, setList, duration = 0, disabled=false }) 
                 setShowAlert(false)
             }, 5000)
         }
+        */
+        // Nueva lógica sin restricción de duración
+        if (!list) list = [];
+        let listTemp = [...list, { description, date, completado: false }]
+        setList(listTemp.sort((a, b) => {
+            return new Date(a.date) - new Date(b.date)
+        }));
         setDescription('');
         setDate('')
     };

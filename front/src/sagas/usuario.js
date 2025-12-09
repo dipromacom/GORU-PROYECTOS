@@ -20,6 +20,10 @@ function* setMembresia({ usuarioId, value }) {
       localStorage.setItem("modo", "Demo")
       yield put(push("/activities"));
     }
+    if (value == "Corporativo") {
+      localStorage.setItem("modo", "Corporativo")
+      yield put(push("/programs"));
+    }
 
   } catch (e) {
     onError(e);

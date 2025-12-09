@@ -79,13 +79,13 @@ const Whiteboard = ({cerrado}) => {
 
 
     // === sincronización periódica con el servidor ===
-    useEffect(() => {
+    /*useEffect(() => {
         if (!projectId || !isVisible) return;
         const interval = setInterval(() => {
             dispatch(actions.sync({ projectId }));
         }, 30000); // cada 30s
         return () => clearInterval(interval);
-    }, [projectId, dispatch, isVisible]);
+    }, [projectId, dispatch, isVisible]);*/
 
 
     // initialize canvas
@@ -430,17 +430,32 @@ const Whiteboard = ({cerrado}) => {
 
     // enable drag on elements (postits & images)
     const enableDragForElement = (el) => {
-        let dragging = false;
+        let isDragging = false;
+        let isResizing = false; // 💡 Nuevo estado
         let startX = 0;
         let startY = 0;
         let origLeft = 0;
         let origTop = 0;
+        let origWidth = 0; // 💡 Nuevo
+        let origHeight = 0; // 💡 Nuevo
 
+        // Función para manejar el inicio del arrastre o redimensionamiento
         const onDown = (ev) => {
+            // Ignorar clics en TEXTAREA o DELETE BUTTON
             if (ev.target.tagName === "TEXTAREA" || ev.target.classList.contains("delete-btn")) {
                 return;
             }
-            dragging = true;
+
+            // 💡 Si el clic es en el handle, estamos redimensionando
+            if (ev.target.classList.contains("resize-handle")) {
+                isResizing = true;
+                origWidth = el.offsetWidth;
+                origHeight = el.offsetHeight;
+            } else {
+                // Si no es handle, estamos arrastrando
+                isDragging = true;
+            }
+
             startX = ev.clientX;
             startY = ev.clientY;
             origLeft = parseFloat(el.style.left || 0);
@@ -449,16 +464,43 @@ const Whiteboard = ({cerrado}) => {
             ev.preventDefault();
         };
 
+        // Función para manejar el movimiento
         const onMove = (ev) => {
-            if (!dragging) return;
+            if (!isDragging && !isResizing) return;
             const dx = ev.clientX - startX;
             const dy = ev.clientY - startY;
-            el.style.left = origLeft + dx + "px";
-            el.style.top = origTop + dy + "px";
+
+            if (isDragging) {
+                // Lógica de Arrastre (Drag)
+                el.style.left = origLeft + dx + "px";
+                el.style.top = origTop + dy + "px";
+            } else if (isResizing) {
+                // 💡 Lógica de Redimensionamiento (Resize)
+
+                // Calculamos el nuevo ancho y alto
+                const newWidth = origWidth + dx;
+                const newHeight = origHeight + dy;
+
+                // Aplicamos un mínimo para evitar que desaparezca
+                el.style.width = Math.max(50, newWidth) + "px";
+
+                // Mantenemos la proporción si es una imagen (solo si el contenedor tiene una imagen)
+                if (el.querySelector(".uploaded-image")) {
+                    // Calculamos el factor de escala
+                    const scaleFactor = Math.max(50, newWidth) / origWidth;
+                    // Aplicamos el factor de escala al alto
+                    el.style.height = (origHeight * scaleFactor) + "px";
+                } else {
+                    // Si es un postit, solo aplicamos el alto con un mínimo
+                    el.style.height = Math.max(50, newHeight) + "px";
+                }
+            }
         };
 
+        // Función para manejar el final
         const onUp = () => {
-            dragging = false;
+            isDragging = false;
+            isResizing = false; // 💡 Restablecer estado
             el.style.zIndex = "auto";
         };
 
@@ -489,24 +531,33 @@ const Whiteboard = ({cerrado}) => {
             reader.onload = (ev) => {
                 const wrapper = wrapperRef.current;
                 if (!wrapper) return;
+                const container = document.createElement("div");
+                container.className = "uploaded-image-container";
+                container.style.left = `${50 + Math.random() * 150}px`;
+                container.style.top = `${50 + Math.random() * 100}px`;
+                container.id = `image-${++imageCounterRef.current}`;
+
                 const img = document.createElement("img");
                 img.src = ev.target.result;
                 img.className = "uploaded-image";
-                img.style.left = `${50 + Math.random() * 150}px`;
-                img.style.top = `${50 + Math.random() * 100}px`;
-                img.id = `image-${++imageCounterRef.current}`;
 
                 const del = document.createElement("button");
                 del.className = "delete-btn";
                 del.textContent = "×";
                 del.addEventListener("click", (ev2) => {
                     ev2.stopPropagation();
-                    img.remove();
+                    container.remove(); // 💡 Borramos el contenedor, no solo la imagen
                 });
 
-                img.appendChild(del);
-                wrapper.appendChild(img);
-                enableDragForElement(img);
+                // Creamos los handles de redimensionamiento (ej: esquina inferior derecha)
+                const resizeHandle = document.createElement("div");
+                resizeHandle.className = "resize-handle";
+
+                container.appendChild(img);
+                container.appendChild(del);
+                container.appendChild(resizeHandle);
+                wrapper.appendChild(container);
+                enableDragForElement(container);
             };
             reader.readAsDataURL(file);
             // reset input
@@ -842,22 +893,35 @@ const Whiteboard = ({cerrado}) => {
             // restaurar imágenes
             if (Array.isArray(data.images)) {
                 data.images.forEach((imgData) => {
+                    // 💡 Creamos el contenedor
+                    const container = document.createElement("div");
+                    container.className = "uploaded-image-container";
+                    container.style.left = `${imgData.x}px`;
+                    container.style.top = `${imgData.y}px`;
+                    container.style.width = `${imgData.w || 150}px`; // Restaurar ancho (si se guarda)
+                    container.style.height = `${imgData.h || 'auto'}`; // Restaurar alto
+                    container.id = imgData.id;
+
                     const img = document.createElement("img");
                     img.src = imgData.src;
                     img.className = "uploaded-image";
-                    img.style.left = `${imgData.x}px`;
-                    img.style.top = `${imgData.y}px`;
-                    img.id = imgData.id;
+
                     const del = document.createElement("button");
                     del.className = "delete-btn";
                     del.textContent = "×";
                     del.addEventListener("click", (ev) => {
                         ev.stopPropagation();
-                        img.remove();
+                        container.remove(); // Borrar contenedor
                     });
-                    img.appendChild(del);
-                    wrapper.appendChild(img);
-                    enableDragForElement(img);
+
+                    const resizeHandle = document.createElement("div");
+                    resizeHandle.className = "resize-handle";
+
+                    container.appendChild(img);
+                    container.appendChild(del);
+                    container.appendChild(resizeHandle);
+                    wrapper.appendChild(container);
+                    enableDragForElement(container); // Aplicamos drag/resize al contenedor
                 });
             }
 
@@ -976,12 +1040,14 @@ const Whiteboard = ({cerrado}) => {
                                                 ),
                                             });
                                         });
-                                        wrapper.querySelectorAll(".uploaded-image").forEach((el) => {
+                                        wrapper.querySelectorAll(".uploaded-image-container").forEach((el) => {
                                             images.push({
                                                 id: el.id,
                                                 x: parseFloat(el.style.left),
                                                 y: parseFloat(el.style.top),
-                                                src: el.src,
+                                                src: el.querySelector(".uploaded-image")?.src, // Obtener el src de la etiqueta img interna
+                                                w: el.offsetWidth, // 💡 Guardar ancho
+                                                h: el.offsetHeight, // 💡 Guardar alto
                                             });
                                         });
                                     }

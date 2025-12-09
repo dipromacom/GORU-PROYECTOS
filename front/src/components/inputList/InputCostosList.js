@@ -26,7 +26,9 @@ const InputCostosList = ({
         , [costoEntregable]);
 
     const totalCostoEntregablesReal = useMemo(() =>
-        (costoEntregable || []).reduce((total, item) => total + parseFloat(item.costoReal || item.costo || 0), 0)
+        // CAMBIO: Se eliminó 'item.costo' como fallback. Ahora, si costoReal no existe o es '0',
+        // el valor que se toma es '0' para que el total real empiece en cero.
+        (costoEntregable || []).reduce((total, item) => total + parseFloat(item.costoReal || 0), 0)
         , [costoEntregable]);
 
     const presupuestoEstimadoTotal = useMemo(() =>
@@ -122,7 +124,7 @@ const InputCostosList = ({
                     <InputCostToList
                         disabled={!editMode}
                         costoList={costoEntregable}
-                        setResultCostoList={setCostoEntregable}
+                        setCostoEntregable={setCostoEntregable}
                         ejecutado={ejecutado}
                     />
                 </Form.Group>
