@@ -78,7 +78,7 @@ module.exports = (db, Sequelize) => {
       // ------------------------------------------
       Usuario.Proyectos = Usuario.belongsToMany(Proyecto, {
         as: 'Proyectos',
-        through: 'usuario_proyecto', // Nombre de la tabla pivote
+        through: UsuarioProyecto, // Nombre de la tabla pivote
         foreignKey: 'usuario_id', // Clave foránea en la tabla pivote que apunta a Usuario
         otherKey: 'proyecto_id', // Clave foránea en la tabla pivote que apunta a Proyecto
       });

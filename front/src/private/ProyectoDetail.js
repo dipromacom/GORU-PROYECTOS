@@ -46,6 +46,8 @@ import InputAlcanceList from "../components/inputList/InputAlcanceList";
 import InputHitosList from "../components/inputList/InputHitosList";
 import InputCostosList from "../components/inputList/InputCostosList";
 import InputCalidadList from "../components/inputList/InputCalidadList";
+//beneficios solo para programa
+import InputBeneficiosList from "../components/inputList/InputBeneficiosList";
 
 //gantt
 import GanttChart from "../components/GanttChart/GanttChart";
@@ -144,6 +146,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setMaxDesviacionPeriodo(""); // asegúrate de usar el mismo nombre exacto del estado
         setPlazoPeriodo("");
         setLeccionesAprendidas("");
+        setBeneficios("")
 
         // Si usas flags para los collapses
         setOpenPrimeraParte(false);
@@ -209,6 +212,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setMaxDesviacionPeriodo(projectDetail?.max_desviacion_periodo)
         setTipoProyecto(projectDetail?.tipo_proyecto)
         setLeccionesAprendidas(projectDetail?.lecciones_aprendidas)
+        setBeneficios(projectDetail?.beneficios)
     }
 
 
@@ -275,6 +279,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [maxDesviacionPeriodo, setMaxDesviacionPeriodo] = useState("M")
     const [tipoProyecto, setTipoProyecto] = useState("")
     const [leccionesAprendidas, setLeccionesAprendidas] = useState("")
+    const [beneficios, setBeneficios] = useState("");
 
     //Aqui se declaran para manejar los estados de los collapse
     const [openPrimeraParte, setOpenPrimeraParte] = useState(false);
@@ -478,6 +483,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             ...(plazoPeriodo && {plazoPeriodo}),
             ...(maxDesviacionPeriodo && {maxDesviacionPeriodo}),
             ...(leccionesAprendidas && { leccionesAprendidas }),
+            ...(beneficios && { beneficios }),
             autoridadControlCambios
         }
 
@@ -567,6 +573,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         hitos: 0,
         costoDesviacion: 0,
         calidad: 0,
+        beneficios: 0,
         gantt: 0,
         riesgoPromedio: null, // H, M, L
     });
@@ -676,10 +683,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     {(!esActividad && !esPrograma) && (
                                         <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
                                     )}
+                                    {(esPrograma) && (
+                                        <Nav.Item><Nav.Link eventKey="beneficios">Beneficios</Nav.Link></Nav.Item>
+                                    )}   
                                 </>
                             )}
                             {(cerrado) && (
-                                <Nav.Item><Nav.Link eventKey="leccionesAprendidas">lecciones Aprendidas</Nav.Link></Nav.Item>
+                                <Nav.Item><Nav.Link eventKey="leccionesAprendidas">Lecciones Aprendidas</Nav.Link></Nav.Item>
                             )}
                         </Nav>
                     </div>
@@ -788,6 +798,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 {!esPrograma && (
                                                     <Col md={4} className="d-flex justify-content-center pb-4">
                                                         <SummaryChart type="Avance de Calidad" value={resumenEjecucion.calidad} />
+                                                    </Col>
+                                                )}
+                                                {esPrograma && (
+                                                    <Col md={4} className="d-flex justify-content-center pb-4">
+                                                        <SummaryChart type="Avance de Beneficios" value={resumenEjecucion.beneficios} />
                                                     </Col>
                                                 )}
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
@@ -1452,6 +1467,33 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 projectId={projectId}
                                 cerrado={cerrado}
                             />
+                        </Tab.Pane>
+                        <Tab.Pane eventKey="beneficios">
+                            {!editMode && !cerrado && (
+                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar beneficios </p>
+                            )}
+                            <InputBeneficiosList
+                                beneficiosList={beneficios}
+                                setBeneficiosList={setBeneficios}
+                                editMode={editMode}
+                                ejecutado={ejecutado}
+                                onSummaryChange={setPorcentajeCompletado} // o la función que maneje el resumen
+                            />
+                            {/* Boton Guardar*/}
+                            <div className="mt-5 pb-5">
+                                {
+                                    editMode && (
+                                        <LoaderButton
+                                            type="submit"
+                                            className="btn-success btn-save"
+                                            disabled={!validateForm()}
+                                            onClick={handleSubmit}
+                                        >
+                                            Guardar Cambios
+                                        </LoaderButton>
+                                    )
+                                }
+                            </div>
                         </Tab.Pane>  
                         <Tab.Pane eventKey="leccionesAprendidas">
                             <Form.Group controlId="informacionBreve">

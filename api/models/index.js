@@ -42,6 +42,9 @@ const models = {
   Whiteboard: require('./whiteboard')(db, Sequelize),
   RespuestaAnalisis: require('./resultado-analisis') (db, Sequelize),
   Log: require('./log')(db, Sequelize),
+  RolProyecto: require('./rol-proyecto')(db, Sequelize),
+  PermisoProyecto: require('./permiso-proyecto')(db, Sequelize),
+  UsuarioProyecto: require('./usuario-proyecto')(db, Sequelize),
 };
 
 Object.keys(models).forEach((modelKey) => {

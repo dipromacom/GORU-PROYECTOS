@@ -49,6 +49,7 @@ module.exports = (db, Sequelize) => {
     max_desviacion_periodo: { type: Sequelize.TEXT },
     modo: { type: Sequelize.STRING },
     lecciones_aprendidas: { type: Sequelize.TEXT },
+    beneficios: { type: Sequelize.JSONB },
   }, {
     freezeTableName: true,
     tableName: 'proyecto',
@@ -57,7 +58,7 @@ module.exports = (db, Sequelize) => {
   Proyecto.associate = (models) => {
     const {
       TipoProyecto, Empresa, Departamento, DirectorProyecto,
-      Patrocinador, Evaluacion, Usuario
+      Patrocinador, Evaluacion, Usuario, UsuarioProyecto, RolProyecto
     } = models;
 
     Proyecto.TipoProyecto = Proyecto.belongsTo(TipoProyecto, {
@@ -97,11 +98,17 @@ module.exports = (db, Sequelize) => {
 
     Proyecto.Usuarios = Proyecto.belongsToMany(Usuario, {
       as: 'Usuarios',
-      through: 'usuario_proyecto', // Nombre de la tabla pivote que creamos
+      through: UsuarioProyecto, // Nombre de la tabla pivote que creamos
       foreignKey: 'proyecto_id', // Clave foránea en la tabla pivote que apunta a Proyecto
       otherKey: 'usuario_id', // Clave foránea en la tabla pivote que apunta a Usuario
     });
-    
+    // Si necesitas ver los roles asignados a los usuarios en este proyecto:
+    Proyecto.UsuariosAsignados = Proyecto.hasMany(UsuarioProyecto, {
+      as: 'UsuariosAsignados',
+      foreignKey: 'proyecto_id',
+    });
+
+
   };
 
   return Proyecto;
