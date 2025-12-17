@@ -300,6 +300,30 @@ const updateUsuarioEmpresa = async (req, res) => {
   }
 };
 
+const getUsuariosByEmpresa = async (req, res) => {
+  const { id: empresaId } = req.params;
+
+  // NOTA IMPORTANTE: Aquí se debe añadir una validación de seguridad
+  // para asegurar que el usuario autenticado (desde req.headers/token)
+  // pertenece a esa empresa o tiene permiso para ver esa empresa.
+
+  try {
+    const usuarios = await UsuarioUtils.getUsuariosByEmpresaId(empresaId);
+
+    // Ocultar información sensible como la clave, aunque ya limitamos los atributos en utils
+    const cleanData = usuarios.map(usuario => {
+      const cleanUser = usuario.get({ plain: true });
+      delete cleanUser.clave; // Asegurar que no se envía la clave
+      return cleanUser;
+    });
+
+    return res.status(200).json({ success: true, data: cleanData });
+  } catch (error) {
+    // logger.error({ ... });
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getUsuarioById,
   createUsuario,
@@ -310,4 +334,5 @@ module.exports = {
   updatePassword,
   updateUsuarioRol,
   updateUsuarioEmpresa,
+  getUsuariosByEmpresa,
 };

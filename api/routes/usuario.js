@@ -16,5 +16,5 @@ router.get('/usuario/email/available/:email', UsuarioController.isEmailAvalaible
 router.put('/usuario/:email/password/update', UsuarioController.updatePassword);
 router.put('/usuario/:id/rol',SecurityUtils.validateToken( PermisoMiddleware.check(GESTIONAR_ROLES)(UsuarioController.updateUsuarioRol)));
 router.put('/usuario/:id/empresa',SecurityUtils.validateToken(PermisoMiddleware.check(GESTIONAR_ROLES)(UsuarioController.updateUsuarioEmpresa)));
-
+router.get('/empresa/:id/usuarios',SecurityUtils.validateToken(UsuarioController.getUsuariosByEmpresa));
 module.exports = router;

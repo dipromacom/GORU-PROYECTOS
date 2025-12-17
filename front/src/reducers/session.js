@@ -34,6 +34,11 @@ export const types = {
 
   RESET_CODE: "session/RESET_CODE",
 
+  // --- Nuevos tipos para Usuarios de Empresa ---
+  GET_USUARIOS_EMPRESA_REQUEST: "session/GET_USUARIOS_EMPRESA_REQUEST",
+  GET_USUARIOS_EMPRESA_SUCCESS: "session/GET_USUARIOS_EMPRESA_SUCCESS",
+  GET_USUARIOS_EMPRESA_ERROR: "session/GET_USUARIOS_EMPRESA_ERROR",
+
 };
 
 export const actions = {
@@ -74,7 +79,12 @@ export const actions = {
   }),
   resetCode: () => ({
     type: types.RESET_CODE
-  })
+  }),
+  // --- Nueva acción ---
+  getUsuariosByEmpresa: (empresaId) => ({
+    type: types.GET_USUARIOS_EMPRESA_REQUEST,
+    empresaId,
+  }),
 };
 
 const defaultState =  {
@@ -86,7 +96,9 @@ const defaultState =  {
   jwtToken: null,
   emailAvailable: null,
   errorMessage: null,
-  codeSent: null
+  codeSent: null,
+  usuariosEmpresa: [],
+  isLoadingUsuariosEmpresa: false,
 };
 
 const sessionReducer = (state = defaultState, action = {}) => {
@@ -96,6 +108,7 @@ const sessionReducer = (state = defaultState, action = {}) => {
     jwtToken,
     emailAvailable,
     errorMessage,
+    usuariosEmpresa,
    } = action;
 
   switch (action.type) {
@@ -270,6 +283,27 @@ const sessionReducer = (state = defaultState, action = {}) => {
         ...state,
         codeSent: null,
       };
+    
+    case types.GET_USUARIOS_EMPRESA_REQUEST:
+      return {
+        ...state,
+        isLoadingUsuariosEmpresa: true,
+        usuariosEmpresa: [],
+      };
+
+    case types.GET_USUARIOS_EMPRESA_SUCCESS:
+      return {
+        ...state,
+        isLoadingUsuariosEmpresa: false,
+        usuariosEmpresa: usuariosEmpresa,
+      };
+
+    case types.GET_USUARIOS_EMPRESA_ERROR:
+      return {
+        ...state,
+        isLoadingUsuariosEmpresa: false,
+        // Mantener la lista anterior o limpiarla según la política de UX
+      };
 
     default:
       return state;
@@ -289,4 +323,7 @@ export const selectors = {
   getEmailAvailable: ({ session }) => session.emailAvailable,
   getErrorMessage: ({ session }) => session.errorMessage,
   getCodeSent: ({ session }) => session.codeSent,
+  // --- Nuevos selectores ---
+  getUsuariosEmpresa: ({ session }) => session.usuariosEmpresa,
+  getIsLoadingUsuariosEmpresa: ({ session }) => session.isLoadingUsuariosEmpresa,
 };

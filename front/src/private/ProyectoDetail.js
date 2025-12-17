@@ -54,7 +54,12 @@ import GanttChart from "../components/GanttChart/GanttChart";
 
 //pizarra
 import Whiteboard from "../components/pizarra/Whiteboard";
+//Importar el Modal de Configuración
+import RoleSettingsModal from "../components/proyectoDetails/RoleSettingsModal";
+//sesion action
+import { actions as sessionActions} from "../reducers/session";
 
+import { actions as rolProyectoActions } from "../reducers/rolProyecto";
 
 function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado }) {
     const routeParams = useParams();
@@ -106,6 +111,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             dispatch(actions.getInteresadoList(numericId));
         }
     }, [numericId], dispatch);
+
+    useEffect(() => {
+        if (usuario && usuario.id && numericId) {
+            dispatch(rolProyectoActions.getUserProjectRolRequest(usuario.id, numericId));
+        }
+
+    }, [numericId, dispatch, usuario]);
 
     // console.log({ interesados });
 
@@ -288,6 +300,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [openCuartaParte, setOpenCuartaParte] = useState(false);
     const [openQuintaParte, setOpenQuintaParte] = useState(false);
     const [openSextaParte, setOpenSextaParte] = useState(false);
+
+    // Estado para controlar el modal
+    const [showRoleModal, setShowRoleModal] = useState(false);
 
     const isFirstRender = useRef(true);
 
@@ -587,8 +602,35 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setResumenEjecucion(prev => ({ ...prev, riesgoPromedio: riesgo }));
     }, [setResumenEjecucion]);
 
+    // Handler para abrir modal
+    const handleOpenConfig = () => {
+        // ASUMIMOS que usuario.userSystem ya fue poblado con la empresa_id/Empresa
+        if (usuario) {
+            const empresaId = usuario.empresa;
+
+            // Lógica para cargar usuarios de la empresa del usuario autenticado
+            dispatch(sessionActions.getUsuariosByEmpresa(empresaId));
+        } else {
+            // Manejo de error si no se encuentra la empresa (opcional)
+            console.error("Usuario autenticado no tiene una empresa asociada.");
+        }
+        setShowRoleModal(true);
+    };
+
+    // Handler para cerrar modal
+    const handleCloseConfig = () => {
+        setShowRoleModal(false);
+    };
+
     return (
         <div className="page-menu-container">
+            {/* Renderizar el Modal Configuración */}
+            <RoleSettingsModal
+                show={showRoleModal}
+                handleClose={handleCloseConfig}
+                projectId={routeParams.id}
+                projectDetail={projectDetail}
+            />
             <Tab.Container defaultActiveKey="general" activeKey={activeKey} onSelect={setActiveKey}>
 
                 <div className="header-wrapper">
@@ -602,6 +644,16 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                         {/* Botones de Acción (widget-container) */}
                         <div className="widget-container d-inline-flex align-items-center flex-wrap flex-shrink-0 gap-2">
+                            {/* Botón de Configuración */}
+                            {!cerrado && (
+                                <>
+                                    <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={handleOpenConfig}>
+                                        <i className="bi bi-gear-fill mr-2" />
+                                        <span>Configuración</span>
+                                    </div>
+                                    <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
+                                </>
+                            )}
 
                             {!isTodoOrKanban() && !(activeKey === 'Crear-Interesado' || activeKey === 'Matriz-Interesados') && (
                                 <>

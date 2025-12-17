@@ -3,7 +3,7 @@ import { types } from "../reducers/session";
 import { Auth } from "aws-amplify";
 import { push } from "connected-react-router";
 import { onError } from "../libs/errorLib";
-import { createUsuario, getToken, validateEmail } from "../api";
+import { createUsuario, getToken, validateEmail, getUsuariosByEmpresa } from "../api";
 
 const sagas = [
   takeLatest(types.LOGIN_REQUEST, login),
@@ -14,6 +14,7 @@ const sagas = [
   takeLatest(types.VALIDATE_EMAIL_REQUEST, handleValidateEmail),
   takeLatest(types.SEND_CODE_REQUEST, handleSendCode),
   takeLatest(types.RECOVER_ACCOUNT_REQUEST, handleRecoverAccount),
+  takeLatest(types.GET_USUARIOS_EMPRESA_REQUEST, handleGetUsuariosByEmpresa),
 ];
 
 export default sagas;
@@ -153,5 +154,21 @@ function* handleRecoverAccount({ email, code, password }) {
     }
     
     yield put({ type: types.RECOVER_ACCOUNT_ERROR, errorMessage: message });
+  }
+}
+
+function* handleGetUsuariosByEmpresa({ empresaId }) {
+  try {
+    const response = yield call(getUsuariosByEmpresa, empresaId);
+    const { success, data } = response.data;
+
+    if (success) {
+      yield put({ type: types.GET_USUARIOS_EMPRESA_SUCCESS, usuariosEmpresa: data });
+    } else {
+      yield put({ type: types.GET_USUARIOS_EMPRESA_ERROR });
+    }
+  } catch (e) {
+    onError(e);
+    yield put({ type: types.GET_USUARIOS_EMPRESA_ERROR });
   }
 }

@@ -263,3 +263,30 @@ export const deleteWhiteboard = ({ projectId }) => {
   return apiWithToken.delete(`/proyecto/${projectId}/whiteboard`);
 };
 
+// Usuarios por Empresa
+export const getUsuariosByEmpresa = empresaId => apiWithToken.get(`/empresa/${empresaId}/usuarios`);
+
+
+// --- CRUD Roles de Proyecto ---
+
+export const createRolProyecto = payload => apiWithToken.post('/proyecto/roles', payload);
+export const getAllRolesProyecto = () => apiWithToken.get('/proyecto/roles');
+export const updateRolProyecto = (rolId, payload) => apiWithToken.put(`/proyecto/roles/${rolId}`, payload);
+export const deleteRolProyecto = rolId => apiWithToken.delete(`/proyecto/roles/${rolId}`);
+
+// --- CRUD Permisos de Proyecto ---
+
+export const getAllPermisosProyecto = () => apiWithToken.get('/proyecto/permisos');
+export const createPermisoProyecto = payload => apiWithToken.post('/proyecto/permisos', payload);
+export const updatePermisoProyecto = (permisoId, payload) => apiWithToken.put(`/proyecto/permisos/${permisoId}`, payload);
+export const deletePermisoProyecto = permisoId => apiWithToken.delete(`/proyecto/permisos/${permisoId}`);
+
+// --- Asignación ---
+
+export const assignRolProyecto = payload => apiWithToken.post('/proyecto/asignarRol', payload);
+
+// --- GESTIÓN DE USUARIOS DE PROYECTO
+export const getUsuariosProyecto = proyectoId => apiWithToken.get(`/proyecto/${proyectoId}/usuarios`);
+export const deleteUsuarioProyecto = (usuarioId, proyectoId) => apiWithToken.delete(`/proyecto/${proyectoId}/usuario/${usuarioId}`);
+export const getUserProjectRol = (usuarioId, proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/usuario/${usuarioId}/rol`);
+

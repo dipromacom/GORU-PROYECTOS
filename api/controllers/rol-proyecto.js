@@ -133,6 +133,51 @@ const deletePermisoProyecto = async (req, res) => {
     }
 };
 
+const getUsuariosProyecto = async (req, res) => {
+    const { id: proyectoId } = req.params;
+    try {
+        const usuarios = await RolProyectoUtils.getUsuariosProyecto(proyectoId);
+        return res.status(200).json({ success: true, data: usuarios });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const deleteUsuarioProyecto = async (req, res) => {
+    const { usuarioId, proyectoId } = req.params;
+    try {
+        const success = await RolProyectoUtils.deleteUsuarioProyecto(usuarioId, proyectoId);
+        if (!success) {
+            return res.status(404).json({ success: false, message: 'Asignación no encontrada' });
+        }
+        return res.status(204).send(); // 204 No Content
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const getUserProjectRol = async (req, res) => {
+    const { usuarioId, proyectoId } = req.params;
+    try {
+        const rol = await RolProyectoUtils.getUserProjectRol(usuarioId, proyectoId);
+        // Si rol es null (es decir, el usuario no está en UsuarioProyecto), 
+        // asumimos que es el creador/admin y le asignamos un rol por defecto.
+        if (!rol) {
+            // Retornamos una estructura que el front pueda entender como Admin/Creador
+            return res.status(200).json({
+                success: true, data: {
+                    rol_proyecto_id: null, // Indicador de Admin/Creador
+                    nombre_rol: 'Administrador (Creador)',
+                    PermisosProyecto: RolProyectoUtils.getAllAdminPermisos() // Asume todos los permisos
+                }
+            });
+        }
+        return res.status(200).json({ success: true, data: rol });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 
 module.exports = {
     assignRolProyecto,
@@ -146,4 +191,7 @@ module.exports = {
     createPermisoProyecto,
     updatePermisoProyecto,
     deletePermisoProyecto,
+    getUsuariosProyecto,
+    deleteUsuarioProyecto,
+    getUserProjectRol,
 };

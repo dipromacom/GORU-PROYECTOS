@@ -378,6 +378,40 @@ const updateUsuarioEmpresa = async (userId, empresaId) => {
   }
 };
 
+/**
+ * Obtiene todos los usuarios que pertenecen a una empresa específica.
+ * @param {number} empresaId - ID de la empresa.
+ * @returns {Promise<Array<Usuario>>} Lista de usuarios de la empresa.
+ */
+const getUsuariosByEmpresaId = async (empresaId) => {
+  try {
+    const items = await Usuario.findAll({
+      where: {
+        empresa: empresaId,
+      },
+      attributes: ['id', 'username', 'empresa', 'fecha_creacion'],
+
+      include: [
+        {
+          model: Rol,
+          as: 'Rol',
+          attributes: ['id', 'nombre'],
+        },
+        {
+          model: Empresa,
+          as: 'Empresa',
+          attributes: ['id', 'nombre'],
+        },
+      ],
+      order: [['username', 'ASC']], // Ordenamos por el campo de correo
+    });
+    return items;
+  } catch (error) {
+    // logger.error({ ... }); 
+    throw error;
+  }
+};
+
 module.exports = {
   getUsuarioById,
   createUsuario,
@@ -388,4 +422,5 @@ module.exports = {
   getUsuarioByAwsId,
   updateUsuarioRol,
   updateUsuarioEmpresa,
+  getUsuariosByEmpresaId,
 };

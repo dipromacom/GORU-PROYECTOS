@@ -15,6 +15,7 @@ import gantt from "./gantt"
 import whiteboard from "./whiteboard";
 import tipoProyecto from "./tipoProyecto"
 import { all, spawn, call } from "redux-saga/effects";
+import rolProyecto from "./rolProyecto"
 
 
 
@@ -35,7 +36,8 @@ const sagas = [
   ...kanban,
   ...gantt,
   ...whiteboard,
-  ...tipoProyecto
+  ...tipoProyecto,
+  ...rolProyecto
 ];
 
 export default function* rootSaga() {

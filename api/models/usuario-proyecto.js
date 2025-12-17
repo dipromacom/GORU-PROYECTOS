@@ -32,6 +32,18 @@ module.exports = (db, Sequelize) => {
             as: 'RolProyecto',
             foreignKey: 'rol_proyecto_id',
         });
+
+        // Relación N:1 con Usuario
+        UsuarioProyecto.Usuario = UsuarioProyecto.belongsTo(models.Usuario, {
+            as: 'Usuario', // ¡Debe coincidir con el alias usado en utils/rol-proyecto-utils.js!
+            foreignKey: 'usuario_id',
+        });
+
+        // Relación N:1 con Proyecto (Aunque no se use ahora, es buena práctica)
+        UsuarioProyecto.Proyecto = UsuarioProyecto.belongsTo(models.Proyecto, {
+            as: 'Proyecto', // ¡Debe coincidir con el alias!
+            foreignKey: 'proyecto_id',
+        });
     };
 
     return UsuarioProyecto;
