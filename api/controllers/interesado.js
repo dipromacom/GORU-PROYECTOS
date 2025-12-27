@@ -3,6 +3,7 @@ const logger = require('../logger/logger');
 const db = require('../db');
 const path = require('path');
 const file = path.basename(__filename);
+const { decodeToken } = require('../utils/security-utils');
 
 
 // Crear un nuevo interesado, fechas de no disponibilidad y evaluación
@@ -55,8 +56,11 @@ const file = path.basename(__filename);
 
 const createInteresado = async (req, res) => {
     try {
+
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
         // Pasar directamente req.body a la utilidad
-        const interesado = await InteresadoUtils.createInteresados(req.body);
+        const interesado = await InteresadoUtils.createInteresados(req.body, usuarioId);
 
         // Respuesta exitosa
         return res.status(201).json({ success: true, data: interesado });
@@ -78,9 +82,11 @@ const createInteresado = async (req, res) => {
 // Actualizar interesado, fechas de no disponibilidad y evaluación
 const updateInteresado = async (req, res) => {
     try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
         const interesadoId = req.params.id; // ID del interesado recibido como parámetro de la URL
         const data = req.body; // Datos del cuerpo de la solicitud
-        const interesado = await InteresadoUtils.updateInteresado(interesadoId, data); // Llamada a la lógica del utils
+        const interesado = await InteresadoUtils.updateInteresado(interesadoId, data, usuarioId); // Llamada a la lógica del utils
 
         return res.status(201).json({ success: true, data: interesado });
     } catch (error) {
@@ -96,23 +102,25 @@ const deleteInteresado = async (req, res) => {
     const transaction = await db.transaction();
 
     try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
         // Eliminar el interesado
         const interesado = await Interesado.findByPk(id);
         if (!interesado) {
             return res.status(404).json({ success: false, message: 'Interesado no encontrado' });
         }
-
+        await InteresadoUtils.deleteInteresado(id, usuarioId);
         // Eliminar las fechas de no disponibilidad asociadas
-        await FechasNoDisponibilidadUtils.destroy({ where: { interesado_id: id }, transaction });
+        //await FechasNoDisponibilidadUtils.destroy({ where: { interesado_id: id }, transaction });
 
         // Eliminar la evaluación asociada
-        await EvaluacionInteresado.destroy({ where: { interesadoId: id }, transaction });
+        //await EvaluacionInteresado.destroy({ where: { interesadoId: id }, transaction });
 
         // Eliminar el interesado
-        await interesado.destroy({ transaction });
+        //await interesado.destroy({ transaction });
 
         // Confirmar la transacción
-        await transaction.commit();
+        //await transaction.commit();
 
         return res.status(200).json({ success: true, message: 'Interesado y sus datos asociados eliminados' });
     } catch (error) {
