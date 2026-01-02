@@ -707,6 +707,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             <Nav.Item>
                                 <Nav.Link eventKey="general">Datos Generales</Nav.Link>
                             </Nav.Item>
+                            {(planificado || ejecutado || cerrado) && (
+                                <>
+                                    {(esPrograma) && (
+                                        <Nav.Item><Nav.Link eventKey="beneficios">Beneficios</Nav.Link></Nav.Item>
+                                    )}
+                                </>
+                            )}
                             <Nav.Item>
                                 <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
                             </Nav.Item>
@@ -734,10 +741,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
                                     {(!esActividad && !esPrograma) && (
                                         <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
-                                    )}
-                                    {(esPrograma) && (
-                                        <Nav.Item><Nav.Link eventKey="beneficios">Beneficios</Nav.Link></Nav.Item>
-                                    )}   
+                                    )} 
                                 </>
                             )}
                             {(cerrado) && (
@@ -1509,6 +1513,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     cerrado={cerrado}
                                     ejecutado={ejecutado}
                                     onSummaryChange={setPorcentajeCompletado}
+                                    esPrograma={esPrograma}
                                 />
                                 : <p>El tipo de proyecto no es apto para usar el Gantt</p>
                             }
