@@ -33,7 +33,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   const MODO_CONFIG = {
     "/activities": { modo: "A", isDemoRestricted: false, newLabel: "Nuevo Proyecto Personal", title: "Proyectos Personales" },
     "/projects": { modo: "P", isDemoRestricted: true, newLabel: "Nuevo Proyecto Equipo", title: "Proyectos Equipo" },
-    "/programs": { modo: "PR", isDemoRestricted: true, newLabel: "Nuevo Programa", title: "Programas Equipo" }, // ¡Nuevo modo agregado!
+    "/programs": { modo: "PR", isDemoRestricted: true, newLabel: "Nuevo Programa", title: "Programas" }, // ¡Nuevo modo agregado!
   };
 
   const getCurrentMode = () => {
@@ -54,7 +54,8 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   const [showCerrarModal, setShowCerrarModal] = useState(false);
   const [selectedProject, setSelectedProject] = useState(null);
   const [fechaCierre, setFechaCierre] = useState(moment().format("YYYY-MM-DD"));
-  const [demo, setDemo] = useState(false)
+  const [isRestricted, setIsRestricted] = useState(false);
+  const [subscriptionMode, setSubscriptionMode] = useState(null);
 
   const currentConfig = useMemo(() => {
     const currentPath = location.pathname;
@@ -78,13 +79,19 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
 
   useEffect(() => {
     async function onLoad() {
-      if (!localStorage.getItem("modo")) {
+
+      const modeFromStorage = localStorage.getItem("modo");
+
+      if (!modeFromStorage) {
         dispatch(routesActions.goTo(`membership`));
+        return; // Salimos si no hay modo
       }
+
+      setSubscriptionMode(modeFromStorage);
+
       try {
         let queryParams = getFilter();
         const currentPath = location.pathname;
-        const demoMode = localStorage.getItem("modo") === "Demo";
 
         let foundConfig = null;
         for (const pathKey in MODO_CONFIG) {
@@ -93,27 +100,37 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
             break; // Salimos tan pronto como encontramos una coincidencia
           }
         }
-
+ 
+        let shouldRestrict = false;
         if (foundConfig) {
-          queryParams = { ...queryParams, modo: foundConfig.modo };
-          if (demoMode && foundConfig.isDemoRestricted) {
-            setDemo(true);
+          if (modeFromStorage === "Demo") {
+            shouldRestrict = foundConfig.isDemoRestricted;
+
+          } else if (modeFromStorage === "Profesional") {
+            shouldRestrict = currentPath.includes("/programs");
+
+          } else if (modeFromStorage === "Corporativo") {
+            shouldRestrict = false;
           }
+          setIsRestricted(shouldRestrict); 
+          queryParams = { ...queryParams, modo: foundConfig.modo };
         } else {
           dispatch(routesActions.goTo("Membership"))
         }
 
 
-        const { name, startDateFrom, startDateTo, estado, responsable } = queryParams
-        if (name || null)
-          setNombreProyecto(name)
-        if (estado || null)
-          setEstado(estado)
-        if (responsable || null)
-          setResponsable(responsable)
+        if (!shouldRestrict) {
+          const { name, startDateFrom, startDateTo, estado, responsable } = queryParams
+          if (name || null)
+            setNombreProyecto(name)
+          if (estado || null)
+            setEstado(estado)
+          if (responsable || null)
+            setResponsable(responsable)
 
-        dispatch(actions.getProjectsByFilter(queryParams))
-        dispatch(actions.handleClearDateFilter())
+          dispatch(actions.getProjectsByFilter(queryParams))
+          dispatch(actions.handleClearDateFilter())
+        }
       } catch (e) {
         onError(e)
       }
@@ -471,7 +488,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
 
   return (
     <div className="page-menu-container">
-      {demo && currentConfig.isDemoRestricted ? (
+      {isRestricted ? (
         <>
           <br /><br /><br /><br />
           <div className="center">

@@ -17,6 +17,7 @@ import kanban from "./kanban"
 import gantt from "./gantt"
 import tipoProyecto from "./tipoProyecto"
 import whiteboard from "./whiteboard";
+import rolProyecto from "./rolProyecto";
 
 const createRootReducer = (history) => combineReducers({
   router: connectRouter(history),
@@ -35,7 +36,8 @@ const createRootReducer = (history) => combineReducers({
   kanban,
   gantt,
   whiteboard,
-  tipoProyecto
+  tipoProyecto,
+  rolProyecto
 });
 
 export default createRootReducer;

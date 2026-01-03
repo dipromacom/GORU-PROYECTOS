@@ -46,13 +46,20 @@ import InputAlcanceList from "../components/inputList/InputAlcanceList";
 import InputHitosList from "../components/inputList/InputHitosList";
 import InputCostosList from "../components/inputList/InputCostosList";
 import InputCalidadList from "../components/inputList/InputCalidadList";
+//beneficios solo para programa
+import InputBeneficiosList from "../components/inputList/InputBeneficiosList";
 
 //gantt
 import GanttChart from "../components/GanttChart/GanttChart";
 
 //pizarra
 import Whiteboard from "../components/pizarra/Whiteboard";
+//Importar el Modal de Configuración
+import RoleSettingsModal from "../components/proyectoDetails/RoleSettingsModal";
+//sesion action
+import { actions as sessionActions} from "../reducers/session";
 
+import { actions as rolProyectoActions } from "../reducers/rolProyecto";
 
 function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado }) {
     const routeParams = useParams();
@@ -105,6 +112,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
     }, [numericId], dispatch);
 
+    useEffect(() => {
+        if (usuario && usuario.id && numericId) {
+            dispatch(rolProyectoActions.getUserProjectRolRequest(usuario.id, numericId));
+        }
+
+    }, [numericId, dispatch, usuario]);
+
     // console.log({ interesados });
 
 
@@ -144,6 +158,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setMaxDesviacionPeriodo(""); // asegúrate de usar el mismo nombre exacto del estado
         setPlazoPeriodo("");
         setLeccionesAprendidas("");
+        setBeneficios("")
 
         // Si usas flags para los collapses
         setOpenPrimeraParte(false);
@@ -209,6 +224,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setMaxDesviacionPeriodo(projectDetail?.max_desviacion_periodo)
         setTipoProyecto(projectDetail?.tipo_proyecto)
         setLeccionesAprendidas(projectDetail?.lecciones_aprendidas)
+        setBeneficios(projectDetail?.beneficios)
     }
 
 
@@ -275,6 +291,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [maxDesviacionPeriodo, setMaxDesviacionPeriodo] = useState("M")
     const [tipoProyecto, setTipoProyecto] = useState("")
     const [leccionesAprendidas, setLeccionesAprendidas] = useState("")
+    const [beneficios, setBeneficios] = useState("");
 
     //Aqui se declaran para manejar los estados de los collapse
     const [openPrimeraParte, setOpenPrimeraParte] = useState(false);
@@ -283,6 +300,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [openCuartaParte, setOpenCuartaParte] = useState(false);
     const [openQuintaParte, setOpenQuintaParte] = useState(false);
     const [openSextaParte, setOpenSextaParte] = useState(false);
+
+    // Estado para controlar el modal
+    const [showRoleModal, setShowRoleModal] = useState(false);
 
     const isFirstRender = useRef(true);
 
@@ -478,6 +498,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             ...(plazoPeriodo && {plazoPeriodo}),
             ...(maxDesviacionPeriodo && {maxDesviacionPeriodo}),
             ...(leccionesAprendidas && { leccionesAprendidas }),
+            ...(beneficios && { beneficios }),
             autoridadControlCambios
         }
 
@@ -567,6 +588,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         hitos: 0,
         costoDesviacion: 0,
         calidad: 0,
+        beneficios: 0,
         gantt: 0,
         riesgoPromedio: null, // H, M, L
     });
@@ -580,8 +602,35 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setResumenEjecucion(prev => ({ ...prev, riesgoPromedio: riesgo }));
     }, [setResumenEjecucion]);
 
+    // Handler para abrir modal
+    const handleOpenConfig = () => {
+        // ASUMIMOS que usuario.userSystem ya fue poblado con la empresa_id/Empresa
+        if (usuario) {
+            const empresaId = usuario.empresa;
+
+            // Lógica para cargar usuarios de la empresa del usuario autenticado
+            dispatch(sessionActions.getUsuariosByEmpresa(empresaId));
+        } else {
+            // Manejo de error si no se encuentra la empresa (opcional)
+            console.error("Usuario autenticado no tiene una empresa asociada.");
+        }
+        setShowRoleModal(true);
+    };
+
+    // Handler para cerrar modal
+    const handleCloseConfig = () => {
+        setShowRoleModal(false);
+    };
+
     return (
         <div className="page-menu-container">
+            {/* Renderizar el Modal Configuración */}
+            <RoleSettingsModal
+                show={showRoleModal}
+                handleClose={handleCloseConfig}
+                projectId={routeParams.id}
+                projectDetail={projectDetail}
+            />
             <Tab.Container defaultActiveKey="general" activeKey={activeKey} onSelect={setActiveKey}>
 
                 <div className="header-wrapper">
@@ -595,6 +644,16 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                         {/* Botones de Acción (widget-container) */}
                         <div className="widget-container d-inline-flex align-items-center flex-wrap flex-shrink-0 gap-2">
+                            {/* Botón de Configuración */}
+                            {!cerrado && (
+                                <>
+                                    <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={handleOpenConfig}>
+                                        <i className="bi bi-gear-fill mr-2" />
+                                        <span>Configuración</span>
+                                    </div>
+                                    <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
+                                </>
+                            )}
 
                             {!isTodoOrKanban() && !(activeKey === 'Crear-Interesado' || activeKey === 'Matriz-Interesados') && (
                                 <>
@@ -648,6 +707,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             <Nav.Item>
                                 <Nav.Link eventKey="general">Datos Generales</Nav.Link>
                             </Nav.Item>
+                            {(planificado || ejecutado || cerrado) && (
+                                <>
+                                    {(esPrograma) && (
+                                        <Nav.Item><Nav.Link eventKey="beneficios">Beneficios</Nav.Link></Nav.Item>
+                                    )}
+                                </>
+                            )}
                             <Nav.Item>
                                 <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
                             </Nav.Item>
@@ -675,11 +741,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
                                     {(!esActividad && !esPrograma) && (
                                         <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
-                                    )}
+                                    )} 
                                 </>
                             )}
                             {(cerrado) && (
-                                <Nav.Item><Nav.Link eventKey="leccionesAprendidas">lecciones Aprendidas</Nav.Link></Nav.Item>
+                                <Nav.Item><Nav.Link eventKey="leccionesAprendidas">Lecciones Aprendidas</Nav.Link></Nav.Item>
                             )}
                         </Nav>
                     </div>
@@ -785,9 +851,16 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
                                                     <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
                                                 </Col>
-                                                <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="Avance de Calidad" value={resumenEjecucion.calidad} />
-                                                </Col>
+                                                {!esPrograma && (
+                                                    <Col md={4} className="d-flex justify-content-center pb-4">
+                                                        <SummaryChart type="Avance de Calidad" value={resumenEjecucion.calidad} />
+                                                    </Col>
+                                                )}
+                                                {esPrograma && (
+                                                    <Col md={4} className="d-flex justify-content-center pb-4">
+                                                        <SummaryChart type="Avance de Beneficios" value={resumenEjecucion.beneficios} />
+                                                    </Col>
+                                                )}
                                                 <Col md={4} className="d-flex justify-content-center pb-4">
                                                     <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
                                                 </Col>
@@ -1440,6 +1513,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     cerrado={cerrado}
                                     ejecutado={ejecutado}
                                     onSummaryChange={setPorcentajeCompletado}
+                                    esPrograma={esPrograma}
                                 />
                                 : <p>El tipo de proyecto no es apto para usar el Gantt</p>
                             }
@@ -1450,6 +1524,33 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 projectId={projectId}
                                 cerrado={cerrado}
                             />
+                        </Tab.Pane>
+                        <Tab.Pane eventKey="beneficios">
+                            {!editMode && !cerrado && (
+                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar beneficios </p>
+                            )}
+                            <InputBeneficiosList
+                                beneficiosList={beneficios}
+                                setBeneficiosList={setBeneficios}
+                                editMode={editMode}
+                                ejecutado={ejecutado}
+                                onSummaryChange={setPorcentajeCompletado} // o la función que maneje el resumen
+                            />
+                            {/* Boton Guardar*/}
+                            <div className="mt-5 pb-5">
+                                {
+                                    editMode && (
+                                        <LoaderButton
+                                            type="submit"
+                                            className="btn-success btn-save"
+                                            disabled={!validateForm()}
+                                            onClick={handleSubmit}
+                                        >
+                                            Guardar Cambios
+                                        </LoaderButton>
+                                    )
+                                }
+                            </div>
                         </Tab.Pane>  
                         <Tab.Pane eventKey="leccionesAprendidas">
                             <Form.Group controlId="informacionBreve">

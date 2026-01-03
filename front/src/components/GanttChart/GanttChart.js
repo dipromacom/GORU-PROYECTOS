@@ -10,7 +10,11 @@ import { actions as ganttActions, selectors as ganttSelectors } from "../../redu
 import "./GanttChart.css";
 import { duration } from "moment";
 
-const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, onSummaryChange = () => { } }) => {
+const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, esPrograma, onSummaryChange = () => { } }) => {
+    let type = "actividad"
+    if (esPrograma) type = "componente"
+    let types = "actividades"
+    if (esPrograma) types = "componentes"
     const safeProjectId = projectId ?? null;
     const [view, setView] = useState(ViewMode.Day);
     // Aseguramos que tasks sea un arreglo
@@ -336,7 +340,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                 .map((id) => tasks.find((t) => t.id === id)?.name || id)
                 .join(", ");
             alert(
-                `No se puede eliminar esta actividad porque las siguientes dependen de ella: ${dependentNames}`
+                `No se puede eliminar el ${type} porque las siguientes dependen de ella: ${dependentNames}`
             );
             return;
         }
@@ -581,7 +585,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                 {renderProjectSummary()}
                 <div className="gantt-left">
                     <div className="gantt-left-header">
-                        <h5>Actividades</h5>
+                        <h5>{esPrograma ? "Componentes" : "Actividades"}</h5>
                         {!cerrado && (
                             <Button size="sm" variant="outline-primary" onClick={openCreate}>
                                 + Nueva
@@ -591,7 +595,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
 
                     <ListGroup variant="flush" className="gantt-left-list">
                         {tasks.length === 0 && (
-                            <div className="gantt-empty">No hay actividades</div>
+                            <div className="gantt-empty">No hay {types}</div>
                         )}
 
                         {/* 🔹 Render grupos */}
@@ -823,7 +827,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                             listCellWidth=""
                         />
                     ) : (
-                        <div className="gantt-empty">No hay actividades para mostrar</div>
+                            <div className="gantt-empty">No hay {types} para mostrar</div>
                     )}
                 </Col>
             </Row>
@@ -831,7 +835,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             {/* --- Modal Crear/Editar --- */}
             <Modal show={showModal} onHide={() => setShowModal(false)} centered size="lg">
                 <Modal.Header closeButton>
-                    <Modal.Title>{modalMode === "create" ? "Crear actividad" : "Editar actividad"}</Modal.Title>
+                    <Modal.Title>{modalMode === "create" ? `Crear ${types}` : `Editar ${types}`}</Modal.Title>
                 </Modal.Header>
                 <Modal.Body>
                     <Form>
@@ -956,12 +960,12 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                         .filter((t) => t && String(t.id) !== String(form.id)) // excluye solo la tarea actual
                                         .map((t) => (
                                             <option key={t.id} value={t.id}>
-                                                {t.name ?? `Actividad ${t.id}`}
+                                                {t.name ?? `${type} ${t.id}`}
                                             </option>
                                         ))
 
                                 ) : (
-                                    <option value="">No hay otras actividades disponibles</option>
+                                        <option value="">No hay {types} disponibles</option>
                                 )}
                                 {/* Opción para quitar dependencias */}
                                 <option value="">Ninguna dependencia</option>
@@ -969,7 +973,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                             </Form.Control>
 
                             <Form.Text className="text-muted">
-                                Seleccione las actividades de las que depende esta (si existen).
+                                Seleccione {types} de las que depende (si existen).
                             </Form.Text>
                         </Form.Group>
                         <Form.Group className="mb-3">
@@ -997,9 +1001,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             {/* --- Modal Eliminar --- */}
             <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
                 <Modal.Header closeButton>
-                    <Modal.Title>Eliminar actividad</Modal.Title>
+                    <Modal.Title>Eliminar {type}</Modal.Title>
                 </Modal.Header>
-                <Modal.Body>¿Está seguro que desea eliminar esta actividad?</Modal.Body>
+                <Modal.Body>¿Está seguro que desea eliminar {type}?</Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
                         Cancelar

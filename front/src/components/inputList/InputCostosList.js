@@ -1,4 +1,4 @@
-import React, { useMemo, useEffect } from "react";
+import React, { useMemo, useEffect, useState } from "react"; // Añadido useState
 import { Form, Row, Col } from "react-bootstrap";
 import InputCostToList from "./InputCostToList";
 import { InputGroup } from 'react-bootstrap'
@@ -20,25 +20,43 @@ const InputCostosList = ({
     ejecutado,
     onSummaryChange = () => { }
 }) => {
+    // Estado para controlar qué campo tiene el foco y mostrar el formato correcto
+    const [focusedField, setFocusedField] = useState(null);
+
+    const unformatToNumber = (value) => {
+        if (!value || value === "") return "0";
+        let str = value.toString().trim();
+        if (str.includes(',')) {
+            return str.replace(/\./g, '').replace(',', '.');
+        }
+        const dots = (str.match(/\./g) || []).length;
+        if (dots > 1) {
+            return str.replace(/\./g, '');
+        }
+
+        return str;
+    };
 
     const totalCostoEntregablesEstimado = useMemo(() =>
-        (costoEntregable || []).reduce((total, item) => total + parseFloat(item.costo || 0), 0)
+        (costoEntregable || []).reduce((total, item) =>
+            total + parseFloat(unformatToNumber(item.costo) || 0), 0)
         , [costoEntregable]);
 
     const totalCostoEntregablesReal = useMemo(() =>
-        (costoEntregable || []).reduce((total, item) => total + parseFloat(item.costoReal || item.costo || 0), 0)
+        (costoEntregable || []).reduce((total, item) =>
+            total + parseFloat(unformatToNumber(item.costoReal) || 0), 0)
         , [costoEntregable]);
 
     const presupuestoEstimadoTotal = useMemo(() =>
         totalCostoEntregablesEstimado +
-        parseFloat(costoReservaContingencia || 0) +
-        parseFloat(costoReservaGestion || 0)
+        parseFloat(unformatToNumber(costoReservaContingencia) || 0) +
+        parseFloat(unformatToNumber(costoReservaGestion) || 0)
         , [totalCostoEntregablesEstimado, costoReservaContingencia, costoReservaGestion]);
 
     const presupuestoRealTotal = useMemo(() =>
         totalCostoEntregablesReal +
-        parseFloat(costoReservaContingenciaReal || 0) +
-        parseFloat(costoReservaGestionReal || 0)
+        parseFloat(unformatToNumber(costoReservaContingenciaReal) || 0) +
+        parseFloat(unformatToNumber(costoReservaGestionReal) || 0)
         , [totalCostoEntregablesReal, costoReservaContingenciaReal, costoReservaGestionReal]);
 
     const porcentajeDesviacion = useMemo(() => {
@@ -52,10 +70,21 @@ const InputCostosList = ({
     }, [presupuestoRealTotal, presupuestoEstimadoTotal]);
 
     useEffect(() => {
-            if (ejecutado) {
-                onSummaryChange('costoDesviacion', porcentajeDesviacion);
-            }
+        if (ejecutado) {
+            onSummaryChange('costoDesviacion', porcentajeDesviacion);
+        }
     }, [porcentajeDesviacion, ejecutado, onSummaryChange]);
+
+    const handleBlurReserva = (value, setter) => {
+        // CORRECCIÓN: Al salir, guardamos el número LIMPIO en el estado para el API
+        setter(unformatToNumber(value));
+        setFocusedField(null);
+    }
+
+    const handleFocusReserva = (value, setter, id) => {
+        setter(unformatToNumber(value));
+        setFocusedField(id);
+    }
 
     const renderReservaInput = (label, estimado, setEstimado, real, setReal, idPrefix) => (
         <Row className="mb-3 align-items-end">
@@ -67,13 +96,16 @@ const InputCostosList = ({
                             <InputGroup.Text><strong>$</strong></InputGroup.Text>
                         </InputGroup.Prepend>
                         <Form.Control
-                            disabled={!editMode || ejecutado} // Deshabilitar en ejecución
+                            disabled={!editMode || ejecutado}
                             autoComplete="off"
                             type="text"
-                            value={estimado}
+                            // TRUCO: Si tiene foco muestra el valor real, si no, el formato visual
+                            value={focusedField === `${idPrefix}-estimado` ? estimado : formatToEcuador(estimado)}
                             onChange={e =>
                                 regexValidator(e, /^\d+(\.\d{0,2})?$/g, setEstimado)
                             }
+                            onBlur={(e) => handleBlurReserva(e.target.value, setEstimado)}
+                            onFocus={(e) => handleFocusReserva(e.target.value, setEstimado, `${idPrefix}-estimado`)}
                         />
                     </InputGroup>
                 </Form.Group>
@@ -88,13 +120,15 @@ const InputCostosList = ({
                                 <InputGroup.Text><strong>$</strong></InputGroup.Text>
                             </InputGroup.Prepend>
                             <Form.Control
-                                disabled={!editMode} // Habilitar solo si está en modo edición
+                                disabled={!editMode}
                                 autoComplete="off"
                                 type="text"
-                                value={real}
+                                value={focusedField === `${idPrefix}-real` ? real : formatToEcuador(real)}
                                 onChange={e =>
                                     regexValidator(e, /^\d+(\.\d{0,2})?$/g, setReal)
                                 }
+                                onBlur={(e) => handleBlurReserva(e.target.value, setReal)}
+                                onFocus={(e) => handleFocusReserva(e.target.value, setReal, `${idPrefix}-real`)}
                             />
                         </InputGroup>
                     </Form.Group>
@@ -103,13 +137,14 @@ const InputCostosList = ({
         </Row>
     );
 
-    const formatCurrency = (number) => {
-        if (isNaN(number) || number === null || number === undefined) return '0.00';
-
+    const formatToEcuador = (number) => {
+        const val = unformatToNumber(number);
+        const parsed = parseFloat(val);
+        if (isNaN(parsed)) return '0,00';
         return new Intl.NumberFormat('es-EC', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
-        }).format(parseFloat(number));
+        }).format(parsed);
     };
 
     return (
@@ -123,6 +158,7 @@ const InputCostosList = ({
                         disabled={!editMode}
                         costoList={costoEntregable}
                         setResultCostoList={setCostoEntregable}
+                        setCostoEntregable={setCostoEntregable}
                         ejecutado={ejecutado}
                     />
                 </Form.Group>
@@ -162,7 +198,7 @@ const InputCostosList = ({
                             <Form.Control
                                 disabled
                                 type="text"
-                                value={formatCurrency(presupuestoEstimadoTotal.toFixed(2))}
+                                value={formatToEcuador(presupuestoEstimadoTotal.toFixed(2))}
                                 readOnly
                             />
                         </InputGroup>
@@ -183,14 +219,14 @@ const InputCostosList = ({
                                 <Form.Control
                                     disabled
                                     type="text"
-                                    value={formatCurrency(presupuestoRealTotal.toFixed(2))}
+                                    value={formatToEcuador(presupuestoRealTotal.toFixed(2))}
                                     readOnly
                                 />
                             </InputGroup>
-                        </Form.Group>  
+                        </Form.Group>
                     </Col>
                 )}
-            </Row>    
+            </Row>
         </div>
     );
 };

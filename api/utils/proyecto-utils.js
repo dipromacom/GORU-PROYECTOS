@@ -10,6 +10,9 @@ const {
 const DateUtils = require("./date-utils");
 const { getNombreApellidoFromStr } = require('./string-utils');
 
+// otras importaciones para logs
+const { saveLog } = require('./log-service'); // 💡 IMPORTAR SERVICIO DE LOGS
+
 const getAllProyecto = async (usuarioId) => {
   const items = await Proyecto.findAll({
     where: {
@@ -147,7 +150,7 @@ const getProyectoById = async (id) => {
   return item;
 };
 
-const createProyecto = async (data) => {
+const createProyecto = async (data, usuarioId) => {
   /* const {
     numero, nombre, informacion, tipoProyecto, empresa, departamento,
     directorProyecto, patrocinador,
@@ -217,8 +220,22 @@ const createProyecto = async (data) => {
     estado: 'C',
     activo: true,
     fecha_creacion: DateUtils.getLocalDate(),
-    modo: data.modo
+    modo: data.modo,
+    usuario_creador: usuarioId
   })
+
+  // Registro en Logs
+  await saveLog({
+    userId: usuarioId,
+    actionType: 'PROJECT_CREATED',
+    resourceType: 'Proyecto',
+    resourceId: proyecto.id,
+    details: {
+      nombre: proyecto.nombre,
+      modo: proyecto.modo,
+      estado: 'C'
+    }
+  });
 
   return proyecto;
 };
@@ -320,11 +337,26 @@ const createProyectoGeneralData = async (data, usuarioId) => {
   // Sequelize automáticamente añade la entrada en la tabla 'usuario_proyecto'
   await proyecto.addUsuario(usuarioId);
 
+  // Registro en Logs
+  await saveLog({
+    userId: usuarioId,
+    actionType: 'PROJECT_CREATED_FULL', // Un tipo distinto para diferenciar el wizard completo
+    resourceType: 'Proyecto',
+    resourceId: proyecto.id,
+    details: {
+      nombre: proyecto.nombre,
+      modo: proyecto.modo,
+      tipo_proyecto: proyecto.tipo_proyecto,
+      has_director: !!proyecto.director,
+      has_patrocinador: !!proyecto.patrocinador
+    }
+  });
+
   return proyecto;
 };
 
 
-const updateProyecto = async (data, id) => {
+const updateProyecto = async (data, id, usuarioId) => {
   const proyecto = await Proyecto.findOne({
     where: { id },
     include: [
@@ -351,11 +383,64 @@ const updateProyecto = async (data, id) => {
     ]
   });
 
+  if (!proyecto) throw new Error("Proyecto no encontrado");
+
+  // PREPARAR EL RECOLECTOR DE CAMBIOS
+  const changes = {};
+
+  /**
+   * Función auxiliar para comparar valores simples y complejos (Arrays/Objects)
+   */
+  const checkDifference = (key, newValue) => {
+    const oldValue = proyecto[key];
+
+    // Si el valor es un objeto o arreglo (JSONB en la DB)
+    if (typeof oldValue === 'object' && oldValue !== null) {
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        changes[key] = { old: oldValue, new: newValue };
+      }
+    }
+    // Si es un valor primitivo (string, number, boolean)
+    else if (oldValue != newValue && newValue !== undefined) {
+      changes[key] = { old: oldValue, new: newValue };
+    }
+  };
+
+  // ITERAR SOBRE LOS DATOS QUE VIENEN DEL FRONT
+  // Esto detectará cambios en costo_entregable, alcance_entregables, hitos, etc.
+  const fieldsToIgnore = ['id', 'numero', 'fecha_creacion', 'DirectorProyecto', 'Patrocinador', 'Departamento'];
+
+  Object.keys(data).forEach(key => {
+    if (!fieldsToIgnore.includes(key) && proyecto.dataValues.hasOwnProperty(key)) {
+      checkDifference(key, data[key]);
+    }
+  });
+
+  // CASOS ESPECIALES (Si los IDs de relaciones cambiaron)
+  if (data.tipo_proyecto && proyecto.tipo_proyecto !== data.tipo_proyecto) {
+    changes['tipo_proyecto'] = { old: proyecto.tipo_proyecto, new: data.tipo_proyecto };
+  }
+
   await proyecto.update(data)
+
+  // GUARDAR LOG SOLO SI HUBO CAMBIOS REALES
+  if (Object.keys(changes).length > 0) {
+    await saveLog({
+      userId: usuarioId,
+      actionType: 'PROJECT_DETAIL_UPDATED',
+      resourceType: 'Proyecto',
+      resourceId: id,
+      details: {
+        message: "Cambio en detalles técnicos/económicos",
+        changed_fields: changes
+      }
+    });
+  }
+
   return proyecto;
 }
 
-const updateProyectoGeneralData = async (data, id) => {
+const updateProyectoGeneralData = async (data, id, usuarioId) => {
   const proyecto = await Proyecto.findOne({
     where: { id },
     include: [
@@ -381,6 +466,46 @@ const updateProyectoGeneralData = async (data, id) => {
       },
     ]
   });
+
+  if (!proyecto) throw new Error("Proyecto no encontrado");
+
+  // PREPARAR EL RECOLECTOR DE CAMBIOS
+  const changes = {};
+
+  // Función auxiliar para comparar y registrar cambios
+  const trackChange = (path, oldVal, newVal) => {
+    if (oldVal !== newVal && newVal !== undefined) {
+      changes[path] = { old: oldVal, new: newVal };
+    }
+  };
+
+  // COMPARAR DATOS BÁSICOS DEL PROYECTO
+  trackChange('nombre', proyecto.nombre, data.nombreProyecto);
+  trackChange('informacion', proyecto.informacion, data.informacionBreve);
+  trackChange('tipo_proyecto', proyecto.tipo_proyecto, data.tipoProyecto);
+
+  // COMPARAR DEPARTAMENTO
+  if (data.departamento && proyecto.Departamento) {
+    trackChange('departamento', proyecto.Departamento.nombre, data.departamento);
+  }
+
+  // COMPARAR DIRECTOR (Nombre completo)
+  if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
+    const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
+    const oldName = `${proyecto.DirectorProyecto.Persona.nombre} ${proyecto.DirectorProyecto.Persona.apellido}`.trim();
+    const newName = `${nombre} ${apellido}`.trim();
+    trackChange('director', oldName, newName);
+  }
+
+  // COMPARAR PATROCINADOR
+  if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
+    const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
+    const oldName = `${proyecto.Patrocinador.Persona.nombre} ${proyecto.Patrocinador.Persona.apellido}`.trim();
+    const newName = `${nombre} ${apellido}`.trim();
+    trackChange('patrocinador', oldName, newName);
+  }
+
+  // --- EJECUCIÓN DE LAS ACTUALIZACIONES ---
 
   const projectData = {
     nombre: data.nombreProyecto,
@@ -389,11 +514,11 @@ const updateProyectoGeneralData = async (data, id) => {
   }
 
   await proyecto.update(projectData);
-  if (data.departamento) {
+  if (data.departamento && proyecto.Departamento) {
     await proyecto.Departamento.update({ nombre: data.departamento });
   }
 
-  if (data.directorProyecto) {
+  if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
 
     await proyecto.DirectorProyecto.Persona.update({
@@ -401,12 +526,26 @@ const updateProyectoGeneralData = async (data, id) => {
     });
   }
 
-  if (data.patrocinadorProyecto) {
+  if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
     await proyecto.Patrocinador.Persona.update({
       nombre, apellido
     });
   }
+
+  // GUARDAR LOG SOLO SI HUBO CAMBIOS
+  //if (Object.keys(changes).length > 0) {
+    await saveLog({
+      userId: usuarioId,
+      actionType: 'PROJECT_UPDATED_GENERAL',
+      resourceType: 'Proyecto',
+      resourceId: id,
+      details: {
+        message: "Actualización de datos generales",
+        changed_fields: changes // Aquí se guarda solo lo que cambió
+      }
+    });
+  //}
 
   return proyecto;
 }
@@ -558,6 +697,48 @@ const assignCreatorToProject = async (projectId, usuarioId) => {
   }
 };
 
+/**
+ * Actualiza el proyecto y registra el cambio de estado.
+ * @param {number} projectId - ID del proyecto.
+ * @param {string} newStatus - Nuevo estado (S, E, P, C, etc.).
+ * @param {number} userId - ID del usuario que realiza la acción (obtenido del token).
+ * @param {object} [extraFields={}] - Campos adicionales a actualizar (ej: fecha_inicio, fecha_cierre).
+ * @param {string} actionType - Tipo de acción para el log (ej: 'PROJECT_ACTIVATED').
+ */
+const logUpdateEstadoProyecto = async (projectId, newStatus, userId, extraFields = {}, actionType) => {
+  const proyecto = await Proyecto.findByPk(projectId);
+
+  if (!proyecto) {
+    throw new Error(`Proyecto con ID ${projectId} no encontrado.`);
+  }
+
+  const oldStatus = proyecto.estado; // 💡 Capturar el estado anterior
+
+  // 1. Ejecutar la actualización
+  const dataToUpdate = {
+    estado: newStatus,
+    ...extraFields,
+  };
+  await proyecto.update(dataToUpdate);
+
+  // 2. Registrar el log
+  await saveLog({
+    userId: userId,
+    actionType: actionType,
+    resourceType: 'Proyecto',
+    resourceId: projectId,
+    details: {
+      status: {
+        old: oldStatus,
+        new: newStatus,
+      },
+      ...extraFields, // Incluir campos extra en el log
+    }
+  });
+
+  return proyecto; // Devolver el proyecto actualizado
+};
+
 module.exports = {
   getAllProyecto,
   getActiveProyecto,
@@ -568,4 +749,5 @@ module.exports = {
   getFilteredProjects,
   updateProyectoGeneralData,
   assignCreatorToProject,
+  logUpdateEstadoProyecto,
 };

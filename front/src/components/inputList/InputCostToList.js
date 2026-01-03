@@ -8,12 +8,25 @@ import "./InputCostToList.css"
 
 const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disabled = false, ejecutado }) => {
     const [inputCosts, setInputCosts] = useState(costoList)
+    const [focusedKey, setFocusedKey] = useState(null); // Para trackear foco por índice y campo
+
+    const unformatToNumber = (value) => {
+        if (!value || value === "") return "0";
+        let str = value.toString().trim();
+        if (str.includes(',')) {
+            return str.replace(/\./g, '').replace(',', '.');
+        }
+        const dots = (str.match(/\./g) || []).length;
+        if (dots > 1) return str.replace(/\./g, '');
+        return str;
+    };
 
     useEffect(() => {
         if (ejecutado && costoList.length > 0) {
             const transformedList = costoList.map(item => ({
                 ...item,
-                costoReal: item.costoReal || (item.costo || '0'),
+                //costoReal: item.costoReal || (item.costo || '0'),
+                costoReal: item.costoReal || '0',
             }));
             setInputCosts(transformedList);
         } else {
@@ -28,13 +41,25 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
         setResultCostoList(updatedInputCosts);
     }
 
-    const calculateTotalCost = (field = 'costo') => {
-        let total = 0
-        inputCosts.forEach((cost) => {
-            total += parseFloat(cost[field] || 0)
-        });
-        return total.toFixed(2);
+    const handleBlur = (value, index, field) => {
+        // CORRECCIÓN: Al salir guardamos el número limpio en el estado
+        handleCostChanges(unformatToNumber(value), index, field);
+        setFocusedKey(null);
     }
+
+    const handleFocus = (value, index, field) => {
+        handleCostChanges(unformatToNumber(value), index, field);
+        setFocusedKey(`${index}-${field}`);
+    }
+
+    const calculateTotalCost = (field = 'costo') => {
+        let total = 0;
+        inputCosts.forEach((cost) => {
+            const val = parseFloat(unformatToNumber(cost[field]) || 0);
+            total += val;
+        });
+        return total;
+    };
 
     // Cálculo total estimado
     const totalCostoEstimado = useMemo(() => calculateTotalCost('costo'), [inputCosts]);
@@ -50,19 +75,19 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
         </div>
     );
 
-    const formatCurrency = (number) => {
-        if (isNaN(number) || number === null || number === undefined) return '0.00';
-
+    const formatToEcuador = (number) => {
+        const val = unformatToNumber(number);
+        const parsed = parseFloat(val);
+        if (isNaN(parsed)) return '0,00';
         return new Intl.NumberFormat('es-EC', {
             minimumFractionDigits: 2,
             maximumFractionDigits: 2,
-        }).format(parseFloat(number));
+        }).format(parsed);
     };
 
     // Función para renderizar una fila de costo
     const renderCostRow = (item, index) => (
-        <ListGroup.Item className='d-flex p-2' key={index}> {/* d-flex para la distribución */}
-            {/* Entregable (Col 6) */}
+        <ListGroup.Item className='d-flex p-2' key={index}>
             <div className="col-6 text-break">{item.entregable}</div>
 
             {/* Costo Estimado (Col 3 o 6) */}
@@ -72,12 +97,15 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
                         <InputGroup.Text><strong>$</strong></InputGroup.Text>
                     </InputGroup.Prepend>
                     <Form.Control
-                        disabled={disabled || ejecutado} // Se deshabilita en Ejecución (solo se edita el real)
+                        disabled={disabled || ejecutado}
                         className='input-cost-list'
                         autoComplete="off"
                         type="text"
-                        value={item.costo}
+                        // Condicional de visualización
+                        value={focusedKey === `${index}-costo` ? item.costo : formatToEcuador(item.costo)}
                         onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, value => handleCostChanges(value, index, 'costo'))}
+                        onBlur={(e) => handleBlur(e.target.value, index, 'costo')}
+                        onFocus={(e) => handleFocus(e.target.value, index, 'costo')}
                     />
                 </InputGroup>
             </div>
@@ -90,12 +118,14 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
                             <InputGroup.Text><strong>$</strong></InputGroup.Text>
                         </InputGroup.Prepend>
                         <Form.Control
-                            disabled={disabled} // Solo se deshabilita si no está en modo edición
+                            disabled={disabled}
                             className='input-cost-list'
                             autoComplete="off"
                             type="text"
-                            value={item.costoReal}
+                            value={focusedKey === `${index}-costoReal` ? item.costoReal : formatToEcuador(item.costoReal)}
                             onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, value => handleCostChanges(value, index, 'costoReal'))}
+                            onBlur={(e) => handleBlur(e.target.value, index, 'costoReal')}
+                            onFocus={(e) => handleFocus(e.target.value, index, 'costoReal')}
                         />
                     </InputGroup>
                 </div>
@@ -118,7 +148,7 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
                     <Form.Control
                         className='input-cost-list'
                         type="text"
-                        value={formatCurrency(totalCostoEstimado)}
+                        value={formatToEcuador(totalCostoEstimado)}
                         plaintext
                         readOnly
                     />
@@ -135,7 +165,7 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
                         <Form.Control
                             className='input-cost-list'
                             type="text"
-                            value={formatCurrency(totalCostoReal)}
+                            value={formatToEcuador(totalCostoReal)}
                             plaintext
                             readOnly
                         />

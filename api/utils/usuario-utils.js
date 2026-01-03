@@ -273,7 +273,7 @@ const updatePassword = async (usuario, password) => {
         message: `Contraseña de usuario ${usuario.username} cambiada.`
       }
     });
-    
+
     return usuario;
   } catch (error) {
     logger.error({
@@ -339,6 +339,79 @@ const updateUsuarioRol = async (userId, rolId) => {
   }
 };
 
+/**
+ * Actualiza la empresa de un usuario existente.
+ * @param {number} userId - ID del usuario a modificar.
+ * @param {number} empresaId - Nuevo ID de la empresa a asignar.
+ * @returns {Promise<Usuario>} El objeto Usuario actualizado (con su nueva empresa).
+ */
+const updateUsuarioEmpresa = async (userId, empresaId) => {
+  try {
+    const usuario = await Usuario.findByPk(userId);
+
+    if (!usuario) {
+      throw new Error(`Usuario con ID ${userId} no encontrado.`);
+    }
+
+    // Verificación de existencia de la Empresa
+    const empresaExiste = await Empresa.findByPk(empresaId);
+
+    if (!empresaExiste) {
+      throw new Error(`Empresa con ID ${empresaId} no encontrado.`);
+    }
+
+    // Actualizar el empresa_id
+    await usuario.update({ empresa_id: empresaId });
+
+    // Obtener el usuario completo con las nuevas asociaciones
+    const updatedUsuario = await getUsuarioById(userId);
+
+    return updatedUsuario;
+  } catch (error) {
+    logger.error({
+      message: error.message,
+      source: file,
+      method: "updateUsuarioEmpresa()",
+      params: { userId, empresaId },
+    });
+    throw error;
+  }
+};
+
+/**
+ * Obtiene todos los usuarios que pertenecen a una empresa específica.
+ * @param {number} empresaId - ID de la empresa.
+ * @returns {Promise<Array<Usuario>>} Lista de usuarios de la empresa.
+ */
+const getUsuariosByEmpresaId = async (empresaId) => {
+  try {
+    const items = await Usuario.findAll({
+      where: {
+        empresa: empresaId,
+      },
+      attributes: ['id', 'username', 'empresa', 'fecha_creacion'],
+
+      include: [
+        {
+          model: Rol,
+          as: 'Rol',
+          attributes: ['id', 'nombre'],
+        },
+        {
+          model: Empresa,
+          as: 'Empresa',
+          attributes: ['id', 'nombre'],
+        },
+      ],
+      order: [['username', 'ASC']], // Ordenamos por el campo de correo
+    });
+    return items;
+  } catch (error) {
+    // logger.error({ ... }); 
+    throw error;
+  }
+};
+
 module.exports = {
   getUsuarioById,
   createUsuario,
@@ -348,4 +421,6 @@ module.exports = {
   updatePassword,
   getUsuarioByAwsId,
   updateUsuarioRol,
+  updateUsuarioEmpresa,
+  getUsuariosByEmpresaId,
 };

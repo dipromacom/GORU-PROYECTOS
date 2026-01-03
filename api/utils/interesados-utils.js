@@ -8,6 +8,7 @@ const interesados = require('../models/interesados');
 const evaluacionInteresados = require('../models/evaluacion-interesados');
 const { access } = require('fs');
 const file = path.basename(__filename);
+const { saveLog } = require('../utils/log-service');
 
 const normalizeNumericField = (value) => {
     // Si el valor es una cadena vacía, retornamos null
@@ -17,7 +18,7 @@ const normalizeNumericField = (value) => {
     return value;
 }
 
-const createInteresados = async (data) => {
+const createInteresados = async (data, usuarioId) => {
     const transaction = await db.transaction();
     console.log('Enviando a la API:', JSON.stringify(data, null, 2));
 
@@ -128,6 +129,18 @@ const createInteresados = async (data) => {
             }
 
             interesadosCreados.push(interesado);
+
+            await saveLog({
+                userId: usuarioId,
+                actionType: 'STAKEHOLDER_CREATED',
+                resourceType: 'Interesado',
+                resourceId: interesado.id,
+                details: {
+                    nombre: interesado.nombre_interesado,
+                    proyecto_id: interesado.proyecto_id
+                }
+            });
+            interesadosCreados.push(interesado);
         }
 
         await transaction.commit();
@@ -158,7 +171,17 @@ const getAllInteresados = async () => {
 };
 
 
-const updateInteresado = async (id, data) => {
+const updateInteresado = async (id, data, usuarioId) => {
+    // --- Lógica de Logs: Capturar estado inicial ---
+    const estadoAnterior = await Interesado.findOne({
+        where: { id_interesado: data.id_interesado, proyecto_id: data.proyecto_id },
+        include: [
+            { model: NoDisponibilidad, as: 'NoDisponibilidad' },
+            { model: EvaluacionInteresado, as: 'EvaluacionInteresado' } // 💡 Cambio de 'Evaluaciones' a 'EvaluacionInteresado'
+        ]
+    });
+    // ----------------------------------------------
+
     const transaction = await db.transaction();
 
     try {
@@ -308,6 +331,42 @@ const updateInteresado = async (id, data) => {
             }
         }
 
+
+        // --- Lógica de Logs: Comparar y Guardar ---
+        if (estadoAnterior) {
+            const changes = {};
+            const trackChange = (key, oldVal, newVal) => {
+                if (oldVal !== newVal && newVal !== undefined) {
+                    changes[key] = { old: oldVal, new: newVal };
+                }
+            };
+
+            trackChange('nombre', estadoAnterior.nombre_interesado, nombre_interesado);
+            trackChange('email', estadoAnterior.email, email);
+            trackChange('telefono', estadoAnterior.telefono, telefono);
+            trackChange('rol', estadoAnterior.rol, rol);
+            trackChange('cargo', estadoAnterior.cargo, cargo);
+            trackChange('expectativas', estadoAnterior.expectativas, expectativasProyecto);
+
+            // Comparación de evaluaciones (usando el alias correcto también aquí)
+            if (JSON.stringify(estadoAnterior.EvaluacionInteresado) !== JSON.stringify(evaluacionesToProcess)) {
+                changes['evaluacion'] = { info: "Se actualizaron los datos de evaluación o estrategia" };
+            }
+
+            if (Object.keys(changes).length > 0) {
+                await saveLog({
+                    userId: usuarioId,
+                    actionType: 'STAKEHOLDER_UPDATED',
+                    resourceType: 'Interesado',
+                    resourceId: interesado.id,
+                    details: {
+                        nombre: interesado.nombre_interesado,
+                        changed_fields: changes
+                    }
+                });
+            }
+        }
+        // ------------------------------------------
         await transaction.commit();
         return { message: "Interesado actualizado exitosamente", interesado };
     } catch (error) {
@@ -402,10 +461,17 @@ const getInteresadosById = async (id) => {
 
 
 // Eliminar un interesado
-const deleteInteresado = async (interesadoId) => {
+const deleteInteresado = async (interesadoId, usuarioId) => {
+
+    const interesado = await Interesado.findByPk(interesadoId);
+    if (!interesado) throw new Error("Interesado no encontrado");
+
+
     const t = await db.transaction(); // Iniciar transacción
 
     try {
+
+        const nombreEliminado = interesado.nombre_interesado;
         // Primero eliminamos las fechas de no disponibilidad asociadas al interesado
         await NoDisponibilidad.destroy({
             where: { interesadoId },
@@ -422,6 +488,14 @@ const deleteInteresado = async (interesadoId) => {
         const interesado = await Interesado.destroy({
             where: { id: interesadoId },
             transaction: t,
+        });
+
+        await saveLog({
+            userId: usuarioId,
+            actionType: 'STAKEHOLDER_DELETED',
+            resourceType: 'Interesado',
+            resourceId: interesadoId,
+            details: { nombre: nombreEliminado, info: "Eliminación completa de interesado y registros asociados" }
         });
 
         // Confirmar transacción
