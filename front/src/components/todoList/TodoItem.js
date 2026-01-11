@@ -7,7 +7,7 @@ import moment from 'moment';
 const TodoItem = ({
     id, title, description, prioridad, interesado, label, done,
     onComplete, dueDate, duedate, onDelete, enableCheck, interesadoId,
-    close, cerrado// 🔹 nuevo prop que viene desde la API
+    close, cerrado, setTaskFilter // 🔹 nuevo prop que viene desde la API
     , closeDate: taskCloseDate
 }) => {
     const [doneItem, setDoneItem] = useState(done);
@@ -31,7 +31,7 @@ const TodoItem = ({
             alert("La fecha de cierre no puede ser menor a la fecha de inicio de la tarea.");
             return;
         }
-        
+        setTaskFilter("false");
         const closedTask = {
             id,
             close: true,

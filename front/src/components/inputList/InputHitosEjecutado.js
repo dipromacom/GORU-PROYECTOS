@@ -3,7 +3,7 @@ import { ListGroup, Form, Row, Col, ProgressBar } from 'react-bootstrap';
 import moment from 'moment';
 import { useEffect, useState, useMemo } from 'react';
 
-const InputHitosEjecutado = ({ tiempoFechasCriticas, setTiempoFechasCriticas, editMode, ejecutado, onSummaryChange = () => { } }) => {
+const InputHitosEjecutado = ({ tiempoFechasCriticas, setTiempoFechasCriticas, editMode, ejecutado, cerrado, onSummaryChange = () => { } }) => {
 
     // 1. Cálculo de Progreso
     const totalHitos = tiempoFechasCriticas?.length || 0;
@@ -44,10 +44,10 @@ const InputHitosEjecutado = ({ tiempoFechasCriticas, setTiempoFechasCriticas, ed
     };
 
     useEffect(() => {
-        if (ejecutado) {
+        if (ejecutado || cerrado) {
             onSummaryChange('hitos', porcentajeCompletado);
         }
-    }, [porcentajeCompletado, ejecutado, onSummaryChange]);
+    }, [porcentajeCompletado, ejecutado, cerrado, onSummaryChange]);
 
     return (
         <div className="input-hitos-ejecutado mt-3">

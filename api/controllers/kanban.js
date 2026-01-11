@@ -32,7 +32,9 @@ const getKanban = async (req, res) => {
                     id: tempTask.id,
                     content: tempTask.content,
                     priority: tempTask.priority,
-                    interesadoId: tempTask.interesadoId || null
+                    interesadoId: tempTask.interesadoId || null,
+                    deadline: tempTask.deadline || null,   
+                    closed_at: tempTask.closed_at || null
                 }
             }
             allStatusById[tempStatus.id] = {

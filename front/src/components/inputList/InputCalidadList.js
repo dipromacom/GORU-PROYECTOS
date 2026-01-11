@@ -3,7 +3,7 @@ import { Form } from "react-bootstrap";
 import InputCriteriosInput from "./InputCriteriosInput";
 import InputCalidadEjecutado from "./InputCalidadEjecutado";
 
-const InputCalidadList = ({ calidadMetricas, setCalidadMetricas, costoEntregable, editMode, ejecutado, onSummaryChange = () => { } }) => {
+const InputCalidadList = ({ calidadMetricas, setCalidadMetricas, costoEntregable, editMode, ejecutado, cerrado, onSummaryChange = () => { } }) => {
 
     const transformedMetricas = useMemo(() => {
         const metrics = calidadMetricas || [];
@@ -28,12 +28,13 @@ const InputCalidadList = ({ calidadMetricas, setCalidadMetricas, costoEntregable
             <h3>Calidad / Requisitos Funcionales / Requisitos del Cliente</h3>
             <Form.Group controlId="metricas-criterios">
                 <Form.Label>Métrica / Criterios de Aceptación</Form.Label>
-                {ejecutado ? (
+                {ejecutado || cerrado ? (
                     <InputCalidadEjecutado
                         calidadMetricas={transformedMetricas}
                         setCalidadMetricas={setCalidadMetricas}
                         editMode={editMode}
                         ejecutado={ejecutado}
+                        cerrado={cerrado}
                         onSummaryChange={onSummaryChange}
                     />
                 ) : (

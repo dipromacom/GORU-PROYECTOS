@@ -6,7 +6,7 @@ import regexValidator from "../../libs/regexValidator";
 import "./InputCostToList.css"
 
 
-const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disabled = false, ejecutado }) => {
+const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disabled = false, ejecutado, cerrado }) => {
     const [inputCosts, setInputCosts] = useState(costoList)
     const [focusedKey, setFocusedKey] = useState(null); // Para trackear foco por índice y campo
 
@@ -22,7 +22,7 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
     };
 
     useEffect(() => {
-        if (ejecutado && costoList.length > 0) {
+        if ((ejecutado || cerrado) && costoList.length > 0) {
             const transformedList = costoList.map(item => ({
                 ...item,
                 //costoReal: item.costoReal || (item.costo || '0'),
@@ -32,7 +32,7 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
         } else {
             setInputCosts(costoList);
         }
-    }, [costoList, ejecutado])
+    }, [costoList, ejecutado, cerrado])
 
     const handleCostChanges = (value, id, field) => {
         const updatedInputCosts = [...inputCosts];
@@ -70,8 +70,8 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
     const renderCostHeader = () => (
         <div className="d-flex fw-bold list-cost-header">
             <div className="col-6">Entregable</div>
-            <div className={ejecutado ? "col-3 text-center" : "col-6 text-center"}>Costo Est.</div>
-            {ejecutado && <div className="col-3 text-center">Costo Real</div>}
+            <div className={(ejecutado || cerrado) ? "col-3 text-center" : "col-6 text-center"}>Costo Est.</div>
+            {(ejecutado || cerrado) && <div className="col-3 text-center">Costo Real</div>}
         </div>
     );
 
@@ -91,13 +91,13 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
             <div className="col-6 text-break">{item.entregable}</div>
 
             {/* Costo Estimado (Col 3 o 6) */}
-            <div className={ejecutado ? "col-3 pr-0" : "col-6 pr-0"}>
+            <div className={(ejecutado || cerrado) ? "col-3 pr-0" : "col-6 pr-0"}>
                 <InputGroup size="sm" className="input-cost-item">
                     <InputGroup.Prepend>
                         <InputGroup.Text><strong>$</strong></InputGroup.Text>
                     </InputGroup.Prepend>
                     <Form.Control
-                        disabled={disabled || ejecutado}
+                        disabled={disabled || (ejecutado || cerrado)}
                         className='input-cost-list'
                         autoComplete="off"
                         type="text"
@@ -111,7 +111,7 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
             </div>
 
             {/* Costo Real (Col 3 - solo si ejecutado) */}
-            {ejecutado && (
+            {(ejecutado || cerrado) && (
                 <div className="col-3 pr-0">
                     <InputGroup size="sm" className="input-cost-item">
                         <InputGroup.Prepend>
@@ -140,7 +140,7 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
             <div className="col-6 text-break">TOTAL ENTREGABLES</div>
 
             {/* Total Costo Estimado (Col 3 o 6) */}
-            <div className={ejecutado ? "col-3 pr-0" : "col-6 pr-0"}>
+            <div className={(ejecutado || cerrado) ? "col-3 pr-0" : "col-6 pr-0"}>
                 <InputGroup size="sm" className="input-cost-item">
                     <InputGroup.Prepend>
                         <InputGroup.Text><strong>$</strong></InputGroup.Text>
@@ -156,7 +156,7 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
             </div>
 
             {/* Total Costo Real (Col 3 - solo si ejecutado) */}
-            {ejecutado && (
+            {(ejecutado || cerrado) && (
                 <div className="col-3 pr-0">
                     <InputGroup size="sm" className="input-cost-item">
                         <InputGroup.Prepend>

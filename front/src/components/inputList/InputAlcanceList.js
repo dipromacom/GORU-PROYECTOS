@@ -23,34 +23,34 @@ const transformToNewFormat = (alcanceEntregables) => {
     }));
 };
 
-const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode, ejecutado, onSummaryChange = () => { }, esPrograma }) => {
+const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode, ejecutado, cerrado, onSummaryChange = () => { }, esPrograma }) => {
 
     const totalAlcances = alcanceEntregables?.length || 0;
     const completados = (isNewFormat(alcanceEntregables) ? alcanceEntregables.filter(a => a.completado).length : 0);
     const porcentajeCompletado = totalAlcances > 0 ? Math.round((completados / totalAlcances) * 100) : 0;
 
     useEffect(() => {
-        if (ejecutado) {
+        if (ejecutado || cerrado) {
             onSummaryChange('alcance', porcentajeCompletado);
         }
-    }, [porcentajeCompletado, ejecutado, onSummaryChange]);
+    }, [porcentajeCompletado, ejecutado, cerrado, onSummaryChange]);
 
 
     useEffect(() => {
-        if (ejecutado && alcanceEntregables?.length > 0 && !isNewFormat(alcanceEntregables)) {
+        if ((ejecutado || cerrado) && alcanceEntregables?.length > 0 && !isNewFormat(alcanceEntregables)) {
             const newAlcances = transformToNewFormat(alcanceEntregables);
             // Llama al setter del padre
             setAlcanceEntregables(newAlcances);
         }
-    }, [ejecutado, alcanceEntregables, setAlcanceEntregables]); // setAlcanceEntregables debe estar en las dependencias
+    }, [ejecutado, cerrado, alcanceEntregables, setAlcanceEntregables]); // setAlcanceEntregables debe estar en las dependencias
 
 
     if (!(alcanceEntregables?.length > 0 || editMode)) return null;
-    if (ejecutado && alcanceEntregables?.length > 0 && !isNewFormat(alcanceEntregables)) {
+    if ((ejecutado || cerrado) && alcanceEntregables?.length > 0 && !isNewFormat(alcanceEntregables)) {
         return null;
     }
 
-    if (ejecutado && isNewFormat(alcanceEntregables)) {
+    if ((ejecutado || cerrado) && isNewFormat(alcanceEntregables)) {
         return (
             <div className="alcance-container">
                 <h3>Alcance del {esPrograma? "Componente" : "Proyecto"}</h3>

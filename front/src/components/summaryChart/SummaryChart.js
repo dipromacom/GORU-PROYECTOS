@@ -1,5 +1,5 @@
 import React from 'react';
-import { Doughnut } from 'react-chartjs-2';
+import { Doughnut, Polar } from 'react-chartjs-2';
 import { Badge } from 'react-bootstrap'; // Usaremos Badge de react-bootstrap
 
 
@@ -8,6 +8,78 @@ const SUCCESS_COLOR = 'rgb(40, 167, 69)'; // Verde
 const DANGER_COLOR = 'rgb(220, 53, 69)'; // Rojo
 const WARNING_COLOR = 'rgb(255, 193, 7)'; // Amarillo
 const INFO_COLOR = 'rgb(23, 162, 184)'; // Azul
+
+// Colores sólidos para la leyenda y bordes
+
+
+const PerformancePolarChart = ({ dataValues }) => {
+    const labels = ['Desempeño Kanban', 'Desempeño Gantt'];
+    const values = [dataValues.eficiencia || 0, dataValues.cronograma || 0];
+
+    const getColor = (val) => {
+        if (val >= 1) return 'rgba(40, 167, 69, 0.7)';   // SUCCESS
+        if (val >= 0.6) return 'rgba(255, 193, 7, 0.7)';  // WARNING
+        return 'rgba(220, 53, 69, 0.7)';                  // DANGER
+    };
+
+    const data = {
+        labels: labels,
+        datasets: [{
+            data: values,
+            backgroundColor: values.map(v => getColor(v)),
+            borderWidth: 1,
+        }]
+    };
+
+    const options = {
+        responsive: true,
+        maintainAspectRatio: false,
+        scale: {
+            ticks: {
+                beginAtZero: true,
+                max: 1.4, // Ajustamos el límite superior
+                stepSize: 0.2
+            }
+        },
+        legend: {
+            position: 'bottom',
+        },
+        tooltips: {
+            callbacks: {
+                label: (tooltipItem, data) => {
+                    const val = data.datasets[0].data[tooltipItem.index];
+                    return ` Valor: ${val.toFixed(2)} (${(val * 100).toFixed(0)}%)`;
+                }
+            }
+        }
+    };
+
+    return (
+        <div className="w-100 text-center">
+            <h5 className="mb-3">Índice de Desempeño</h5>
+            <div style={{ height: '250px' }}>
+                <Polar data={data} options={options} />
+            </div>
+
+            {/* 🔹 NUEVO: Indicador de colores (Leyenda personalizada) */}
+            <div className="mt-4 d-flex justify-content-center flex-wrap" style={{ gap: '10px' }}>
+                <div className="d-flex align-items-center">
+                    <span style={{ width: '12px', height: '12px', backgroundColor: SUCCESS_COLOR, borderRadius: '50%', display: 'inline-block', marginRight: '5px' }}></span>
+                    <small>Excelente (≥ 1.0)</small>
+                </div>
+                <div className="d-flex align-items-center">
+                    <span style={{ width: '12px', height: '12px', backgroundColor: WARNING_COLOR, borderRadius: '50%', display: 'inline-block', marginRight: '5px' }}></span>
+                    <small>Regular (0.6 - 0.99)</small>
+                </div>
+                <div className="d-flex align-items-center">
+                    <span style={{ width: '12px', height: '12px', backgroundColor: DANGER_COLOR, borderRadius: '50%', display: 'inline-block', marginRight: '5px' }}></span>
+                    <small>Crítico ({"< 0.59"})</small>
+                </div>
+            </div>
+        </div>
+    );
+};
+
 
 // --- Componente de Gráfico de Dona ---
 const DoughnutProgress = ({ title, percentage }) => {
@@ -173,14 +245,16 @@ const CostDeviation = ({ deviation }) => {
 
 
 // --- Componente Principal de Resumen ---
-const SummaryChart = ({ type, value }) => {
+const SummaryChart = ({ type, value, dataValues }) => {
+    if (type === 'performance') {
+        return <PerformancePolarChart dataValues={dataValues} />;
+    }
     if (type === 'risk') {
         return <RiskIndicator riskValue={value} />;
     }
     if (type === 'cost') {
         return <CostDeviation deviation={value} />;
     }
-    // Para alcance, hitos y calidad
     return <DoughnutProgress title={type.charAt(0).toUpperCase() + type.slice(1)} percentage={Number(value) || 0} />;
 };
 

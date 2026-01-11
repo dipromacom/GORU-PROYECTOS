@@ -10,7 +10,7 @@ import { actions as ganttActions, selectors as ganttSelectors } from "../../redu
 import "./GanttChart.css";
 import { duration } from "moment";
 
-const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, esPrograma, onSummaryChange = () => { } }) => {
+const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, esPrograma, onSummaryChange = () => { }, onPerformanceChange = () => { } }) => {
     let type = "actividad"
     if (esPrograma) type = "componente"
     let types = "actividades"
@@ -161,6 +161,99 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         if (criticalEndTask) backtrack(criticalEndTask);
 
         return [...criticalTasks];
+    };
+
+    const calculatePerformance = (task) => {
+        const now = new Date();
+        const start = new Date(task.start_date || task.start);
+        const end = new Date(task.end_date || task.end);
+
+        // Si el proyecto aún no ha empezado
+        if (now < start) {
+            return {
+                performance: 0, // No se puede evaluar aún
+                expectedProgress: 0,
+                isFuture: true // 🔹 NUEVO: Marca que es futuro
+            };
+        }
+
+        // Si el proyecto ya terminó
+        if (now > end) {
+            return {
+                performance: task.progress >= 100 ? 1 : task.progress / 100,
+                expectedProgress: 100,
+                isFuture: false
+            };
+        }
+
+        // Calcular porcentaje de tiempo transcurrido
+        const totalDuration = end - start;
+        const elapsed = now - start;
+        const expectedProgress = (elapsed / totalDuration) * 100;
+
+        // Evitar división por cero
+        if (expectedProgress === 0 || expectedProgress < 1) {
+            return {
+                performance: 0,
+                expectedProgress: Math.round(expectedProgress),
+                isFuture: true // 🔹 Prácticamente futuro
+            };
+        }
+
+        // 🔹 NUEVO: Desempeño como decimal = Avance Real / Avance Esperado
+        const performance = task.progress / expectedProgress;
+
+        return {
+            performance: Math.round(performance * 100) / 100, // Redondear a 2 decimales
+            expectedProgress: Math.round(expectedProgress),
+            isFuture: false
+        };
+    };
+
+    // Calcula el avance y desempeño promedio de un grupo basado en sus hijos
+    const calculateGroupMetrics = (groupId, tasks) => {
+        const children = tasks.filter(t => t.parent_id === groupId && t.type !== 'group');
+
+        if (children.length === 0) {
+            return { avgProgress: 0, avgPerformance: 0, avgExpected: 0 };
+        }
+
+        const totalProgress = children.reduce((sum, child) => sum + (child.progress || 0), 0);
+        const avgProgress = totalProgress / children.length;
+
+        let totalPerformance = 0;
+        let totalExpected = 0;
+        let validPerformanceCount = 0; // 🔹 NUEVO: Contar solo tareas con avance esperado > 0
+
+        children.forEach(child => {
+            const metrics = calculatePerformance(child);
+            totalExpected += metrics.expectedProgress;
+
+            // 🔹 NUEVO: Solo sumar desempeño si no es futuro
+            if (!metrics.isFuture && metrics.expectedProgress > 0) {
+                totalPerformance += metrics.performance;
+                validPerformanceCount++;
+            }
+        });
+
+        const avgPerformance = validPerformanceCount > 0
+            ? totalPerformance / validPerformanceCount
+            : 0;
+        const avgExpected = totalExpected / children.length;
+
+        return {
+            avgProgress: Math.round(avgProgress),
+            avgPerformance: Math.round(avgPerformance * 100) / 100, // 🔹 Decimal con 2 decimales
+            avgExpected: Math.round(avgExpected)
+        };
+    };
+
+    // Retorna color basado en el nivel de desempeño
+    const getPerformanceColor = (performance) => {
+        if (performance >= 1) return '#28a745';     // Verde - Excelente (100% o más)
+        if (performance >= 0.8) return '#ffc107';   // Amarillo - Bueno (80-99%)
+        if (performance >= 0.5) return '#fd7e14';   // Naranja - Regular (50-79%)
+        return '#dc3545';                            // Rojo - Crítico (< 50%)
     };
 
     const ganttTasks = useMemo(() => {
@@ -459,12 +552,40 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         const totalDays = (projectEnd - projectStart) / (1000 * 3600 * 24);
         let remainDays = (projectEnd - new Date()) / (1000 * 3600 * 24);
         if (remainDays < 0) remainDays = 0;
-        const totalHours = totalDays * 8;
 
-        const avgProgress = tasks.reduce((acc, t) => acc + (t.progress || 0), 0) / tasks.length;
+        // 🔹 Calcular solo con tareas individuales (no grupos)
+        const individualTasks = tasks.filter(t => t.type !== "group");
 
-        const totalTasks = tasks.filter(t => t.gantt_type !== "group").length;
-        const totalGroups = tasks.filter(t => t.gantt_type === "group").length;
+        const avgProgress = individualTasks.length > 0
+            ? individualTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / individualTasks.length
+            : 0;
+
+        // 🔹 MODIFICADO: Calcular desempeño excluyendo tareas futuras
+        let totalPerformance = 0;
+        let totalExpected = 0;
+        let validPerformanceCount = 0; // 🔹 NUEVO: Solo contar tareas activas
+
+        individualTasks.forEach(t => {
+            const metrics = calculatePerformance(t);
+            totalExpected += metrics.expectedProgress;
+
+            // 🔹 NUEVO: Solo incluir en desempeño si ya empezó (expectedProgress > 0)
+            if (!metrics.isFuture && metrics.expectedProgress > 0) {
+                totalPerformance += metrics.performance;
+                validPerformanceCount++;
+            }
+        });
+
+        const avgPerformance = validPerformanceCount > 0
+            ? totalPerformance / validPerformanceCount
+            : 0;
+
+        const avgExpected = individualTasks.length > 0
+            ? totalExpected / individualTasks.length
+            : 0;
+
+        const totalTasks = tasks.filter(t => t.type !== "group").length;
+        const totalGroups = tasks.filter(t => t.type === "group").length;
 
         const criticalIds = findCriticalPath(tasks);
         const criticalTasks = tasks.filter(t => criticalIds.includes(t.id));
@@ -479,8 +600,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             end: projectEnd.toLocaleDateString(),
             totalDays: Math.round(totalDays),
             remainDays: Math.round(remainDays),
-            totalHours: Math.round(totalHours),
             avgProgress: Math.round(avgProgress),
+            avgPerformance: Math.round(avgPerformance * 100) / 100, // 🔹 Decimal con 2 decimales
+            avgExpected: Math.round(avgExpected),
             totalTasks,
             totalGroups,
             criticalDays: Math.round(criticalDays)
@@ -490,6 +612,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     // --- 🔹 Sección resumen general ---
     const renderProjectSummary = () => {
         if (!projectSummary) return null;
+
+        const performanceColor = getPerformanceColor(projectSummary.avgPerformance);
 
         return (
             <div className="gantt-summary">
@@ -510,17 +634,31 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                         <div className="gantt-summary-item">
                             <strong>Días restantes:</strong> {projectSummary.remainDays}
                         </div>
-                        {/*<div className="gantt-summary-item">
-                            <strong>Total horas:</strong> {projectSummary.totalHours}
-                        </div>*/}
                     </Col>
                     <Col md={6} lg={4}>
-                        {/*<div className="gantt-summary-item">
-                            <strong>Ruta crítica:</strong> {projectSummary.criticalDays} días
-                        </div>*/}
                         <div className="gantt-summary-item">
-                            <strong>Avance total:</strong> {projectSummary.avgProgress}%
+                            <strong>Avance real:</strong>{' '}
+                            {projectSummary.avgProgress}%
                         </div>
+                        {(cerrado || ejecutado)  && (
+                            <>
+                                <div className="gantt-summary-item">
+                                    <strong>Avance estimado:</strong>{' '}
+                                    {projectSummary.avgExpected}%
+                                </div>
+                                {/* 🔹 MODIFICADO: Mostrar como número decimal */}
+                                <div className="gantt-summary-item">
+                                    <strong>Desempeño total:</strong>{' '}
+                                    <span style={{
+                                        color: performanceColor,
+                                        fontWeight: 'bold',
+                                        fontSize: '1.1em'
+                                    }}>
+                                        {projectSummary.avgPerformance.toFixed(2)}
+                                    </span>
+                                </div>
+                            </>
+                        )}
                     </Col>
                 </Row>
                 <div className="gantt-summary-footer">
@@ -532,13 +670,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     };
 
     useEffect(() => {
-        if (ejecutado && projectSummary) {
+        if ((ejecutado || cerrado) && projectSummary) {
             onSummaryChange('gantt', projectSummary.avgProgress);
+            onPerformanceChange('cronograma', projectSummary.avgPerformance);
         }
-        else{
+        else {
             onSummaryChange('gantt', 0);
-        } 
-    }, [projectSummary, ejecutado, onSummaryChange]);
+            onPerformanceChange('cronograma', 0);
+        }
+    }, [projectSummary, ejecutado, cerrado, onSummaryChange, onPerformanceChange]);
 
     // --- Lista lateral ---
     const renderLeftList = () => {
@@ -610,7 +750,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                             <span className="gantt-arrow">
                                                 {expandedGroups[group.id] ? "▼" : "▶"}
                                             </span>
-                                            {group.name} ({taskAliasMap[group.id] || 'G?'} )
+                                            {group.name} ({taskAliasMap[group.id] || 'G?'})
                                         </div>
                                         <div className="gantt-item-dates">
                                             {updatedTasksMap[group.id]?.start_date_local
@@ -622,6 +762,38 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                                 <strong>Duración:</strong>{" "}
                                                 {updatedTasksMap[group.id]?.duration_days ?? "-"} días
                                             </div>
+                                            {/* Métricas del grupo */}
+                                            {(() => {
+                                                const metrics = calculateGroupMetrics(group.id, tasks);
+                                                const performanceColor = getPerformanceColor(metrics.avgPerformance);
+                                                return (
+                                                    <>
+                                                        <div>
+                                                            <strong>Avance estimado:</strong>{" "}
+                                                            {metrics.avgExpected}%
+                                                        </div>
+                                                        {(cerrado || ejecutado) && (
+                                                            <>
+                                                                <div>
+                                                                    <strong>Avance real:</strong>{" "}
+                                                                    {metrics.avgProgress}%
+                                                                </div>
+                                                                <div>
+                                                                    <strong>Desempeño:</strong>{" "}
+                                                                    <span style={{
+                                                                        color: performanceColor,
+                                                                        fontWeight: 'bold',
+                                                                        fontSize: '1em'
+                                                                    }}>
+                                                                        {metrics.avgPerformance.toFixed(2)}
+                                                                    </span>
+                                                                    
+                                                                </div>
+                                                            </>
+                                                        )}           
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                     <div className="gantt-item-actions">
@@ -669,20 +841,54 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                                     </div>
                                                     <div>
                                                         <strong>Dependencias:</strong>{" "}
-                                                        {renderDependencies(
-                                                            t.dependencies
-                                                        )}
+                                                        {renderDependencies(t.dependencies)}
                                                     </div>
                                                     <div>
                                                         <strong>Interesados:</strong>{" "}
-                                                        {renderInteresados(
-                                                            t.interesados_id
-                                                        )}
+                                                        {renderInteresados(t.interesados_id)}
                                                     </div>
-                                                    <div>
-                                                        <strong>% de avance:</strong>{" "}
-                                                        {t.progress}
-                                                    </div>
+                                                    {(cerrado || ejecutado) && (
+                                                        <>
+                                                            <div>
+                                                                <strong>Avance estimado:</strong>{" "}
+                                                                {(() => {
+                                                                    const metrics = calculatePerformance(t);
+                                                                    return <>{metrics.expectedProgress}%</>;
+                                                                })()}
+                                                            </div>
+                                                            <div>
+                                                                <strong>Avance real:</strong>{" "}
+                                                                {t.progress}%
+                                                            </div>
+                                                            <div>
+                                                                <strong>Desempeño:</strong>{" "}
+                                                                {(() => {
+                                                                    const metrics = calculatePerformance(t);
+                                                                    const performanceColor = getPerformanceColor(metrics.performance);
+                                                                    if (metrics.isFuture) {
+                                                                        return (
+                                                                            <span style={{
+                                                                                color: '#6c757d',
+                                                                                fontStyle: 'italic'
+                                                                            }}>
+                                                                                Pendiente
+                                                                            </span>
+                                                                        );
+                                                                    }
+
+                                                                    return (
+                                                                        <span style={{
+                                                                            color: performanceColor,
+                                                                            fontWeight: 'bold',
+                                                                            fontSize: '1.1em'
+                                                                        }}>
+                                                                            {metrics.performance.toFixed(2)}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="gantt-item-actions">
@@ -739,9 +945,47 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                                 {renderInteresados(t.interesados_id)}
                                             </div>
                                             <div>
-                                                <strong>% de avance:</strong>{" "}
-                                                {t.progress}
+                                                <strong>Avance estimado:</strong>{" "}
+                                                {(() => {
+                                                    const metrics = calculatePerformance(t);
+                                                    return <>{metrics.expectedProgress}%</>;
+                                                })()}
                                             </div>
+                                            {(cerrado || ejecutado) && (
+                                                <>
+                                                    <div>
+                                                        <strong>Avance real:</strong>{" "}
+                                                        {t.progress}%
+                                                    </div>
+                                                    <div>
+                                                        <strong>Desempeño:</strong>{" "}
+                                                        {(() => {
+                                                            const metrics = calculatePerformance(t);
+                                                            const performanceColor = getPerformanceColor(metrics.performance);
+                                                            if (metrics.isFuture) {
+                                                                return (
+                                                                    <span style={{
+                                                                        color: '#6c757d',
+                                                                        fontStyle: 'italic'
+                                                                    }}>
+                                                                        Pendiente
+                                                                    </span>
+                                                                );
+                                                            }
+
+                                                            return (
+                                                                <span style={{
+                                                                    color: performanceColor,
+                                                                    fontWeight: 'bold',
+                                                                    fontSize: '1.1em'
+                                                                }}>
+                                                                    {metrics.performance.toFixed(2)}
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="gantt-item-actions">
@@ -984,7 +1228,13 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                 max={100}
                                 value={form.progress}
                                 onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })}
+                                disabled={form.type === "group"} // 🔹 NUEVO: Deshabilitar para grupos
                             />
+                            {form.type === "group" && (
+                                <Form.Text className="text-muted">
+                                    El progreso de los grupos se calcula automáticamente según sus tareas hijas.
+                                </Form.Text>
+                            )}
                         </Form.Group>
                     </Form>
                 </Modal.Body>

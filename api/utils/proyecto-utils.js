@@ -490,7 +490,7 @@ const updateProyectoGeneralData = async (data, id, usuarioId) => {
   }
 
   // COMPARAR DIRECTOR (Nombre completo)
-  if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
+  if (data.directorProyecto && proyecto.DirectorProyecto && proyecto.DirectorProyecto.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
     const oldName = `${proyecto.DirectorProyecto.Persona.nombre} ${proyecto.DirectorProyecto.Persona.apellido}`.trim();
     const newName = `${nombre} ${apellido}`.trim();
@@ -498,7 +498,7 @@ const updateProyectoGeneralData = async (data, id, usuarioId) => {
   }
 
   // COMPARAR PATROCINADOR
-  if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
+  if (data.patrocinadorProyecto && proyecto.Patrocinador && proyecto.Patrocinador.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
     const oldName = `${proyecto.Patrocinador.Persona.nombre} ${proyecto.Patrocinador.Persona.apellido}`.trim();
     const newName = `${nombre} ${apellido}`.trim();
@@ -518,7 +518,7 @@ const updateProyectoGeneralData = async (data, id, usuarioId) => {
     await proyecto.Departamento.update({ nombre: data.departamento });
   }
 
-  if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
+  if (data.directorProyecto && proyecto.DirectorProyecto && proyecto.DirectorProyecto.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
 
     await proyecto.DirectorProyecto.Persona.update({
@@ -526,7 +526,7 @@ const updateProyectoGeneralData = async (data, id, usuarioId) => {
     });
   }
 
-  if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
+  if (data.directorProyecto && proyecto.DirectorProyecto && proyecto.DirectorProyecto.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
     await proyecto.Patrocinador.Persona.update({
       nombre, apellido

@@ -2,7 +2,7 @@ import React from 'react';
 import { ListGroup, Form, Row, Col, ProgressBar } from 'react-bootstrap';
 import { useEffect, useState, useMemo } from 'react';
 
-const InputCalidadEjecutado = ({ calidadMetricas, setCalidadMetricas, editMode, ejecutado, onSummaryChange = () => { } }) => {
+const InputCalidadEjecutado = ({ calidadMetricas, setCalidadMetricas, editMode, ejecutado, cerrado, onSummaryChange = () => { } }) => {
 
     const totalMetricas = calidadMetricas?.length || 0;
     const completadas = calidadMetricas.filter(m => m.completado).length;
@@ -10,10 +10,10 @@ const InputCalidadEjecutado = ({ calidadMetricas, setCalidadMetricas, editMode, 
 
 
     useEffect(() => {
-            if (ejecutado) {
+            if (ejecutado || cerrado) {
                 onSummaryChange('calidad', porcentajeCompletado);
             }
-    }, [porcentajeCompletado, ejecutado, onSummaryChange]);
+    }, [porcentajeCompletado, ejecutado, cerrado, onSummaryChange]);
 
     const handleCheckboxChange = (index) => {
         const item = calidadMetricas[index];

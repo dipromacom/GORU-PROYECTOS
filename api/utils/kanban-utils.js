@@ -45,7 +45,9 @@ const setKanban = async ({ status, tasks, projectId }) => {
                     ...tasksById[taskId],
                     status_id: statusId,
                     index: indexTask,
-                    interesadoId: tasksById[taskId].interesadoId || null
+                    interesadoId: tasksById[taskId].interesadoId || null,
+                    deadline: tasksById[taskId].deadline || null,
+                    closed_at: tasksById[taskId].closed_at || null
                 }, { transaction })
             }
         }
@@ -73,7 +75,7 @@ const getKanban = async ({projectId})=>{
             include: [{
                 as: 'tasks',
                 model: KanbanTask,
-                attributes: ['id', 'content', 'priority', 'interesadoId']
+                attributes: ['id', 'content', 'priority', 'interesadoId', 'deadline', 'closed_at']
             }],
             order: [
                 ['index', 'ASC'],                   

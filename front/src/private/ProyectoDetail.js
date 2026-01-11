@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { connect } from "react-redux";
 import LoaderButton from "../components/loaderButton/LoaderButton";
-import { Form, Col, Row, InputGroup, Button, DropdownButton, Dropdown } from "react-bootstrap";
+import { Form, Col, Row, InputGroup, Button, DropdownButton, Dropdown, Badge } from "react-bootstrap";
 import "./ProyectoNew.css"
 import { actions, selectors } from "../reducers/project";
 import { actions as routesActions } from "../reducers/routes";
@@ -48,6 +48,8 @@ import InputCostosList from "../components/inputList/InputCostosList";
 import InputCalidadList from "../components/inputList/InputCalidadList";
 //beneficios solo para programa
 import InputBeneficiosList from "../components/inputList/InputBeneficiosList";
+//lecciones aprendidas solo cuando esta cerrado
+import LeccionesAprendidas from "../components/leccionesAprendidas/LeccionesAprendidas"
 
 //gantt
 import GanttChart from "../components/GanttChart/GanttChart";
@@ -417,11 +419,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         dispatch(actions.updateProject(routeParams.id,payload));
     }
 
-    function handleSubmitLeccionesAprendidas(event) {
+    function handleSubmitLeccionesAprendidas(payloadLecciones) {
+        // payloadLecciones ya viene con el formato { descripcion, fechaCierre }
         let payload = {
-            leccionesAprendidas: leccionesAprendidas,
+            leccionesAprendidas: JSON.stringify(payloadLecciones),
         };
-        console.log(payload);
         dispatch(actions.updateProject(routeParams.id, payload));
     }
 
@@ -601,6 +603,18 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const setRiesgoPromedio = useCallback((riesgo) => {
         setResumenEjecucion(prev => ({ ...prev, riesgoPromedio: riesgo }));
     }, [setResumenEjecucion]);
+
+    // Nuevo estado para Desempeño
+    const [resumenDesempeno, setResumenDesempeno] = useState({
+        eficiencia: 0,
+        cronograma: 0,
+        // Aquí puedes añadir más indicadores a futuro (ej. calidadDesempeno: 0)
+    });
+
+    // Callback para actualizar el desempeño
+    const setDesempenoValue = useCallback((key, percentage) => {
+        setResumenDesempeno(prev => ({ ...prev, [key]: percentage }));
+    }, []);
 
     // Handler para abrir modal
     const handleOpenConfig = () => {
@@ -830,54 +844,81 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     </Form.Control>
                                 </Form.Group>
                             )}
-                            {ejecutado && (
-                                <div className="summary-section">
+                            {(ejecutado || cerrado) && (
+                                <div className="summary-section mt-5">
                                     <hr className="mb-4" />
-                                    {/* 1. Encabezado */}
-                                    <h3 className="mb-4">
-                                        <span role="img" aria-label="resumen">📝</span> Resumen de Ejecución
-                                    </h3>
+                                    <Tab.Container defaultActiveKey="ejecucion">
+                                        <Nav variant="tabs" className="justify-content-start mb-4 custom-tabs-style">
+                                            <Nav.Item>
+                                                <Nav.Link eventKey="ejecucion" className="px-4 py-2">
+                                                    <i className="bi bi-graph-up-arrow mr-2"></i>Resumen de Ejecución
+                                                </Nav.Link>
+                                            </Nav.Item>
+                                            <Nav.Item>
+                                                <Nav.Link eventKey="desempeno" className="px-4 py-2">
+                                                    <i className="bi bi-speedometer2 mr-2"></i>Resumen de Desempeño
+                                                </Nav.Link>
+                                            </Nav.Item>
+                                        </Nav>
 
-                                    <Row className="mb-4" style={{ rowGap: "50px", alignItems: "end" }}>
-                                        {/* GRÁFICOS QUE SOLO APARECEN EN PROYECTOS (!esActividad) */}
-                                        {!esActividad && (
-                                            <>
-                                                <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="Avance de Alcance" value={resumenEjecucion.alcance} />
-                                                </Col>
-                                                <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="Avance de Hitos" value={resumenEjecucion.hitos} />
-                                                </Col>
-                                                <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
-                                                </Col>
-                                                {!esPrograma && (
-                                                    <Col md={4} className="d-flex justify-content-center pb-4">
-                                                        <SummaryChart type="Avance de Calidad" value={resumenEjecucion.calidad} />
+                                        <Tab.Content>
+                                            {/* PESTAÑA 1: RESUMEN DE EJECUCIÓN */}
+                                            <Tab.Pane eventKey="ejecucion">
+                                                
+                                                <Row className="mb-4" style={{ rowGap: "50px", alignItems: "end" }}>
+                                                    {!esActividad && (
+                                                        <>
+                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                <SummaryChart type="Avance de Alcance" value={resumenEjecucion.alcance} />
+                                                            </Col>
+                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                <SummaryChart type="Avance de Hitos" value={resumenEjecucion.hitos} />
+                                                            </Col>
+                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
+                                                            </Col>
+                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                <SummaryChart type={esPrograma ? "Avance de Beneficios" : "Avance de Calidad"}
+                                                                    value={esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad} />
+                                                            </Col>
+                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
+                                                            </Col>
+                                                        </>
+                                                    )}
+                                                    {(tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO) && (
+                                                        <Col md={4} className="d-flex justify-content-center pb-4">
+                                                            <SummaryChart type="Avance de Gantt" value={resumenEjecucion.gantt} />
+                                                        </Col>
+                                                    )}
+                                                </Row>
+                                            </Tab.Pane>
+
+                                            {/* PESTAÑA 2: RESUMEN DE DESEMPEÑO */}
+                                            <Tab.Pane eventKey="desempeno">
+                                                <Row className="mb-4 justify-content-center">
+                                                    <Col md={8} lg={6} className="d-flex justify-content-center pb-4">
+                                                        {/* 🔹 Enviamos el objeto completo 'resumenDesempeno' al gráfico Polar */}
+                                                        <SummaryChart
+                                                            type="performance"
+                                                            dataValues={resumenDesempeno}
+                                                        />
                                                     </Col>
-                                                )}
-                                                {esPrograma && (
-                                                    <Col md={4} className="d-flex justify-content-center pb-4">
-                                                        <SummaryChart type="Avance de Beneficios" value={resumenEjecucion.beneficios} />
+                                                </Row>
+
+                                                {/* Opcional: Leyenda informativa de los valores */}
+                                                <Row className="justify-content-center">
+                                                    <Col md={8} className="text-center">
+                                                        <Badge bg="success">1.0+ Excelente</Badge>{' '}
+                                                        <Badge bg="warning">0.8 - 1.0 Regular</Badge>{' '}
+                                                        <Badge bg="danger">{"< 0.8 Crítico"}</Badge>
                                                     </Col>
-                                                )}
-                                                <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
-                                                </Col>
-                                            </>
-                                        )}
-                                        {(tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO) && (
-                                            <>
-                                                {/* GRÁFICO GANTT (APARECE SIEMPRE QUE ESTÉ EJECUTADO, SIN IMPORTAR esActividad) */}
-                                                <Col md={4} className="d-flex justify-content-center pb-4">
-                                                    <SummaryChart type="Avance de Gantt" value={resumenEjecucion.gantt} />
-                                                </Col>
-                                            </>
-                                        )}
-                                    </Row>
+                                                </Row>
+                                            </Tab.Pane>
+                                        </Tab.Content>
+                                    </Tab.Container>
                                 </div>
                             )}
-
 
 
 
@@ -1326,11 +1367,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 </select>
                             </div>   
 
-                            <TodoList toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado}></TodoList>
+                            <TodoList setTaskFilter={setTaskFilter} toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado}></TodoList>
                         </Tab.Pane>
                         <Tab.Pane eventKey="project-management">
                             {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_AGIL || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
-                                ? <Kanban interesados={interesado} cerrado={cerrado} />
+                                ? <Kanban interesados={interesado} cerrado={cerrado} ejecutado={ejecutado} onSummaryChange={setDesempenoValue} />
                                 : <p>El tipo de proyecto no es apto para usar el Kanban</p>
                             }    
                         </Tab.Pane>
@@ -1355,6 +1396,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 setAlcanceEntregables={setAlcanceEntregables}
                                 editMode={editMode}
                                 ejecutado={ejecutado}
+                                cerrado={cerrado}
                                 onSummaryChange={setPorcentajeCompletado}
                                 esPrograma={esPrograma}
                             />
@@ -1387,6 +1429,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 editMode={editMode}
                                 showDuration={showDuration}
                                 ejecutado={ejecutado}
+                                cerrado={cerrado}
                                 onSummaryChange={setPorcentajeCompletado}
                             />
                             <div className="mt-5 pb-5">
@@ -1425,6 +1468,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 editMode={editMode}
                                 regexValidator={regexValidator}
                                 ejecutado={ejecutado}
+                                cerrado={cerrado}
                                 onSummaryChange={setPorcentajeCompletado}
                             />
                             <div className="mt-5 pb-5">
@@ -1454,6 +1498,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 setCalidadMetricas={setCalidadMetricas}
                                 editMode={editMode}
                                 ejecutado={ejecutado}
+                                cerrado={cerrado}
                                 onSummaryChange={setPorcentajeCompletado}
                             />
                             <div className="mt-5 pb-5">
@@ -1484,6 +1529,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     setRiesgosList={setRiesgos}
                                     interesados={interesado}
                                     ejecutado={ejecutado}
+                                    cerrado={cerrado}
                                     onSummaryChange={setRiesgoPromedio}
                                 />
                             </Form.Group>
@@ -1513,6 +1559,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     cerrado={cerrado}
                                     ejecutado={ejecutado}
                                     onSummaryChange={setPorcentajeCompletado}
+                                    onPerformanceChange={setDesempenoValue}
                                     esPrograma={esPrograma}
                                 />
                                 : <p>El tipo de proyecto no es apto para usar el Gantt</p>
@@ -1534,6 +1581,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 setBeneficiosList={setBeneficios}
                                 editMode={editMode}
                                 ejecutado={ejecutado}
+                                cerrado={cerrado}
                                 onSummaryChange={setPorcentajeCompletado} // o la función que maneje el resumen
                             />
                             {/* Boton Guardar*/}
@@ -1553,26 +1601,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             </div>
                         </Tab.Pane>  
                         <Tab.Pane eventKey="leccionesAprendidas">
-                            <Form.Group controlId="informacionBreve">
-                                <Form.Label>Lecciones aprendidas</Form.Label>
-                                <Form.Control
-                                    autoComplete="off"
-                                    type="text"
-                                    value={leccionesAprendidas}
-                                    as="textarea"
-                                    rows={10}
-                                    onChange={e => setLeccionesAprendidas(e.target.value)}
-                                />
-                            </Form.Group>
-                            <div className="mt-5 pb-5">
-                                <LoaderButton
-                                    type="submit"
-                                    className="btn-success btn-save"
-                                    onClick={handleSubmitLeccionesAprendidas}
-                                >
-                                    Guardar Cambios
-                                </LoaderButton>
-                            </div>
+                            <LeccionesAprendidas
+                                data={leccionesAprendidas}
+                                onSave={handleSubmitLeccionesAprendidas}
+                                cerrado={cerrado} // Prop que ya existe en ProyectoDetail
+                            />
                         </Tab.Pane>
                     </Tab.Content>
                 </div>

@@ -23,7 +23,9 @@ const Column = ({
     deleteTask,
     editTask,
     interesados = [],
-    cerrado
+    cerrado,
+    requestCloseTask,
+    ejecutado,
 }) => {
     const tasks = column?.tasks;
     const {
@@ -131,6 +133,8 @@ const Column = ({
                                     index={index}
                                     interesados={interesados}
                                     cerrado={cerrado}
+                                    requestCloseTask={requestCloseTask} 
+                                    ejecutado={ejecutado}
                                 />
                             ))}
                         {column && isAddingNewTask && (

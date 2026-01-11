@@ -18,6 +18,14 @@ module.exports = (db, Sequelize) => {
         interesadoId: {
             type: Sequelize.INTEGER,
         },
+        deadline: {
+            type: Sequelize.DATE,
+            allowNull: true
+        },
+        closed_at: {
+            type: Sequelize.DATE,
+            allowNull: true
+        },
         created_at: {
             type: Sequelize.DATE,
             field: 'created_at' // Maps to the SQL column name

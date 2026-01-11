@@ -11,12 +11,13 @@ const InputHitosList = ({
     editMode,
     showDuration,
     ejecutado,
+    cerrado,
     onSummaryChange
 
 }) => {
 
     const transformedFechasCriticas = React.useMemo(() => {
-        if (ejecutado && tiempoFechasCriticas && tiempoFechasCriticas.length > 0) {
+        if ((ejecutado || cerrado) && tiempoFechasCriticas && tiempoFechasCriticas.length > 0) {
             // Comprobamos si el primer elemento es el formato antiguo (solo date/description)
             if (!tiempoFechasCriticas[0].hasOwnProperty('completado')) {
                 return tiempoFechasCriticas.map(item => ({
@@ -26,7 +27,7 @@ const InputHitosList = ({
             }
         }
         return tiempoFechasCriticas;
-    }, [tiempoFechasCriticas, ejecutado]);
+    }, [tiempoFechasCriticas, ejecutado, cerrado]);
 
     return (
         <div>
@@ -47,13 +48,14 @@ const InputHitosList = ({
             <Form.Group controlId="fechas-criticas">
                 <Form.Label>Fechas Críticas</Form.Label>
 
-                {ejecutado && tiempoFechasCriticas?.length > 0 ? (
+                {(ejecutado || cerrado) && tiempoFechasCriticas?.length > 0 ? (
                     // 🌟 MODO EJECUTADO
                     <InputHitosEjecutado
                         tiempoFechasCriticas={transformedFechasCriticas}
                         setTiempoFechasCriticas={setTiempoFechasCriticas}
                         editMode={editMode}
                         ejecutado={ejecutado}
+                        cerrado={cerrado}
                         onSummaryChange={onSummaryChange}
 
                     />

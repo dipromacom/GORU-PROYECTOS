@@ -5,7 +5,7 @@ import { CriticalBadgeFromText, CriticalBadgeFromTextValue } from "../badge/Badg
 import PlanRespuestaModal from "./PlanRespuestaModal";
 
 
-const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabled = false, ejecutado, interesados = [], onSummaryChange = () => { } }) => {
+const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabled = false, ejecutado, cerrado, interesados = [], onSummaryChange = () => { } }) => {
     // Definición de estados con valores iniciales para M (Medio = 2)
     const [riesgosDesc, setRiesgoDesc] = useState("")
     const [probabilidad, setProbabilidad] = useState("M") // Clave para el <select>
@@ -145,7 +145,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
 
 
     const renderPlanInfo = (item) => {
-        if (!ejecutado) return null;
+        if (!(ejecutado || cerrado)) return null;
 
         const responsable = getResponsableName(item.responsable_id);
         const fecha = item.fecha_realizacion
@@ -174,10 +174,10 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
     };
 
     useEffect(() => {
-        if (ejecutado && !isOldFormatDetected) {
+        if ((ejecutado || cerrado) && !isOldFormatDetected) {
             onSummaryChange(riesgoPromedio);
         }
-    }, [riesgoPromedio, ejecutado, onSummaryChange, isOldFormatDetected]);
+    }, [riesgoPromedio, ejecutado, cerrado, onSummaryChange, isOldFormatDetected]);
 
 
     return (
@@ -254,7 +254,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                     <ListGroup.Item className="col-2 text-center">Prob.</ListGroup.Item>
                     <ListGroup.Item className="col-2 text-center">Impac.</ListGroup.Item>
                     <ListGroup.Item className="col-2 text-center">Valor</ListGroup.Item>
-                    {ejecutado && <ListGroup.Item className="col-2 text-center">Plan Respuesta</ListGroup.Item>}
+                    {(ejecutado || cerrado) && <ListGroup.Item className="col-2 text-center">Plan Respuesta</ListGroup.Item>}
                 </ListGroup>
 
                 <ListGroup variant="flush">
@@ -271,7 +271,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                                     </span>
                                 </div>
 
-                                {ejecutado && !disabled && (
+                                {(ejecutado || cerrado) && !disabled && (
                                     <div className="col-2 text-center pr-0">
                                         <Button variant="outline-primary" size="sm" onClick={() => handleOpenModal(item)}>
                                             Plan de Respuesta
@@ -279,7 +279,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                                     </div>
                                 )}
 
-                                <div className={`col-${ejecutado && !disabled ? 1 : 2} text-end pr-0`}>
+                                <div className={`col-${(ejecutado || cerrado) && !disabled ? 1 : 2} text-end pr-0`}>
                                     {!disabled && <span className="bi bi-x-lg pull-end" style={{ cursor: 'pointer' }} onClick={() => deleteItemHandle(index)} ></span>}
                                 </div>
                             </div>
@@ -288,7 +288,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                         </ListGroup.Item>
                     ))}
 
-                    {ejecutado && !isOldFormatDetected && (riesgosList || []).length > 0 && (
+                    {(ejecutado || cerrado) && !isOldFormatDetected && (riesgosList || []).length > 0 && (
                         <ListGroup.Item className='fw-bold p-2 total-risk-row'>
                             <div className="mb-3">
                                 <Form.Label>RIESGO PROMEDIO: <span className="fw-bold">{riesgoPromedio}%</span></Form.Label><br></br>

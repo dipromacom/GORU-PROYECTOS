@@ -48,7 +48,7 @@ module.exports = (db, Sequelize) => {
     plazo_periodo: { type: Sequelize.TEXT },
     max_desviacion_periodo: { type: Sequelize.TEXT },
     modo: { type: Sequelize.STRING },
-    lecciones_aprendidas: { type: Sequelize.TEXT },
+    lecciones_aprendidas: { type: Sequelize.JSONB },
     beneficios: { type: Sequelize.JSONB },
   }, {
     freezeTableName: true,

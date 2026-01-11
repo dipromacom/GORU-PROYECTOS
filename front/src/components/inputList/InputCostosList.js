@@ -18,6 +18,7 @@ const InputCostosList = ({
     regexValidator,
     editMode,
     ejecutado,
+    cerrado,
     onSummaryChange = () => { }
 }) => {
     // Estado para controlar qué campo tiene el foco y mostrar el formato correcto
@@ -70,10 +71,10 @@ const InputCostosList = ({
     }, [presupuestoRealTotal, presupuestoEstimadoTotal]);
 
     useEffect(() => {
-        if (ejecutado) {
+        if (ejecutado || cerrado) {
             onSummaryChange('costoDesviacion', porcentajeDesviacion);
         }
-    }, [porcentajeDesviacion, ejecutado, onSummaryChange]);
+    }, [porcentajeDesviacion, ejecutado, cerrado, onSummaryChange]);
 
     const handleBlurReserva = (value, setter) => {
         // CORRECCIÓN: Al salir, guardamos el número LIMPIO en el estado para el API
@@ -88,7 +89,7 @@ const InputCostosList = ({
 
     const renderReservaInput = (label, estimado, setEstimado, real, setReal, idPrefix) => (
         <Row className="mb-3 align-items-end">
-            <Col xs={ejecutado ? 6 : 12}>
+            <Col xs={(ejecutado || cerrado) ? 6 : 12}>
                 <Form.Group controlId={`${idPrefix}-estimado`} className="mb-0">
                     <Form.Label>{label} (Estimado)</Form.Label>
                     <InputGroup>
@@ -96,7 +97,7 @@ const InputCostosList = ({
                             <InputGroup.Text><strong>$</strong></InputGroup.Text>
                         </InputGroup.Prepend>
                         <Form.Control
-                            disabled={!editMode || ejecutado}
+                            disabled={!editMode || (ejecutado || cerrado)}
                             autoComplete="off"
                             type="text"
                             // TRUCO: Si tiene foco muestra el valor real, si no, el formato visual
@@ -111,7 +112,7 @@ const InputCostosList = ({
                 </Form.Group>
             </Col>
 
-            {ejecutado && (
+            {(ejecutado || cerrado) && (
                 <Col xs={6}>
                     <Form.Group controlId={`${idPrefix}-real`} className="mb-0">
                         <Form.Label>{label} (Real)</Form.Label>
@@ -160,6 +161,7 @@ const InputCostosList = ({
                         setResultCostoList={setCostoEntregable}
                         setCostoEntregable={setCostoEntregable}
                         ejecutado={ejecutado}
+                        cerrado={cerrado}
                     />
                 </Form.Group>
             )}
@@ -186,7 +188,7 @@ const InputCostosList = ({
 
             <hr className="my-4" />
             <Row className="mb-3 align-items-end">
-                <Col xs={ejecutado ? 6 : 12}>
+                <Col xs={(ejecutado || cerrado) ? 6 : 12}>
                     {/* Presupuesto Total Estimado */}
                     <Form.Group controlId="presupuesto-total-estimado" className="mb-0">
                         <Form.Label>Presupuesto Total Estimado (Línea Base)</Form.Label>
@@ -205,7 +207,7 @@ const InputCostosList = ({
                     </Form.Group>
                 </Col>
                 {/* Presupuesto Real Total (Solo en Ejecución) */}
-                {ejecutado && (
+                {(ejecutado || cerrado) && (
                     <Col xs={6}>
                         <Form.Group controlId="presupuesto-total-real" className="mb-0">
                             <Form.Label>

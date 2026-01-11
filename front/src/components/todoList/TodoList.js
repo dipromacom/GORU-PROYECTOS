@@ -5,7 +5,7 @@ import TodoItem from "./TodoItem";
 import './TodoList.css'
 import { DotLottieReact } from '@lottiefiles/dotlottie-react';
 
-const TodoList = ({ toDo = [], persona, usuario, setToDos, enableCheck = true, addTaskCallback, markAsDoneCallback, interesado, cerrado }) => {
+const TodoList = ({ toDo = [], persona, usuario, setToDos, enableCheck = true, setTaskFilter, addTaskCallback, markAsDoneCallback, interesado, cerrado }) => {
     const [labels, setLabels] = useState([])
 
     const markAsDone = (id, closeDate) => {
@@ -55,6 +55,7 @@ const TodoList = ({ toDo = [], persona, usuario, setToDos, enableCheck = true, a
                                     onDelete={id => deleteItemHandler(id)}
                                     forceVisible // 🔹 nueva prop para evitar estilos raros
                                     cerrado={cerrado}
+                                    setTaskFilter={setTaskFilter}
                                 />
                             </li>
                         ))}
