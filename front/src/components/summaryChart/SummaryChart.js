@@ -13,8 +13,8 @@ const INFO_COLOR = 'rgb(23, 162, 184)'; // Azul
 
 
 const PerformancePolarChart = ({ dataValues }) => {
-    const labels = ['Desempeño Kanban', 'Desempeño Gantt'];
-    const values = [dataValues.eficiencia || 0, dataValues.cronograma || 0];
+    const labels = ['Desempeño Alcance', 'Desempeño Hitos', 'Desempeño Costos', 'Desempeño Kanban', 'Desempeño Gantt'];
+    const values = [dataValues.alcance || 0, dataValues.hitos || 0, dataValues.costos || 0, dataValues.eficiencia || 0, dataValues.cronograma || 0];
 
     const getColor = (val) => {
         if (val >= 1) return 'rgba(40, 167, 69, 0.7)';   // SUCCESS

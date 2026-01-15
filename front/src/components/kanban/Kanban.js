@@ -9,7 +9,7 @@ import { connect } from "react-redux";
 
 import Form from "react-bootstrap/Form";
 
-const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onSummaryChange = () => { } }) => {
+const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPerformanceChange = () => { } }) => {
   const routeParams = useParams();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
@@ -86,9 +86,9 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onSu
   // 2. Efecto para reportar el valor al padre (ProyectoDetail)
   useEffect(() => {
     if (ejecutado || cerrado) {
-      onSummaryChange('eficiencia', efficiency);
+      onPerformanceChange('eficiencia', efficiency);
     }
-  }, [efficiency, ejecutado, cerrado, onSummaryChange]);
+  }, [efficiency, ejecutado, cerrado, onPerformanceChange]);
 
   // --- Funciones de Cierre ---
   const requestCloseTask = (task) => {

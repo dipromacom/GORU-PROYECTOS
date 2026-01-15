@@ -344,50 +344,92 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     };
 
     useEffect(() => {
-        /*function initCostoEntregable() {
-            let newCostoEntregable = []
-            if (costoEntregable?.length > alcanceEntregables?.length)
-                newCostoEntregable = costoEntregable.filter(item => alcanceEntregables.includes(item.entregable))
-            if (alcanceEntregables?.length > costoEntregable?.length)            
-                newCostoEntregable = [...costoEntregable, { entregable: alcanceEntregables[alcanceEntregables.length - 1], costo: 0 }]
-            setCostoEntregable(newCostoEntregable)
-        }*/
-        function initCostoEntregable() {
-            // Usamos la función auxiliar para obtener solo los nombres de los entregables
-            const entregableNames = getEntregableNames(alcanceEntregables);
+        const entregableNames = getEntregableNames(alcanceEntregables);
+        const currentAlcanceLength = entregableNames.length;
 
-            const newCostoEntregable = entregableNames.map(entregable => {
-                const existing = (costoEntregable || []).find(item => item.entregable === entregable)
-                return existing ? existing : { entregable, costo: 0 }
-            })
-            setCostoEntregable(newCostoEntregable)
+        function initCostoEntregable() {
+            const newCostoEntregable = alcanceEntregables.map(ent => {
+                const nombre = typeof ent === 'string' ? ent : ent.nombre;
+                const deadline = typeof ent === 'object' ? ent.deadline : null; // 🔹 Captura deadline
+
+                const existing = (costoEntregable || []).find(item => item.entregable === nombre);
+                return existing ? { ...existing, deadline } : { entregable: nombre, costo: 0, deadline };
+            });
+            setCostoEntregable(newCostoEntregable);
         }
 
         function initCalidadMetricas() {
-            // Usamos la función auxiliar para obtener solo los nombres de los entregables
-            const entregableNames = getEntregableNames(alcanceEntregables);
-
             const newCalidadMetricas = entregableNames.map(entregable => {
-                const existing = (calidadMetricas || []).find(item => item.entregable === entregable)
-                return existing ? existing : { entregable, metrica: '' }
-            })
-            setCalidadMetricas(newCalidadMetricas)
+                const existing = (calidadMetricas || []).find(item => item.entregable === entregable);
+                return existing ? existing : { entregable, metrica: '' };
+            });
+            setCalidadMetricas(newCalidadMetricas);
         }
-        /*function initCalidadMetricas() {
-            let newCalidadMetricas = []
-            if (calidadMetricas?.length > alcanceEntregables?.length)
-                newCalidadMetricas = calidadMetricas.filter(item => alcanceEntregables.includes(item.entregable))
-            if (alcanceEntregables?.length > calidadMetricas?.length)
-                newCalidadMetricas = [...calidadMetricas, { entregable: alcanceEntregables[alcanceEntregables.length - 1], metrica: '' }]
-            setCalidadMetricas(newCalidadMetricas)
-        }*/
-        const currentAlcanceLength = getEntregableNames(alcanceEntregables).length;
-        
-        if ((calidadMetricas || []).length !== currentAlcanceLength)
-            initCalidadMetricas()
-        if ((costoEntregable || []).length !== currentAlcanceLength)
-            initCostoEntregable()
-    }, [alcanceEntregables])
+
+        // NUEVA FUNCIÓN: Sincronizar Hitos
+        function initHitos() {
+            if (!alcanceEntregables || !Array.isArray(alcanceEntregables)) return;
+
+            // 1. Identificamos los nombres de los entregables actuales del alcance
+            const nombresAlcance = alcanceEntregables.map(ent =>
+                typeof ent === 'string' ? ent : ent.nombre
+            );
+
+            // 2. Mantenemos los hitos manuales (aquellos cuya descripción NO está en el alcance)
+            const hitosManualesPreservados = (tiempoFechasCriticas || []).filter(hito =>
+                !nombresAlcance.includes(hito.description)
+            );
+
+            // 3. Procesamos los hitos que vienen del alcance (Sincronización)
+            const hitosDesdeAlcance = alcanceEntregables.map(ent => {
+                const nombre = typeof ent === 'string' ? ent : ent.nombre;
+                const deadline = typeof ent === 'object' ? ent.deadline : new Date().toISOString();
+
+                // Buscamos si ya existía este hito de alcance para mantener su estado (completado, fecha_hito, etc.)
+                const existing = (tiempoFechasCriticas || []).find(h => h.description === nombre);
+
+                if (existing) {
+                    // Si existe, actualizamos solo el deadline si cambió en alcance, pero mantenemos lo demás
+                    return { ...existing, date: deadline };
+                } else {
+                    // Si es nuevo, lo creamos con el formato correcto
+                    return {
+                        description: nombre,
+                        date: deadline,
+                        completado: false,
+                        fecha_hito: null
+                    };
+                }
+            });
+
+            // 4. El nuevo estado es la unión de los manuales + los sincronizados
+            const finalHitos = [...hitosManualesPreservados, ...hitosDesdeAlcance];
+
+            // 5. Solo actualizamos si la longitud cambió o si hay cambios reales para evitar re-renders infinitos
+            // Comparamos strings para una validación rápida de cambios
+            if (JSON.stringify(tiempoFechasCriticas) !== JSON.stringify(finalHitos)) {
+                setTiempoFechasCriticas(finalHitos);
+            }
+        }
+
+        // Verificamos cambios para disparar las inits
+        if ((calidadMetricas || []).length !== currentAlcanceLength) initCalidadMetricas();
+        if ((costoEntregable || []).length !== currentAlcanceLength) initCostoEntregable();
+
+        // Sincronizar hitos siempre que cambie el contenido o fechas del alcance
+        // Dentro del useEffect al final
+        const hitoNames = (tiempoFechasCriticas || []).map(h => h.description);
+        const reachNames = (alcanceEntregables || []).map(ent => typeof ent === 'string' ? ent : ent.nombre);
+
+        // Si falta algún entregable en la lista de hitos, sincronizamos
+        const needsSync = reachNames.some(name => !hitoNames.includes(name)) ||
+            reachNames.length !== (tiempoFechasCriticas || []).filter(h => reachNames.includes(h.description)).length;
+
+        if (needsSync) {
+            initHitos();
+        }
+
+    }, [alcanceEntregables]); // Mantenemos la dependencia
 
     const handleMultipleTipoInforme = event => {
         const selectedOptions = Array.from(event.target.selectedOptions, option => option.value);
@@ -403,7 +445,6 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
         setTiposInformes(newTiposInformes);
     }
-
 
     function handleSubmit(event) {
         event.preventDefault();
@@ -608,6 +649,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [resumenDesempeno, setResumenDesempeno] = useState({
         eficiencia: 0,
         cronograma: 0,
+        alcance: 0,
+        hitos: 0,
+        costos: 0,
         // Aquí puedes añadir más indicadores a futuro (ej. calidadDesempeno: 0)
     });
 
@@ -1371,7 +1415,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                         </Tab.Pane>
                         <Tab.Pane eventKey="project-management">
                             {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_AGIL || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
-                                ? <Kanban interesados={interesado} cerrado={cerrado} ejecutado={ejecutado} onSummaryChange={setDesempenoValue} />
+                                ? <Kanban interesados={interesado} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue} />
                                 : <p>El tipo de proyecto no es apto para usar el Kanban</p>
                             }    
                         </Tab.Pane>
@@ -1399,6 +1443,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 cerrado={cerrado}
                                 onSummaryChange={setPorcentajeCompletado}
                                 esPrograma={esPrograma}
+                                onPerformanceChange={setDesempenoValue}
                             />
                             <div className="mt-5 pb-5">
                                 {
@@ -1431,6 +1476,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 ejecutado={ejecutado}
                                 cerrado={cerrado}
                                 onSummaryChange={setPorcentajeCompletado}
+                                onPerformanceChange={setDesempenoValue}
                             />
                             <div className="mt-5 pb-5">
                                 {
@@ -1470,6 +1516,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 ejecutado={ejecutado}
                                 cerrado={cerrado}
                                 onSummaryChange={setPorcentajeCompletado}
+                                onPerformanceChange={setDesempenoValue}
                             />
                             <div className="mt-5 pb-5">
                                 {

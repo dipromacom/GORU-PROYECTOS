@@ -1,133 +1,101 @@
-// InputAlcanceEjecutado.js (Nuevo componente para estado ejecutado)
-
 import React, { useState, useRef } from 'react';
-// Se añade Col y Row para el layout de columnas
-import { Button, InputGroup, ListGroup, Form, Row, Col } from 'react-bootstrap';
+import { Button, InputGroup, ListGroup, Form, Row, Col, Modal } from 'react-bootstrap'; // 🔹 Añadido Modal
 import "./InputTextList.css";
 
-const InputAlcanceEjecutado = ({ alcanceEntregables, setAlcanceEntregables, editMode }) => {
+const InputAlcanceEjecutado = ({ alcanceEntregables, setAlcanceEntregables, editMode, ejecutado }) => {
     const [inputValue, setInputValue] = useState('');
-    const inputRef = useRef(null);
+    const [showCloseModal, setShowCloseModal] = useState(false); // 🔹 Nuevo
+    const [selectedIndex, setSelectedIndex] = useState(null); // 🔹 Nuevo
+    const [closingDate, setClosingDate] = useState(new Date().toISOString().split('T')[0]); // 🔹 Nuevo
 
-    // Obtener solo los nombres de los entregables para validación
     const currentListNames = alcanceEntregables.map(item => item.nombre);
 
-    const handleSubmit = (e) => {
-        //e.preventDefault();
-        //e.stopPropagation();
-
+    const handleSubmit = () => {
         if (inputValue.trim() === '' || currentListNames.includes(inputValue.trim())) return;
-
-        // Crear el nuevo entregable en el formato de objeto
         const newEntregable = {
             nombre: inputValue.trim(),
             completado: false,
-            fecha_entregable: null
+            fecha_entregable: null,
+            deadline: new Date().toISOString().split('T')[0]
         };
-
         setAlcanceEntregables([...alcanceEntregables, newEntregable]);
         setInputValue('');
-        //inputRef.current.focus()
     };
 
-    const deleteItemHandle = (index) => {
-        setAlcanceEntregables(alcanceEntregables.filter((item, i) => i !== index));
-    };
-
+    // 🔹 Lógica del Modal (Simil Kanban)
     const handleCheckboxChange = (index) => {
-        const item = alcanceEntregables[index];
-        const newCompletado = !item.completado;
-
-        // 1. Si se va a marcar como COMPLETADO (true), pedimos confirmación
-        if (newCompletado) {
-            const isConfirmed = window.confirm(
-                `¿Está seguro que desea cerrar y dar por finalizado el alcance: "${item.nombre}"?`
+        if (alcanceEntregables[index].completado) {
+            // Si ya estaba completado, lo desmarcamos directamente
+            const updated = alcanceEntregables.map((item, i) =>
+                i === index ? { ...item, completado: false, fecha_entregable: null } : item
             );
-
-            if (!isConfirmed) {
-                return; // Si el usuario cancela, no hacemos nada
-            }
+            setAlcanceEntregables(updated);
+        } else {
+            // Si se va a cerrar, abrimos modal
+            setSelectedIndex(index);
+            setShowCloseModal(true);
         }
-        
-        const now = new Date().toISOString();
+    };
+
+    const confirmClose = () => {
         const updatedList = alcanceEntregables.map((item, i) => {
-            if (i === index) {
-                const newCompletado = !item.completado;
-                return {
-                    ...item,
-                    completado: newCompletado,
-                    // Establecer la fecha si se completa, o null si se desmarca
-                    fecha_entregable: newCompletado ? now : null
-                };
+            if (i === selectedIndex) {
+                return { ...item, completado: true, fecha_entregable: closingDate };
             }
             return item;
         });
-
         setAlcanceEntregables(updatedList);
+        setShowCloseModal(false);
     };
-
-    const disableToAppend = (textToAppend) => {
-        return currentListNames?.length && currentListNames.includes(textToAppend.trim())
-    }
 
     return (
         <div className="input-text-list">
-            {editMode && (<InputGroup className="mb-3">
-                <Form.Control
-                    autoComplete="off"
-                    type="text"
-                    placeholder="Nuevo Entregable"
-                    value={inputValue}
-                    onChange={(e) => setInputValue(e.target.value)}
-                    onKeyPress={(e) => e.target.value.length && e.key === 'Enter' && handleSubmit(e)}
-                    ref={inputRef}
-                />
-                <InputGroup.Append>
-                    <Button disabled={inputValue.length === 0 || disableToAppend(inputValue)} onClick={handleSubmit}>Agregar</Button>
-                </InputGroup.Append>
-            </InputGroup>)}
+            {editMode && (
+                <InputGroup className="mb-3">
+                    <Form.Control
+                        type="text"
+                        placeholder="Nuevo Entregable"
+                        value={inputValue}
+                        onChange={(e) => setInputValue(e.target.value)}
+                    />
+                    <Button onClick={handleSubmit} disabled={!inputValue.trim()}>Agregar</Button>
+                </InputGroup>
+            )}
 
-            <div className={alcanceEntregables?.length > 0 ? "mt-2" : ""}>
-                {/* Cabecera para el estado ejecutado */}
-                <Row className="alcance-header fw-bold">
-                    <Col xs={8} md={9} lg={9}>Entregable</Col> {/* 70% del espacio para el nombre */}
-                    <Col xs={4} md={3} lg={3} className="text-center">Finalizado</Col> {/* 30% del espacio para el check y eliminar */}
+            <div className="mt-2">
+                <Row className="alcance-header fw-bold border-bottom pb-2 mb-2 text-muted" style={{ fontSize: '0.85rem' }}>
+                    <Col xs={6}>ENTREGABLE</Col>
+                    <Col xs={4} className="text-center">DEADLINE</Col>
+                    <Col xs={2} className="text-center">FIN</Col>
                 </Row>
 
                 <ListGroup variant="flush">
                     {alcanceEntregables?.map((item, index) => (
-                        <ListGroup.Item key={index} className="ps-0 pe-0">
-                            <Row className="alcance-row align-items-center">
-                                {/* Columna 70% - Nombre y Eliminar */}
-                                <Col xs={8} md={9} lg={9}>
-                                    <Row className="align-items-center">
-                                        <Col xs={10} className="item-content">
-                                            {/* Corrección de asteriscos: Eliminamos ** */}
-                                            <span style={{ textDecoration: item.completado ? 'line-through' : 'none', fontWeight: 'bold' }}>
-                                                {item.nombre}
-                                            </span>
-                                        </Col>
-                                        <Col xs={2} className="text-end item-actions">
-                                            {/* Botón de eliminar */}
-                                            {editMode && (
-                                                <span
-                                                    className="bi bi-x-lg delete-btn text-danger"
-                                                    onClick={() => deleteItemHandle(index)}
-                                                    title="Eliminar Entregable"
-                                                ></span>
-                                            )}
-                                        </Col>
-                                    </Row>
+                        <ListGroup.Item key={index} className="px-0 py-2 border-0">
+                            <Row className="align-items-center">
+                                <Col xs={6}>
+                                    <span className="fw-bold" style={{ textDecoration: item.completado ? 'line-through' : 'none' }}>
+                                        {item.nombre}
+                                    </span>
                                 </Col>
-
-                                {/* Columna 30% - Checkbox */}
-                                <Col xs={4} md={3} lg={3} className="text-center">
+                                <Col xs={4}>
+                                    <Form.Control
+                                        type="date"
+                                        size="sm"
+                                        value={item.deadline ? item.deadline.split('T')[0] : ''}
+                                        disabled={!editMode || ejecutado}
+                                        onChange={(e) => {
+                                            const updated = alcanceEntregables.map((a, i) => i === index ? { ...a, deadline: e.target.value } : a);
+                                            setAlcanceEntregables(updated);
+                                        }}
+                                    />
+                                </Col>
+                                <Col xs={2} className="text-center">
                                     <Form.Check
                                         type="checkbox"
                                         checked={item.completado}
-                                        disabled={!editMode}
+                                        disabled={!editMode || !ejecutado}
                                         onChange={() => handleCheckboxChange(index)}
-                                        inline // Para que el checkbox se centre mejor
                                     />
                                 </Col>
                             </Row>
@@ -135,6 +103,23 @@ const InputAlcanceEjecutado = ({ alcanceEntregables, setAlcanceEntregables, edit
                     ))}
                 </ListGroup>
             </div>
+
+            {/* 🔹 2. Modal de Cierre (Simil Kanban) */}
+            <Modal show={showCloseModal} onHide={() => setShowCloseModal(false)} centered>
+                <Modal.Header closeButton><Modal.Title>Finalizar Entregable</Modal.Title></Modal.Header>
+                <Modal.Body>
+                    <p>¿Fecha en que se completó: <strong>{alcanceEntregables[selectedIndex]?.nombre}</strong>?</p>
+                    <Form.Control
+                        type="date"
+                        value={closingDate}
+                        onChange={(e) => setClosingDate(e.target.value)}
+                    />
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowCloseModal(false)}>Cancelar</Button>
+                    <Button variant="success" onClick={confirmClose}>Confirmar Cierre</Button>
+                </Modal.Footer>
+            </Modal>
         </div>
     );
 };
