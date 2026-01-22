@@ -181,7 +181,13 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
 
 
     return (
-        <div>
+        <div className="riesgos-container shadow-sm border rounded p-4 bg-white mt-4">
+            {/* Título con diseño unificado */}
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <h4 className="mb-0 text-dark fw-bold">
+                    <i className="bi bi-exclamation-octagon me-2"></i>Gestión de Riesgos
+                </h4>
+            </div>
             {selectedRiesgo && (
                 <PlanRespuestaModal
                     show={showModal}
@@ -202,7 +208,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
             <Form>
                 <Form.Row>
                     <Col xs={5}>
-                        <Form.Label>Descripcion</Form.Label>
+                        <Form.Label className="small fw-bold text-muted">Descripcion</Form.Label>
                         {!disabled && <Form.Control
                             autoComplete="off"
                             type="text"
@@ -211,7 +217,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                         />}
                     </Col>
                     <Col xs={2}>
-                        <Form.Label>Probabilidad</Form.Label>
+                        <Form.Label className="small fw-bold text-muted">Probabilidad</Form.Label>
                         {!disabled && <Form.Control as="select" size="sm" custom onChange={e => { setProbabilidad(e.target.value) }} value={probabilidad}>
                             {
                                 values.map(
@@ -224,7 +230,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                         </Form.Control>}
                     </Col>
                     <Col xs={2}>
-                        <Form.Label>Impacto</Form.Label>
+                        <Form.Label className="small fw-bold text-muted">Impacto</Form.Label>
                         {!disabled && <Form.Control as="select" size="sm" custom onChange={e => { setImpacto(e.target.value) }} value={impacto}>
                             {
                                 values.map(
@@ -237,7 +243,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                         </Form.Control>}
                     </Col>
                     <Col xs={1}>
-                        <Form.Label>Valor ({riesgoVal})</Form.Label>
+                        <Form.Label className="small fw-bold text-muted">Valor ({riesgoVal})</Form.Label>
                         <InputGroup>
                             {!disabled && <CriticalBadgeFromTextValue value={getBadgeClaveFromValue(riesgoVal)} />}
                         </InputGroup>
@@ -248,14 +254,14 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                 </Form.Row>
             </Form>
 
-            <div className={riesgosList?.length > 0 ? "mt-4" : ""}>
-                <ListGroup horizontal className="fw-bold d-flex p-0 list-risk-header" style={{ borderBottom: '2px solid #ccc' }}>
-                    <ListGroup.Item className="col-4">Descripción</ListGroup.Item>
-                    <ListGroup.Item className="col-2 text-center">Prob.</ListGroup.Item>
-                    <ListGroup.Item className="col-2 text-center">Impac.</ListGroup.Item>
-                    <ListGroup.Item className="col-2 text-center">Valor</ListGroup.Item>
-                    {(ejecutado || cerrado) && <ListGroup.Item className="col-2 text-center">Plan Respuesta</ListGroup.Item>}
-                </ListGroup>
+            <div className={riesgosList?.length > 0 ? "mt-4 border rounded p-3 bg-light" : ""}>
+                <div className="d-flex fw-bold pb-2 border-bottom mb-2 text-muted small mt-4">
+                    <div className="col-4">DESCRIPCIÓN</div>
+                    <div className="col-2 text-center">PROB.</div>
+                    <div className="col-2 text-center">IMPAC.</div>
+                    <div className="col-2 text-center">VALOR</div>
+                    {(ejecutado || cerrado) && <div className="col-2 text-center">PLAN RESPUESTA</div>}
+                </div>
 
                 <ListGroup variant="flush">
                     {(riesgosList || []).map((item, index) => (
@@ -278,10 +284,11 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                                         </Button>
                                     </div>
                                 )}
-
-                                <div className={`col-${(ejecutado || cerrado) && !disabled ? 1 : 2} text-end pr-0`}>
-                                    {!disabled && <span className="bi bi-x-lg pull-end" style={{ cursor: 'pointer' }} onClick={() => deleteItemHandle(index)} ></span>}
-                                </div>
+                                {(!ejecutado && !cerrado) && !disabled && (
+                                    <div className={`col-${(ejecutado || cerrado) && !disabled ? 1 : 2} text-end pr-0`}>
+                                        {!disabled && <span className="bi bi-x-lg pull-end" style={{ cursor: 'pointer' }} onClick={() => deleteItemHandle(index)} ></span>}
+                                    </div>
+                                )}
                             </div>
 
                             {renderPlanInfo(item)}
@@ -289,17 +296,20 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                     ))}
 
                     {(ejecutado || cerrado) && !isOldFormatDetected && (riesgosList || []).length > 0 && (
-                        <ListGroup.Item className='fw-bold p-2 total-risk-row'>
-                            <div className="mb-3">
-                                <Form.Label>RIESGO PROMEDIO: <span className="fw-bold">{riesgoPromedio}%</span></Form.Label><br></br>
-                                <Form.Label><span className="fw-bold">Fórmula: ((Suma_Valores/Riesgos_totales) / 9) * 100</span></Form.Label>
-                                <ProgressBar
-                                    now={riesgoPromedio}
-                                    label={`${riesgoPromedio}%`}
-                                    variant={getProgressVariant(riesgoPromedio)} // Usa la función para el color
-                                />
+                        <div className="mt-4">
+                            <div className="d-flex justify-content-between small fw-bold mb-1 text-uppercase">
+                                <span>Nivel de Riesgo Promedio (Exposición):</span>
+                                <span className={`text-${getProgressVariant(riesgoPromedio)}`}>{riesgoPromedio}%</span>
                             </div>
-                        </ListGroup.Item>
+                            <ProgressBar
+                                now={riesgoPromedio}
+                                variant={getProgressVariant(riesgoPromedio)}
+                                style={{ height: '20px', borderRadius: '5px' }}
+                            />
+                            <div className="text-muted" style={{ fontSize: '0.7rem', marginTop: '5px' }}>
+                                Basado en la matriz Probabilidad x Impacto (Máximo 9 pts).
+                            </div>
+                        </div>
                     )}
 
                 </ListGroup>

@@ -13,42 +13,180 @@ const INFO_COLOR = 'rgb(23, 162, 184)'; // Azul
 
 
 const PerformancePolarChart = ({ dataValues }) => {
-    const labels = ['Desempeño Alcance', 'Desempeño Hitos', 'Desempeño Costos', 'Desempeño Kanban', 'Desempeño Gantt'];
-    const values = [dataValues.alcance || 0, dataValues.hitos || 0, dataValues.costos || 0, dataValues.eficiencia || 0, dataValues.cronograma || 0];
+    // Definir colores base únicos para cada métrica
+    const metrics = [
+        {
+            label: '🎯 Alcance',
+            value: dataValues.alcance || 0,
+            baseColor: { r: 54, g: 162, b: 235 }  // Azul
+        },
+        {
+            label: '🏁 Hitos',
+            value: dataValues.hitos || 0,
+            baseColor: { r: 153, g: 102, b: 255 } // Púrpura
+        },
+        {
+            label: '💰 Costos',
+            value: dataValues.costos || 0,
+            baseColor: { r: 255, g: 159, b: 64 }  // Naranja
+        },
+        {
+            label: '📊 Kanban',
+            value: dataValues.eficiencia || 0,
+            baseColor: { r: 75, g: 192, b: 192 }  // Verde azulado
+        },
+        {
+            label: '✅ To-Do',
+            value: dataValues.todo || 0,
+            baseColor: { r: 76, g: 175, b: 80 }   // Verde
+        },
+        {
+            label: '📅 Cronograma',
+            value: dataValues.cronograma || 0,
+            baseColor: { r: 255, g: 99, b: 132 }  // Rosa/Rojo
+        },
+    ];
 
-    const getColor = (val) => {
-        if (val >= 1) return 'rgba(40, 167, 69, 0.7)';   // SUCCESS
-        if (val >= 0.6) return 'rgba(255, 193, 7, 0.7)';  // WARNING
-        return 'rgba(220, 53, 69, 0.7)';                  // DANGER
+    // Función para ajustar el color según el desempeño
+    const getColorByPerformance = (baseColor, value) => {
+        const { r, g, b } = baseColor;
+
+        if (value >= 1) {
+            // Excelente: Color vibrante y saturado (opacidad alta)
+            return `rgba(${r}, ${g}, ${b}, 0.9)`;
+        } else if (value >= 0.6) {
+            // Regular: Color medio (opacidad media)
+            return `rgba(${r}, ${g}, ${b}, 0.6)`;
+        } else {
+            // Crítico: Color desaturado/apagado (opacidad baja)
+            return `rgba(${r}, ${g}, ${b}, 0.3)`;
+        }
+    };
+
+    // Función para el borde (siempre más oscuro que el relleno)
+    const getBorderColor = (baseColor, value) => {
+        const { r, g, b } = baseColor;
+
+        if (value >= 1) {
+            return `rgba(${r}, ${g}, ${b}, 1)`;
+        } else if (value >= 0.6) {
+            return `rgba(${r}, ${g}, ${b}, 0.8)`;
+        } else {
+            return `rgba(${r}, ${g}, ${b}, 0.5)`;
+        }
     };
 
     const data = {
-        labels: labels,
+        labels: metrics.map(m => m.label),
         datasets: [{
-            data: values,
-            backgroundColor: values.map(v => getColor(v)),
-            borderWidth: 1,
+            data: metrics.map(m => m.value),
+            backgroundColor: metrics.map(m => getColorByPerformance(m.baseColor, m.value)),
+            borderColor: metrics.map(m => getBorderColor(m.baseColor, m.value)),
+            borderWidth: 3,
         }]
     };
 
     const options = {
         responsive: true,
         maintainAspectRatio: false,
-        scale: {
-            ticks: {
-                beginAtZero: true,
-                max: 1.4, // Ajustamos el límite superior
-                stepSize: 0.2
+        plugins: {
+            legend: {
+                position: 'bottom',
+                labels: {
+                    font: {
+                        size: 13,
+                        weight: 'bold'
+                    },
+                    padding: 15,
+                    usePointStyle: true,
+                    pointStyle: 'circle',
+                    generateLabels: (chart) => {
+                        const data = chart.data;
+                        return data.labels.map((label, i) => {
+                            const value = data.datasets[0].data[i];
+                            const metric = metrics[i];
+
+                            // Determinar estado
+                            let status = '';
+                            if (value >= 1) status = '✓';
+                            else if (value >= 0.6) status = '⚠';
+                            else status = '✗';
+
+                            return {
+                                text: `${label}: ${value.toFixed(2)} ${status}`,
+                                fillStyle: data.datasets[0].backgroundColor[i],
+                                strokeStyle: data.datasets[0].borderColor[i],
+                                lineWidth: 2,
+                                hidden: false,
+                                index: i
+                            };
+                        });
+                    }
+                }
+            },
+            tooltip: {
+                backgroundColor: 'rgba(0, 0, 0, 0.8)',
+                padding: 12,
+                titleFont: {
+                    size: 14,
+                    weight: 'bold'
+                },
+                bodyFont: {
+                    size: 13
+                },
+                callbacks: {
+                    title: (context) => {
+                        return metrics[context[0].dataIndex].label;
+                    },
+                    label: (context) => {
+                        const val = context.parsed.r;
+                        let status = '';
+                        let statusText = '';
+
+                        if (val >= 1) {
+                            status = '✓';
+                            statusText = 'Excelente';
+                        } else if (val >= 0.6) {
+                            status = '⚠';
+                            statusText = 'Regular';
+                        } else {
+                            status = '✗';
+                            statusText = 'Crítico';
+                        }
+
+                        return [
+                            `Índice: ${val.toFixed(2)}`,
+                            `Porcentaje: ${(val * 100).toFixed(0)}%`,
+                            `Estado: ${status} ${statusText}`
+                        ];
+                    }
+                }
             }
         },
-        legend: {
-            position: 'bottom',
-        },
-        tooltips: {
-            callbacks: {
-                label: (tooltipItem, data) => {
-                    const val = data.datasets[0].data[tooltipItem.index];
-                    return ` Valor: ${val.toFixed(2)} (${(val * 100).toFixed(0)}%)`;
+        scales: {
+            r: {
+                beginAtZero: true,
+                max: 2,
+                ticks: {
+                    stepSize: 0.5,
+                    callback: (value) => value.toFixed(1),
+                    backdropColor: 'transparent',
+                    font: {
+                        size: 11
+                    }
+                },
+                pointLabels: {
+                    font: {
+                        size: 13,
+                        weight: 'bold'
+                    },
+                    color: '#333'
+                },
+                grid: {
+                    color: 'rgba(0, 0, 0, 0.1)'
+                },
+                angleLines: {
+                    color: 'rgba(0, 0, 0, 0.1)'
                 }
             }
         }
@@ -56,25 +194,61 @@ const PerformancePolarChart = ({ dataValues }) => {
 
     return (
         <div className="w-100 text-center">
-            <h5 className="mb-3">Índice de Desempeño</h5>
-            <div style={{ height: '250px' }}>
+            <div style={{ height: '400px' }}>
                 <Polar data={data} options={options} />
             </div>
 
-            {/* 🔹 NUEVO: Indicador de colores (Leyenda personalizada) */}
-            <div className="mt-4 d-flex justify-content-center flex-wrap" style={{ gap: '10px' }}>
-                <div className="d-flex align-items-center">
-                    <span style={{ width: '12px', height: '12px', backgroundColor: SUCCESS_COLOR, borderRadius: '50%', display: 'inline-block', marginRight: '5px' }}></span>
-                    <small>Excelente (≥ 1.0)</small>
+            {/* Leyenda de intensidad 
+            <div className="mt-4">
+                <h6 className="mb-3">Intensidad del Color según Desempeño</h6>
+                <div className="d-flex justify-content-center align-items-center flex-wrap" style={{ gap: '20px' }}>
+                    <div className="d-flex align-items-center">
+                        <div style={{
+                            width: '40px',
+                            height: '20px',
+                            background: 'linear-gradient(to right, rgba(100, 100, 100, 0.3), rgba(100, 100, 100, 0.9))',
+                            borderRadius: '4px',
+                            marginRight: '8px',
+                            border: '1px solid #ddd'
+                        }}></div>
+                        <div>
+                            <small style={{ display: 'block' }}><strong>Color apagado:</strong> Crítico ({"< 0.6"})</small>
+                            <small style={{ display: 'block' }}><strong>Color medio:</strong> Regular (0.6 - 0.99)</small>
+                            <small style={{ display: 'block' }}><strong>Color vibrante:</strong> Excelente (≥ 1.0)</small>
+                        </div>
+                    </div>
                 </div>
-                <div className="d-flex align-items-center">
-                    <span style={{ width: '12px', height: '12px', backgroundColor: WARNING_COLOR, borderRadius: '50%', display: 'inline-block', marginRight: '5px' }}></span>
-                    <small>Regular (0.6 - 0.99)</small>
+            </div>*/}
+
+            {/* Leyenda de colores por métrica */}
+            <div className="mt-4">
+                <h6 className="mb-2">Cada color representa un componente diferente</h6>
+                <div className="d-flex justify-content-center flex-wrap" style={{ gap: '15px' }}>
+                    {metrics.map((metric, idx) => {
+                        const { r, g, b } = metric.baseColor;
+                        return (
+                            <div key={idx} className="d-flex align-items-center">
+                                <span style={{
+                                    width: '15px',
+                                    height: '15px',
+                                    backgroundColor: `rgb(${r}, ${g}, ${b})`,
+                                    borderRadius: '50%',
+                                    display: 'inline-block',
+                                    marginRight: '5px',
+                                    border: '2px solid rgba(0,0,0,0.2)'
+                                }}></span>
+                                <small>{metric.label}</small>
+                            </div>
+                        );
+                    })}
                 </div>
-                <div className="d-flex align-items-center">
-                    <span style={{ width: '12px', height: '12px', backgroundColor: DANGER_COLOR, borderRadius: '50%', display: 'inline-block', marginRight: '5px' }}></span>
-                    <small>Crítico ({"< 0.59"})</small>
-                </div>
+            </div>
+
+            <div className="mt-3">
+                <small className="text-muted">
+                    <strong>Interpretación:</strong> 1.0 = 100% del desempeño esperado.
+                    Mayor valor = Mejor desempeño (color más intenso).
+                </small>
             </div>
         </div>
     );

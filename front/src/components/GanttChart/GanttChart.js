@@ -171,9 +171,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         // Si el proyecto aún no ha empezado
         if (now < start) {
             return {
-                performance: 0, // No se puede evaluar aún
+                performance: 0,
                 expectedProgress: 0,
-                isFuture: true // 🔹 NUEVO: Marca que es futuro
+                isFuture: true
             };
         }
 
@@ -196,15 +196,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             return {
                 performance: 0,
                 expectedProgress: Math.round(expectedProgress),
-                isFuture: true // 🔹 Prácticamente futuro
+                isFuture: true
             };
         }
 
-        // 🔹 NUEVO: Desempeño como decimal = Avance Real / Avance Esperado
+        // Desempeño como decimal = Avance Real / Avance Esperado
         const performance = task.progress / expectedProgress;
 
         return {
-            performance: Math.round(performance * 100) / 100, // Redondear a 2 decimales
+            performance: Math.min(Math.round(performance * 100) / 100, 2.00), // 🔹 MODIFICADO: Límite a 2.00
             expectedProgress: Math.round(expectedProgress),
             isFuture: false
         };
@@ -223,13 +223,12 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
 
         let totalPerformance = 0;
         let totalExpected = 0;
-        let validPerformanceCount = 0; // 🔹 NUEVO: Contar solo tareas con avance esperado > 0
+        let validPerformanceCount = 0;
 
         children.forEach(child => {
             const metrics = calculatePerformance(child);
             totalExpected += metrics.expectedProgress;
 
-            // 🔹 NUEVO: Solo sumar desempeño si no es futuro
             if (!metrics.isFuture && metrics.expectedProgress > 0) {
                 totalPerformance += metrics.performance;
                 validPerformanceCount++;
@@ -243,7 +242,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
 
         return {
             avgProgress: Math.round(avgProgress),
-            avgPerformance: Math.round(avgPerformance * 100) / 100, // 🔹 Decimal con 2 decimales
+            avgPerformance: Math.min(Math.round(avgPerformance * 100) / 100, 2.00), // 🔹 MODIFICADO: Límite a 2.00
             avgExpected: Math.round(avgExpected)
         };
     };
@@ -274,22 +273,38 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         // 🔸 3. Calcular ruta crítica
         const criticalIds = findCriticalPath(recalculatedTasks);
 
-        // 🔸 4. Ordenar: grupos primero (por fecha más reciente)
-        const orderedTasks = [...recalculatedTasks].sort((a, b) => {
-            // Prioriza los de tipo grupo
-            if (a.type === "group" && b.type !== "group") return -1;
-            if (a.type !== "group" && b.type === "group") return 1;
+        // 🔸 4. MODIFICADO: Ordenar grupos con sus tareas hijas juntas
+        const groups = recalculatedTasks.filter(t => t.type === "group");
+        const tasksWithoutParent = recalculatedTasks.filter(t => t.type !== "group" && !t.parent_id);
 
-            // Entre grupos, mostrar el más reciente primero
-            if (a.type === "group" && b.type === "group") {
-                const endA = new Date(a.end_date).getTime();
-                const endB = new Date(b.end_date).getTime();
-                return endA - endB; // Más reciente primero
-            }
-
-            // Para tareas normales, mantener orden actual
-            return 0;
+        // Ordenar grupos por fecha de inicio
+        const sortedGroups = groups.sort((a, b) => {
+            const startA = new Date(a.start_date).getTime();
+            const startB = new Date(b.start_date).getTime();
+            return startA - startB;
         });
+
+        // Crear array ordenado: grupo seguido de sus hijos
+        const orderedTasks = [];
+        sortedGroups.forEach(group => {
+            orderedTasks.push(group);
+            const children = recalculatedTasks.filter(t => t.parent_id === group.id);
+            // Ordenar hijos por fecha de inicio
+            const sortedChildren = children.sort((a, b) => {
+                const startA = new Date(a.start_date).getTime();
+                const startB = new Date(b.start_date).getTime();
+                return startA - startB;
+            });
+            orderedTasks.push(...sortedChildren);
+        });
+
+        // Añadir tareas sin grupo al final, ordenadas por fecha
+        const sortedTasksWithoutParent = tasksWithoutParent.sort((a, b) => {
+            const startA = new Date(a.start_date).getTime();
+            const startB = new Date(b.start_date).getTime();
+            return startA - startB;
+        });
+        orderedTasks.push(...sortedTasksWithoutParent);
 
         // 🔸 5. Mapear a formato del Gantt
         return orderedTasks.map((t) => {
@@ -326,7 +341,6 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             };
         });
     }, [tasks, interesados]);
-
 
     // --- Dependencias inversas
     const dependencyMap = useMemo(() => {
@@ -577,7 +591,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         });
 
         const avgPerformance = validPerformanceCount > 0
-            ? totalPerformance / validPerformanceCount
+            ? Math.min(totalPerformance / validPerformanceCount, 2.00)
             : 0;
 
         const avgExpected = individualTasks.length > 0

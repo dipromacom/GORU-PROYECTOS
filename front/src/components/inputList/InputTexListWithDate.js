@@ -12,6 +12,13 @@ const InputTextListWithDate = ({ list, setList, duration = 0, disabled=false }) 
     const [focus, setFocus] = useState(false)
     const [showAlert, setShowAlert] = useState(false)
 
+    // NUEVA FUNCIÓN: Manejar edición de fecha en un hito existente
+    const handleEditDate = (index, newDate) => {
+        const updatedList = list.map((item, i) =>
+            i === index ? { ...item, date: newDate } : item
+        );
+        setList(updatedList);
+    };
 
     /*const totalDuration = (date) => {
         if (list?.length > 0) {
@@ -57,61 +64,65 @@ const InputTextListWithDate = ({ list, setList, duration = 0, disabled=false }) 
 
     return (
         <div>
+            {/* Formulario de agregar (se mantiene igual) */}
             <Form>
-                { !disabled && (<Form.Row>
-                    <Col xs={6}>
-                        <Form.Control
-                            placeholder='Descripción'
-                            autoFocus
-                            autoComplete="off"
-                            type="text"
-                            value={description}
-                            onChange={(e) => {
-                                e.preventDefault();
-                                setDescription(e.target.value)
-                            }}
-                        />
-                    </Col>
-                    <Col className="input-text-list" xs={5}>
-                        <SingleDatePicker
-                            placeholder='Ingrese La fecha'
-                            block={true}
-                            date={date} // momentPropTypes.momentObj or null
-                            onDateChange={date => setDate(date)} // PropTypes.func.isRequired
-                            focused={focus} // PropTypes.bool
-                            onFocusChange={({ focused }) => { setFocus(focused) }} // PropTypes.func.isRequired
-                            id={`component-${uuidv4()}`} // PropTypes.string.isRequired,
-                            style={{
-                                fontFamily: 'Open Sans, sans-serif',
-                            }}
-                        />
-                    </Col>
-                    <Col className='d-flex flex-row-reverse'>
-                        <Button type="submit" disabled={description.length === 0 || !moment(date).isValid()} onClick={handleSubmit}>Agregar</Button>
-                    </Col>
-                </Form.Row>)}
-                {
-                    showAlert &&
+                {!disabled && (
                     <Form.Row>
-                        <div className='m-1 d-flex w-100'>
-                            <Alert variant='danger' className='flex-fill mb-0'>No se pueden añadir fechas que sobrepasen la duración del proyecto</Alert>
-                        </div>
+                        <Col xs={6}>
+                            <Form.Control
+                                placeholder='Descripción'
+                                autoComplete="off"
+                                type="text"
+                                value={description}
+                                onChange={(e) => setDescription(e.target.value)}
+                            />
+                        </Col>
+                        <Col className="input-text-list" xs={5}>
+                            <SingleDatePicker
+                                placeholder='Fecha'
+                                block={true}
+                                date={date}
+                                onDateChange={date => setDate(date)}
+                                focused={focus}
+                                onFocusChange={({ focused }) => setFocus(focused)}
+                                id={`new-hito-${uuidv4()}`}
+                            />
+                        </Col>
+                        <Col className='d-flex flex-row-reverse'>
+                            <Button type="submit" disabled={description.length === 0 || !moment(date).isValid()} onClick={handleSubmit}>Agregar</Button>
+                        </Col>
                     </Form.Row>
-
-                }
+                )}
             </Form>
 
-            <div className={list?.length > 0 ? "mt-2" : ""}>
+            <div className={list?.length > 0 ? "mt-3" : ""}>
                 <ListGroup>
                     {list?.map((item, index) => (
-                        <ListGroup.Item on key={index} className='d-flex'>
-                            <div className="col-9 text-break">{item.description}</div>
-                            <div className="col-3 pr-0" style={{ borderLeft: '1pt solid rgba(0,0,0,0.2)' }}>
-                                <i className='bi bi-calendar' style={
-                                    { paddingLeft: "5px", paddingRight: "5px" }
-                                }></i>
-                                {moment(item.date).locale('es').format('LL')}
-                                { !disabled && <span className="bi bi-x-lg pull-end" onClick={() => deleteItemHandle(index)} ></span>}
+                        <ListGroup.Item key={index} className='d-flex align-items-center py-2'>
+                            <div className="col-7 text-break fw-bold">{item.description}</div>
+                            <div className="col-5 d-flex align-items-center justify-content-end">
+                                {!disabled ? (
+                                    // CAMBIO: Input editable para la fecha
+                                    <Form.Control
+                                        type="date"
+                                        size="sm"
+                                        style={{ width: '150px' }}
+                                        value={item.date ? moment(item.date).format('YYYY-MM-DD') : ''}
+                                        onChange={(e) => handleEditDate(index, e.target.value)}
+                                    />
+                                ) : (
+                                    <span className="small">
+                                        <i className='bi bi-calendar me-2'></i>
+                                        {item.date ? moment(item.date).locale('es').format('LL') : 'Sin fecha'}
+                                    </span>
+                                )}
+
+                                {!disabled && (
+                                    <i
+                                        className="bi bi-trash text-danger ms-3 cursor-pointer"
+                                        onClick={() => deleteItemHandle(index)}
+                                    ></i>
+                                )}
                             </div>
                         </ListGroup.Item>
                     ))}

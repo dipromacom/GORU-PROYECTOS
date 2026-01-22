@@ -18,7 +18,7 @@ const transformToNewFormat = (alcanceEntregables) => {
                 nombre: item,
                 completado: false,
                 fecha_entregable: null,
-                deadline: new Date().toISOString().split('T')[0]
+                deadline: null
             };
         }
         return item;
@@ -43,7 +43,8 @@ const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode,
         const shouldBeDone = alcanceEntregables.filter(a => a.deadline && a.deadline <= today).length;
 
         if (shouldBeDone === 0) return successful > 0 ? 1.0 : 0;
-        return Number((successful / shouldBeDone).toFixed(2));
+        const calc = Number((successful / shouldBeDone).toFixed(2));
+        return Math.min(calc, 2.0);
     };
 
     const performanceIndex = calculatePerformance();
@@ -109,6 +110,7 @@ const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode,
                     setAlcanceEntregables={setAlcanceEntregables}
                     editMode={editMode}
                     ejecutado={ejecutado}
+                    cerrado={cerrado}
                 />
             ) : (
                 <InputTextList

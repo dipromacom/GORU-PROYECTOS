@@ -344,92 +344,85 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     };
 
     useEffect(() => {
-        const entregableNames = getEntregableNames(alcanceEntregables);
-        const currentAlcanceLength = entregableNames.length;
+        if (!alcanceEntregables || !Array.isArray(alcanceEntregables)) return;
 
-        function initCostoEntregable() {
-            const newCostoEntregable = alcanceEntregables.map(ent => {
-                const nombre = typeof ent === 'string' ? ent : ent.nombre;
-                const deadline = typeof ent === 'object' ? ent.deadline : null; // 🔹 Captura deadline
+        const nombresAlcance = alcanceEntregables.map(ent =>
+            typeof ent === 'string' ? ent : ent.nombre
+        );
 
-                const existing = (costoEntregable || []).find(item => item.entregable === nombre);
-                return existing ? { ...existing, deadline } : { entregable: nombre, costo: 0, deadline };
-            });
-            setCostoEntregable(newCostoEntregable);
+        // 1. Sincronizar Calidad
+        const currentCalidadNames = (calidadMetricas || []).map(m => m.entregable);
+        if (JSON.stringify(currentCalidadNames) !== JSON.stringify(nombresAlcance)) {
+            setCalidadMetricas(nombresAlcance.map(nombre => {
+                const existing = (calidadMetricas || []).find(m => m.entregable === nombre);
+                return existing || { entregable: nombre, metrica: '' };
+            }));
         }
 
-        function initCalidadMetricas() {
-            const newCalidadMetricas = entregableNames.map(entregable => {
-                const existing = (calidadMetricas || []).find(item => item.entregable === entregable);
-                return existing ? existing : { entregable, metrica: '' };
-            });
-            setCalidadMetricas(newCalidadMetricas);
+        // 2. Sincronizar Hitos (Solo estructura)
+        const hitosActuales = tiempoFechasCriticas || [];
+        const hitosManuales = hitosActuales.filter(h => !nombresAlcance.includes(h.description));
+        const hitosDeAlcance = alcanceEntregables.map(ent => {
+            const nombre = typeof ent === 'string' ? ent : ent.nombre;
+            const existing = hitosActuales.find(h => h.description === nombre);
+            // Si no existe, se crea con date: null (se editará en Hitos)
+            return existing || { description: nombre, date: null, completado: false, fecha_hito: null };
+        });
+
+        const nuevosHitos = [...hitosManuales, ...hitosDeAlcance];
+        if (JSON.stringify(hitosActuales) !== JSON.stringify(nuevosHitos)) {
+            setTiempoFechasCriticas(nuevosHitos);
         }
 
-        // NUEVA FUNCIÓN: Sincronizar Hitos
-        function initHitos() {
-            if (!alcanceEntregables || !Array.isArray(alcanceEntregables)) return;
+        // 3. Sincronizar Costos (Solo estructura)
+        const costosActuales = costoEntregable || [];
+        const nuevosCostos = alcanceEntregables.map(ent => {
+            const nombre = typeof ent === 'string' ? ent : ent.nombre;
+            const existing = costosActuales.find(c => c.entregable === nombre);
+            // El deadline lo pondrá el EFECTO 2
+            return existing || { entregable: nombre, costo: 0, deadline: null };
+        });
 
-            // 1. Identificamos los nombres de los entregables actuales del alcance
-            const nombresAlcance = alcanceEntregables.map(ent =>
-                typeof ent === 'string' ? ent : ent.nombre
-            );
+        if (JSON.stringify(costosActuales) !== JSON.stringify(nuevosCostos)) {
+            setCostoEntregable(nuevosCostos);
+        }
 
-            // 2. Mantenemos los hitos manuales (aquellos cuya descripción NO está en el alcance)
-            const hitosManualesPreservados = (tiempoFechasCriticas || []).filter(hito =>
-                !nombresAlcance.includes(hito.description)
-            );
+    }, [alcanceEntregables]);
 
-            // 3. Procesamos los hitos que vienen del alcance (Sincronización)
-            const hitosDesdeAlcance = alcanceEntregables.map(ent => {
-                const nombre = typeof ent === 'string' ? ent : ent.nombre;
-                const deadline = typeof ent === 'object' ? ent.deadline : new Date().toISOString();
 
-                // Buscamos si ya existía este hito de alcance para mantener su estado (completado, fecha_hito, etc.)
-                const existing = (tiempoFechasCriticas || []).find(h => h.description === nombre);
+    // EFECTO 2: Sincronización de Fechas (De Hitos -> Alcance y Costos)
+    useEffect(() => {
+        if (!tiempoFechasCriticas) return;
 
-                if (existing) {
-                    // Si existe, actualizamos solo el deadline si cambió en alcance, pero mantenemos lo demás
-                    return { ...existing, date: deadline };
-                } else {
-                    // Si es nuevo, lo creamos con el formato correcto
-                    return {
-                        description: nombre,
-                        date: deadline,
-                        completado: false,
-                        fecha_hito: null
-                    };
-                }
-            });
+        // Actualizar Deadlines en Alcance
+        const alcanceActualizado = alcanceEntregables.map(ent => {
+            const nombre = typeof ent === 'string' ? ent : ent.nombre;
+            const hitoMatch = tiempoFechasCriticas.find(h => h.description === nombre);
 
-            // 4. El nuevo estado es la unión de los manuales + los sincronizados
-            const finalHitos = [...hitosManualesPreservados, ...hitosDesdeAlcance];
-
-            // 5. Solo actualizamos si la longitud cambió o si hay cambios reales para evitar re-renders infinitos
-            // Comparamos strings para una validación rápida de cambios
-            if (JSON.stringify(tiempoFechasCriticas) !== JSON.stringify(finalHitos)) {
-                setTiempoFechasCriticas(finalHitos);
+            if (hitoMatch && hitoMatch.date !== (ent.deadline || null)) {
+                return { ...(typeof ent === 'string' ? { nombre: ent } : ent), deadline: hitoMatch.date };
             }
+            return ent;
+        });
+
+        if (JSON.stringify(alcanceEntregables) !== JSON.stringify(alcanceActualizado)) {
+            setAlcanceEntregables(alcanceActualizado);
         }
 
-        // Verificamos cambios para disparar las inits
-        if ((calidadMetricas || []).length !== currentAlcanceLength) initCalidadMetricas();
-        if ((costoEntregable || []).length !== currentAlcanceLength) initCostoEntregable();
+        // Actualizar Deadlines en Costos
+        const costosActualizados = (costoEntregable || []).map(costo => {
+            const hitoMatch = tiempoFechasCriticas.find(h => h.description === costo.entregable);
+            if (hitoMatch && hitoMatch.date !== (costo.deadline || null)) {
+                return { ...costo, deadline: hitoMatch.date };
+            }
+            return costo;
+        });
 
-        // Sincronizar hitos siempre que cambie el contenido o fechas del alcance
-        // Dentro del useEffect al final
-        const hitoNames = (tiempoFechasCriticas || []).map(h => h.description);
-        const reachNames = (alcanceEntregables || []).map(ent => typeof ent === 'string' ? ent : ent.nombre);
-
-        // Si falta algún entregable en la lista de hitos, sincronizamos
-        const needsSync = reachNames.some(name => !hitoNames.includes(name)) ||
-            reachNames.length !== (tiempoFechasCriticas || []).filter(h => reachNames.includes(h.description)).length;
-
-        if (needsSync) {
-            initHitos();
+        if (JSON.stringify(costoEntregable) !== JSON.stringify(costosActualizados)) {
+            setCostoEntregable(costosActualizados);
         }
 
-    }, [alcanceEntregables]); // Mantenemos la dependencia
+    }, [tiempoFechasCriticas]);
 
     const handleMultipleTipoInforme = event => {
         const selectedOptions = Array.from(event.target.selectedOptions, option => option.value);
@@ -652,6 +645,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         alcance: 0,
         hitos: 0,
         costos: 0,
+        todo: 0,
         // Aquí puedes añadir más indicadores a futuro (ej. calidadDesempeno: 0)
     });
 
@@ -1400,18 +1394,24 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                             <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} esPrograma={esPrograma}/>
                         </Tab.Pane>
                         <Tab.Pane eventKey="to-do">
-
-                            {/* 🔽 Combobox filtro antes del TodoList */}
-                            <div style={{ marginBottom: "20px" }}>
-                                <strong>Filtrar Tareas</strong>{" "}
-                                <select value={taskFilter} onChange={handleFilterChange} class="dropdown-toggle btn btn-outline-primary">                                   
-                                    <option value="false">Abiertas</option>
-                                    <option value="true">Cerradas</option>
-                                    <option value="null">Todas</option>
-                                </select>
-                            </div>   
-
-                            <TodoList setTaskFilter={setTaskFilter} toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado}></TodoList>
+                            <div className="to-do-container border rounded p-4 bg-white shadow-sm">
+                                <div className="d-flex justify-content-between align-items-center mb-4">
+                                    <h4 className="m-0 fw-bold">
+                                        <i className="bi bi-check2-square me-2"></i>
+                                        Gestión de tareas
+                                    </h4>
+                                </div>
+                                {/* 🔽 Combobox filtro antes del TodoList */}
+                                <div style={{ marginBottom: "20px" }}>
+                                    <strong>Filtrar Tareas</strong>{" "}
+                                    <select value={taskFilter} onChange={handleFilterChange} class="dropdown-toggle btn btn-outline-primary">                                   
+                                        <option value="false">Abiertas</option>
+                                        <option value="true">Cerradas</option>
+                                        <option value="null">Todas</option>
+                                    </select>
+                                </div>  
+                                <TodoList setTaskFilter={setTaskFilter} toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue}></TodoList> 
+                            </div>                    
                         </Tab.Pane>
                         <Tab.Pane eventKey="project-management">
                             {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_AGIL || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO

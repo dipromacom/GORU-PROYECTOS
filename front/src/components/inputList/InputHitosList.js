@@ -58,7 +58,8 @@ const InputHitosList = ({
         }).length;
 
         if (shouldBeDone === 0) return successful > 0 ? 1.0 : 0;
-        return Number((successful / shouldBeDone).toFixed(2));
+        const calc = Number((successful / shouldBeDone).toFixed(2));
+        return Math.min(calc, 2.0); // 🔹 Tope de 2.0
     };
 
     const performanceIndex = calculatePerformance();

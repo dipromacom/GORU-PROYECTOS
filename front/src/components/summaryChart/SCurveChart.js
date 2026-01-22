@@ -2,43 +2,44 @@ import React from 'react';
 import { Line } from 'react-chartjs-2';
 import moment from 'moment';
 
-const SCurveChart = ({ dataPoints, title }) => {
+const SCurveChart = ({
+    dataPoints,
+    title,
+    // Props para mapear campos según el módulo (Hitos o Costos)
+    dateField = "date",
+    realDateField = "realDate"
+}) => {
     if (!dataPoints || dataPoints.length === 0) return null;
 
-    // 1. Extraer todas las fechas únicas (programadas y reales) para construir el eje X
     const allDates = new Set();
     dataPoints.forEach(p => {
-        if (p.date) allDates.add(moment(p.date).format('YYYY-MM-DD'));
-        if (p.completado && p.realDate) allDates.add(moment(p.realDate).format('YYYY-MM-DD'));
+        if (p[dateField]) allDates.add(moment(p[dateField]).format('YYYY-MM-DD'));
+        if (p.completado && p[realDateField]) allDates.add(moment(p[realDateField]).format('YYYY-MM-DD'));
     });
 
     const sortedTimeline = Array.from(allDates).sort();
-    const totalHitos = dataPoints.length;
+    const totalItems = dataPoints.length;
     const today = moment().startOf('day').format('YYYY-MM-DD');
 
     const labels = [];
     const plannedPoints = [];
     const realPoints = [];
 
-    // 2. Iterar por la línea de tiempo para calcular acumulados en cada fecha
     sortedTimeline.forEach((currentTime) => {
         labels.push(moment(currentTime).format('DD/MM/YY'));
 
-        // PROGRESO PLANIFICADO (PV): ¿Cuántos hitos debían estar listos hasta esta fecha?
         const plannedCount = dataPoints.filter(h =>
-            moment(h.date).format('YYYY-MM-DD') <= currentTime
+            moment(h[dateField]).format('YYYY-MM-DD') <= currentTime
         ).length;
-        plannedPoints.push(Math.round((plannedCount / totalHitos) * 100));
+        plannedPoints.push(Math.round((plannedCount / totalItems) * 100));
 
-        // PROGRESO REAL (EV): ¿Cuántos hitos se cerraron REALMENTE hasta esta fecha?
-        // Solo graficamos real si la fecha ya pasó o si hay cierres futuros registrados
-        if (currentTime <= today || dataPoints.some(h => h.completado && h.realDate && moment(h.realDate).format('YYYY-MM-DD') === currentTime)) {
+        if (currentTime <= today || dataPoints.some(h => h.completado && h[realDateField] && moment(h[realDateField]).format('YYYY-MM-DD') === currentTime)) {
             const realCount = dataPoints.filter(h =>
                 h.completado &&
-                h.realDate &&
-                moment(h.realDate).format('YYYY-MM-DD') <= currentTime
+                h[realDateField] &&
+                moment(h[realDateField]).format('YYYY-MM-DD') <= currentTime
             ).length;
-            realPoints.push(Math.round((realCount / totalHitos) * 100));
+            realPoints.push(Math.round((realCount / totalItems) * 100));
         }
     });
 
@@ -51,7 +52,7 @@ const SCurveChart = ({ dataPoints, title }) => {
                 borderColor: '#5bc0de',
                 backgroundColor: 'rgba(91, 192, 222, 0.1)',
                 fill: true,
-                tension: 0.1, // Líneas un poco más rectas para ver mejor los escalones de hitos
+                tension: 0.1,
                 pointRadius: 3,
             },
             {

@@ -1,8 +1,9 @@
 import React, { useState, useRef } from 'react';
-import { Button, InputGroup, ListGroup, Form, Row, Col, Modal } from 'react-bootstrap'; // 🔹 Añadido Modal
+import { Button, InputGroup, ListGroup, Form, Row, Col, Modal, Badge } from 'react-bootstrap'; // 🔹 Añadido Modal
+import moment from 'moment';
 import "./InputTextList.css";
 
-const InputAlcanceEjecutado = ({ alcanceEntregables, setAlcanceEntregables, editMode, ejecutado }) => {
+const InputAlcanceEjecutado = ({ alcanceEntregables, setAlcanceEntregables, editMode, ejecutado, cerrado }) => {
     const [inputValue, setInputValue] = useState('');
     const [showCloseModal, setShowCloseModal] = useState(false); // 🔹 Nuevo
     const [selectedIndex, setSelectedIndex] = useState(null); // 🔹 Nuevo
@@ -65,8 +66,12 @@ const InputAlcanceEjecutado = ({ alcanceEntregables, setAlcanceEntregables, edit
             <div className="mt-2">
                 <Row className="alcance-header fw-bold border-bottom pb-2 mb-2 text-muted" style={{ fontSize: '0.85rem' }}>
                     <Col xs={6}>ENTREGABLE</Col>
-                    <Col xs={4} className="text-center">DEADLINE</Col>
-                    <Col xs={2} className="text-center">FIN</Col>
+                    {(ejecutado || cerrado) && (
+                        <>
+                            <Col xs={4} className="text-center">CIERRE REAL</Col>
+                            <Col xs={2} className="text-center">FIN</Col>
+                        </>
+                    )}    
                 </Row>
 
                 <ListGroup variant="flush">
@@ -78,26 +83,24 @@ const InputAlcanceEjecutado = ({ alcanceEntregables, setAlcanceEntregables, edit
                                         {item.nombre}
                                     </span>
                                 </Col>
-                                <Col xs={4}>
-                                    <Form.Control
-                                        type="date"
-                                        size="sm"
-                                        value={item.deadline ? item.deadline.split('T')[0] : ''}
-                                        disabled={!editMode || ejecutado}
-                                        onChange={(e) => {
-                                            const updated = alcanceEntregables.map((a, i) => i === index ? { ...a, deadline: e.target.value } : a);
-                                            setAlcanceEntregables(updated);
-                                        }}
-                                    />
-                                </Col>
-                                <Col xs={2} className="text-center">
-                                    <Form.Check
-                                        type="checkbox"
-                                        checked={item.completado}
-                                        disabled={!editMode || !ejecutado}
-                                        onChange={() => handleCheckboxChange(index)}
-                                    />
-                                </Col>
+                                {/* COLUMNA DEADLINE: Solo visible en Ejecutado o Cerrado */}
+                                {(ejecutado || cerrado) && (
+                                    <>
+                                        <Col xs={4} className="text-center">
+                                            <Badge variant="light" className="border text-dark">
+                                                {item.deadline ? moment(item.deadline).format('DD/MM/YYYY') : 'Sin fecha'}
+                                            </Badge>
+                                        </Col>                              
+                                        <Col xs={2} className="text-center">
+                                            <Form.Check
+                                                type="checkbox"
+                                                checked={item.completado}
+                                                disabled={!editMode || !ejecutado}
+                                                onChange={() => handleCheckboxChange(index)}
+                                            />
+                                        </Col>
+                                    </>
+                                )}
                             </Row>
                         </ListGroup.Item>
                     ))}

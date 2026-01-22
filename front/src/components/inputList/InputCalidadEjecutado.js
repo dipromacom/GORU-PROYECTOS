@@ -44,45 +44,46 @@ const InputCalidadEjecutado = ({ calidadMetricas, setCalidadMetricas, editMode, 
     };
 
     return (
-        <div className="input-calidad-ejecutado mt-3">
-            <div className="mb-3">
-                <Form.Label>Progreso de Calidad: <span className="fw-bold">{porcentajeCompletado}%</span></Form.Label><br></br>
-                <Form.Label><span className="fw-bold">Fórmula: (entregables_finalizados / total_entregables) * 100 </span></Form.Label>
-                <ProgressBar now={porcentajeCompletado} label={`${porcentajeCompletado}%`} />
+        <div className="input-calidad-ejecutado">
+            {/* Barra de progreso unificada */}
+            <div className="mb-4 p-2">
+                <div className="d-flex justify-content-between small fw-bold mb-1 text-uppercase">
+                    <span>Progreso de Calidad:</span>
+                    <span className="text-success">{porcentajeCompletado}%</span>
+                </div>
+                <ProgressBar
+                    now={porcentajeCompletado}
+                    variant="success"
+                    style={{ height: '20px', borderRadius: '5px' }}
+                />
             </div>
 
-            <div className={calidadMetricas?.length > 0 ? "mt-2" : ""}>
-                {/* Cabecera: 70% Métrica / Entregable / 30% Finalizado */}
-                <Row className="calidad-header fw-bold pb-2">
-                    <Col xs={8} md={9} lg={9}>Métrica / Entregable</Col>
-                    <Col xs={4} md={3} lg={3} className="text-center">Validado</Col>
-                </Row>
+            <div>
+                {/* Cabecera estilizada como en Costos/Hitos */}
+                <div className="d-flex fw-bold pb-2 border-bottom mb-2 text-muted small">
+                    <div className="col-9">MÉTRICA / ENTREGABLE</div>
+                    <div className="col-3 text-center">VALIDADO</div>
+                </div>
 
                 <ListGroup variant="flush">
                     {calidadMetricas?.map((item, index) => (
-                        <ListGroup.Item key={index} className="ps-0 pe-0">
-                            <Row className="calidad-row align-items-center">
-                                {/* Columna 70% - Métrica y Entregable */}
-                                <Col xs={8} md={9} lg={9}>
-                                    <div
-                                        style={{ textDecoration: item.completado ? 'line-through' : 'none' }}
-                                        title={item.metrica}
-                                    >
-                                        <span className="fw-bold">Entregable: {item.entregable}</span>
-                                        <div className="text-muted" style={{ fontSize: '0.8rem' }}>
-                                            Métrica: {item.metrica}
-                                        </div>
+                        <ListGroup.Item key={index} className="px-4 py-2 bg-transparent">
+                            <Row className="align-items-center no-gutters">
+                                <Col xs={9}>
+                                    <div className="text-dark fw-bold" style={{ textDecoration: item.completado ? 'line-through' : 'none', opacity: item.completado ? 0.6 : 1 }}>
+                                        {item.entregable}
+                                    </div>
+                                    <div className="text-muted small">
+                                        <i className="fas fa-microscope mr-1"></i> {item.metrica}
                                     </div>
                                 </Col>
 
-                                {/* Columna 30% - Checkbox */}
-                                <Col xs={4} md={3} lg={3} className="text-center">
+                                <Col xs={3} className="text-center">
                                     <Form.Check
                                         type="checkbox"
-                                        checked={item.completado || false} // Aseguramos que sea false si es undefined
-                                        disabled={!editMode}
+                                        checked={item.completado || false}
+                                        disabled={!editMode || cerrado}
                                         onChange={() => handleCheckboxChange(index)}
-                                        inline
                                     />
                                 </Col>
                             </Row>

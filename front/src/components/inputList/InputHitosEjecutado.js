@@ -75,9 +75,9 @@ const InputHitosEjecutado = ({ tiempoFechasCriticas, setTiempoFechasCriticas, ed
                                 {/* Columna Fecha de Cierre Real */}
                                 <Col xs={4} className="text-center">
                                     {item.completado ? (
-                                        <div bg="light" text="dark" className="border">
+                                        <Badge variant="light" className="border text-dark">
                                             {moment(item.fecha_hito).format('DD/MM/YYYY')}
-                                        </div>
+                                        </Badge>
                                     ) : (
                                         <span className="text-muted small">Pendiente</span>
                                     )}

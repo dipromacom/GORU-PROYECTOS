@@ -1,79 +1,20 @@
-import React, { useEffect, useState, useMemo } from 'react';
-import { InputGroup, ListGroup, Col, Row } from 'react-bootstrap';
-import Form from 'react-bootstrap/Form'
-import "./InputTexListWithDate.css"
-import regexValidator from "../../libs/regexValidator";
-import "./InputCostToList.css"
+import React, { useEffect, useState } from 'react';
+import { InputGroup, ListGroup, Form, Modal, Button, Row, Col } from 'react-bootstrap';
+import moment from 'moment';
+import "./InputCostToList.css";
 
-
-const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disabled = false, ejecutado, cerrado }) => {
-    const [inputCosts, setInputCosts] = useState(costoList)
-    const [focusedKey, setFocusedKey] = useState(null); // Para trackear foco por índice y campo
+const InputCostToList = ({ costoList = [], setResultCostoList, disabled, ejecutado, cerrado, regexValidator }) => {
+    const [focusedKey, setFocusedKey] = useState(null);
+    const [showCloseModal, setShowCloseModal] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(null);
+    const [closingDate, setClosingDate] = useState(moment().format('YYYY-MM-DD'));
 
     const unformatToNumber = (value) => {
         if (!value || value === "") return "0";
         let str = value.toString().trim();
-        if (str.includes(',')) {
-            return str.replace(/\./g, '').replace(',', '.');
-        }
-        const dots = (str.match(/\./g) || []).length;
-        if (dots > 1) return str.replace(/\./g, '');
+        if (str.includes(',')) return str.replace(/\./g, '').replace(',', '.');
         return str;
     };
-
-    useEffect(() => {
-        if ((ejecutado || cerrado) && costoList.length > 0) {
-            const transformedList = costoList.map(item => ({
-                ...item,
-                //costoReal: item.costoReal || (item.costo || '0'),
-                costoReal: item.costoReal || '0',
-            }));
-            setInputCosts(transformedList);
-        } else {
-            setInputCosts(costoList);
-        }
-    }, [costoList, ejecutado, cerrado])
-
-    const handleCostChanges = (value, id, field) => {
-        const updatedInputCosts = [...inputCosts];
-        updatedInputCosts[id] = { ...updatedInputCosts[id], [field]: value };
-        setInputCosts(updatedInputCosts);
-        setResultCostoList(updatedInputCosts);
-    }
-
-    const handleBlur = (value, index, field) => {
-        // CORRECCIÓN: Al salir guardamos el número limpio en el estado
-        handleCostChanges(unformatToNumber(value), index, field);
-        setFocusedKey(null);
-    }
-
-    const handleFocus = (value, index, field) => {
-        handleCostChanges(unformatToNumber(value), index, field);
-        setFocusedKey(`${index}-${field}`);
-    }
-
-    const calculateTotalCost = (field = 'costo') => {
-        let total = 0;
-        inputCosts.forEach((cost) => {
-            const val = parseFloat(unformatToNumber(cost[field]) || 0);
-            total += val;
-        });
-        return total;
-    };
-
-    // Cálculo total estimado
-    const totalCostoEstimado = useMemo(() => calculateTotalCost('costo'), [inputCosts]);
-    // Cálculo total real
-    const totalCostoReal = useMemo(() => calculateTotalCost('costoReal'), [inputCosts]);
-
-
-    const renderCostHeader = () => (
-        <div className="d-flex fw-bold list-cost-header">
-            <div className="col-6">Entregable</div>
-            <div className={(ejecutado || cerrado) ? "col-3 text-center" : "col-6 text-center"}>Costo Est.</div>
-            {(ejecutado || cerrado) && <div className="col-3 text-center">Costo Real</div>}
-        </div>
-    );
 
     const formatToEcuador = (number) => {
         const val = unformatToNumber(number);
@@ -85,105 +26,129 @@ const InputCostToList = ({ costoList = [], setResultCostoList = () => { }, disab
         }).format(parsed);
     };
 
-    // Función para renderizar una fila de costo
-    const renderCostRow = (item, index) => (
-        <ListGroup.Item className='d-flex p-2' key={index}>
-            <div className="col-6 text-break">{item.entregable}</div>
+    const handleCostChanges = (value, id, field) => {
+        const updated = [...costoList];
+        updated[id] = { ...updated[id], [field]: value };
+        setResultCostoList(updated);
+    };
 
-            {/* Costo Estimado (Col 3 o 6) */}
-            <div className={(ejecutado || cerrado) ? "col-3 pr-0" : "col-6 pr-0"}>
-                <InputGroup size="sm" className="input-cost-item">
-                    <InputGroup.Prepend>
-                        <InputGroup.Text><strong>$</strong></InputGroup.Text>
-                    </InputGroup.Prepend>
-                    <Form.Control
-                        disabled={disabled || (ejecutado || cerrado)}
-                        className='input-cost-list'
-                        autoComplete="off"
-                        type="text"
-                        // Condicional de visualización
-                        value={focusedKey === `${index}-costo` ? item.costo : formatToEcuador(item.costo)}
-                        onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, value => handleCostChanges(value, index, 'costo'))}
-                        onBlur={(e) => handleBlur(e.target.value, index, 'costo')}
-                        onFocus={(e) => handleFocus(e.target.value, index, 'costo')}
-                    />
-                </InputGroup>
-            </div>
+    const handleCheckboxChange = (index) => {
+        if (costoList[index].completado) {
+            const updated = [...costoList];
+            updated[index] = { ...updated[index], completado: false, fecha_cerrado: null };
+            setResultCostoList(updated);
+        } else {
+            setSelectedIndex(index);
+            setClosingDate(moment().format('YYYY-MM-DD'));
+            setShowCloseModal(true);
+        }
+    };
 
-            {/* Costo Real (Col 3 - solo si ejecutado) */}
-            {(ejecutado || cerrado) && (
-                <div className="col-3 pr-0">
-                    <InputGroup size="sm" className="input-cost-item">
-                        <InputGroup.Prepend>
-                            <InputGroup.Text><strong>$</strong></InputGroup.Text>
-                        </InputGroup.Prepend>
-                        <Form.Control
-                            disabled={disabled}
-                            className='input-cost-list'
-                            autoComplete="off"
-                            type="text"
-                            value={focusedKey === `${index}-costoReal` ? item.costoReal : formatToEcuador(item.costoReal)}
-                            onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, value => handleCostChanges(value, index, 'costoReal'))}
-                            onBlur={(e) => handleBlur(e.target.value, index, 'costoReal')}
-                            onFocus={(e) => handleFocus(e.target.value, index, 'costoReal')}
-                        />
-                    </InputGroup>
-                </div>
-            )}
-        </ListGroup.Item>
-    );
-
-    // Función para renderizar la fila de totales
-    const renderTotalRow = () => (
-        <ListGroup.Item className='d-flex fw-bold p-2 total-cost-row'>
-            {/* Total Label (Col 6) */}
-            <div className="col-6 text-break">TOTAL ENTREGABLES</div>
-
-            {/* Total Costo Estimado (Col 3 o 6) */}
-            <div className={(ejecutado || cerrado) ? "col-3 pr-0" : "col-6 pr-0"}>
-                <InputGroup size="sm" className="input-cost-item">
-                    <InputGroup.Prepend>
-                        <InputGroup.Text><strong>$</strong></InputGroup.Text>
-                    </InputGroup.Prepend>
-                    <Form.Control
-                        className='input-cost-list'
-                        type="text"
-                        value={formatToEcuador(totalCostoEstimado)}
-                        plaintext
-                        readOnly
-                    />
-                </InputGroup>
-            </div>
-
-            {/* Total Costo Real (Col 3 - solo si ejecutado) */}
-            {(ejecutado || cerrado) && (
-                <div className="col-3 pr-0">
-                    <InputGroup size="sm" className="input-cost-item">
-                        <InputGroup.Prepend>
-                            <InputGroup.Text><strong>$</strong></InputGroup.Text>
-                        </InputGroup.Prepend>
-                        <Form.Control
-                            className='input-cost-list'
-                            type="text"
-                            value={formatToEcuador(totalCostoReal)}
-                            plaintext
-                            readOnly
-                        />
-                    </InputGroup>
-                </div>
-            )}
-        </ListGroup.Item>
-    );
+    const confirmClose = () => {
+        const updated = [...costoList];
+        updated[selectedIndex] = {
+            ...updated[selectedIndex],
+            completado: true,
+            fecha_cerrado: closingDate
+        };
+        setResultCostoList(updated);
+        setShowCloseModal(false);
+    };
 
     return (
-        <div className="input-cost-list-container">
-            {renderCostHeader()}
+        <div className="input-cost-list-container border rounded p-3 bg-light">
+            {/* Header */}
+            <div className="d-flex fw-bold pb-2 border-bottom mb-2 text-muted small">
+                <div className="col-5">ENTREGABLE {(ejecutado || cerrado) && "/ DEADLINE"}</div>
+                <div className={ejecutado || cerrado ? "col-3 text-center" : "col-7 text-center"}>COSTO EST.</div>
+                {(ejecutado || cerrado) && <div className="col-3 text-center ml-2">COSTO REAL</div>}
+                {ejecutado && <div className="col-1 text-center">FIN</div>}
+            </div>
+
             <ListGroup variant="flush">
-                {inputCosts.map((item, index) => renderCostRow(item, index))}
-                {inputCosts.length > 0 && renderTotalRow()}
+                {costoList.map((item, index) => (
+                    <ListGroup.Item key={index} className="px-0 py-2 bg-transparent">
+                        <Row className="align-items-center no-gutters">
+                            <Col xs={5}>
+                                <div className="text-dark fw-bold">{item.entregable}</div>
+                                {/* 1. Condicional para mostrar deadline solo en ejecución/cierre */}
+                                {(ejecutado || cerrado) && (
+                                    <div className="text-muted small">
+                                        <i className="far fa-calendar-alt mr-1"></i>
+                                        Vence: {item.deadline ? moment(item.deadline).format('DD/MM/YYYY') : 'S/D'}
+                                        {item.completado && (
+                                            <span className="text-success ml-2 font-weight-bold">
+                                                ✓ {moment(item.fecha_cerrado).format('DD/MM/YY')}
+                                            </span>
+                                        )}
+                                    </div>
+                                )}
+                            </Col>
+
+                            <Col xs={ejecutado || cerrado ? 3 : 6}>
+                                <InputGroup className="p-2">
+                                    <Form.Control
+                                        disabled={disabled || ejecutado || cerrado}
+                                        className="text-right"
+                                        value={focusedKey === `${index}-costo` ? item.costo : formatToEcuador(item.costo)}
+                                        onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, v => handleCostChanges(v, index, 'costo'))}
+                                        onFocus={() => setFocusedKey(`${index}-costo`)}
+                                        onBlur={() => setFocusedKey(null)}
+                                    />
+                                </InputGroup>
+                            </Col>
+
+                            {(ejecutado || cerrado) && (
+                                <Col xs={3}>
+                                    <InputGroup className="p-2">
+                                        <Form.Control
+                                            disabled={disabled || item.completado || cerrado}
+                                            className="text-right"
+                                            value={focusedKey === `${index}-costoReal` ? item.costoReal : formatToEcuador(item.costoReal)}
+                                            onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, v => handleCostChanges(v, index, 'costoReal'))}
+                                            onFocus={() => setFocusedKey(`${index}-costoReal`)}
+                                            onBlur={() => setFocusedKey(null)}
+                                        />
+                                    </InputGroup>
+                                </Col>
+                            )}
+                            {(ejecutado || cerrado) && (
+                                <Col xs={1} className="d-flex justify-content-center align-items-center">
+                                    <Form.Check
+                                        type="checkbox"
+                                        checked={item.completado || false}
+                                        onChange={() => handleCheckboxChange(index)}
+                                        disabled={disabled || !ejecutado}
+                                    />
+                                </Col>
+                            )}
+                        </Row>
+                    </ListGroup.Item>
+                ))}
             </ListGroup>
+
+            <Modal show={showCloseModal} onHide={() => setShowCloseModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Finalizar Tarea de Costo</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p className="small">¿En qué fecha se completó el entregable: <strong>{costoList[selectedIndex]?.entregable}</strong>?</p>
+                    <Form.Group>
+                        <Form.Label className="small fw-bold">FECHA DE CIERRE:</Form.Label>
+                        <Form.Control
+                            type="date"
+                            value={closingDate}
+                            onChange={(e) => setClosingDate(e.target.value)}
+                        />
+                    </Form.Group>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" size="sm" onClick={() => setShowCloseModal(false)}>Cancelar</Button>
+                    <Button variant="primary" size="sm" onClick={confirmClose}>Confirmar Cierre</Button>
+                </Modal.Footer>
+            </Modal>
         </div>
-    )
-}
+    );
+};
 
 export default InputCostToList;
