@@ -1,6 +1,7 @@
 const express = require('express');
 const ProyectoController = require('../controllers/proyecto');
 const KabanController = require('../controllers/kanban');
+const encuestaController = require('../controllers/encuesta-satisfaccion')
 const GanttController = require('../controllers/gantt');
 const WhiteBoartController = require('../controllers/whiteboard');
 const RolProyectoController = require('../controllers/rol-proyecto')
@@ -56,5 +57,12 @@ router.delete('/proyecto/:id/gantt/:taskId', GanttController.deleteGantt);
 router.post('/proyecto/:id/whiteboard', WhiteBoartController.setWhiteboard);
 router.get('/proyecto/:id/whiteboard', WhiteBoartController.getWhiteboard);
 router.delete('/proyecto/:id/whiteboard', WhiteBoartController.deleteWhiteboard);
+
+//encuesta satisfacción
+router.get('/proyecto/encuesta-satisfaccion/verificar/:proyectoId',encuestaController.verificarEstadoEncuesta);
+router.get('/proyecto/encuesta-satisfaccion/proyecto/:proyectoId',encuestaController.getEncuestasProyecto);
+router.post('/proyecto/encuesta-satisfaccion',encuestaController.guardarEncuesta);
+router.get('/proyecto/encuesta-satisfaccion/todas/:proyectoId', encuestaController.getAllEncuestasProyecto);
+router.post('/proyecto/encuesta-satisfaccion/rechazar',encuestaController.rechazarEncuesta);
 
 module.exports = router;

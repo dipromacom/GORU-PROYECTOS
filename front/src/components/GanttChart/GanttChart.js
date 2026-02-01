@@ -398,7 +398,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             status: "pending",
             type: "task",
             parent_id: "",
-            duration: 0,
+            duration: 1,
         });
         setModalMode("create");
         setEditingId(null);
@@ -418,26 +418,30 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         const t = tasks.find((x) => String(x.id) === String(taskId));
         if (!t) return;
 
+        // 🔹 NUEVO: Calcular duración en días desde las fechas existentes
+        const startDate = new Date(t.start_date || t.start);
+        const endDate = new Date(t.end_date || t.end);
+        const durationInDays = Math.ceil((endDate - startDate) / (1000 * 3600 * 24));
+
         setForm({
             id: t.id,
             name: t.name || "",
             description: t.description || "",
             start_date: t.start_date ? toInputDate(t.start_date) : toInputDate(t.start),
-            end_date: t.end_date ? toInputDate(t.end_date) : toInputDate(t.end),      
+            end_date: t.end_date ? toInputDate(t.end_date) : toInputDate(t.end), // Se mantiene para referencia
             progress: Number(t.progress ?? 0),
             dependencies: t.dependencies ? [...t.dependencies] : [],
             interesados_id: t.interesados_id ? t.interesados_id.map(String) : [],
             status: t.status ?? "pending",
             type: t.type || "task",
             parent_id: t.parent_id || "",
-            duration: t.duration || 0,
+            duration: durationInDays > 0 ? durationInDays : 1, // 🔹 NUEVO: Calcular duración
         });
 
         setModalMode("edit");
         setEditingId(taskId);
         setShowModal(true);
     };
-
     // --- Eliminar ---
     const confirmDeleteTask = (taskId) => {
         // Si hay tareas que dependen de esta, no permitir eliminar
@@ -467,9 +471,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     // --- Guardar / Crear ---
     const saveForm = () => {
         if (!form.name) return alert("Nombre requerido");
-        if (!form.start_date || !form.end_date) return alert("Fechas requeridas");
+        if (!form.start_date) return alert("Fecha de inicio requerida");
+        if (!form.duration || form.duration < 1) return alert("La duración debe ser al menos 1 día");
 
         const interesadosUUID = (form.interesados_id || []).map(String);
+
+        // 🔹 NUEVO: Calcular fecha final basada en la duración
+        const startDate = new Date(`${form.start_date}T00:00:00`);
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + parseInt(form.duration));
 
         const payload = {
             id: form.id,
@@ -477,16 +487,18 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             name: form.name,
             description: form.description,
             type: form.type || "task",
-            start: new Date(`${form.start_date}T00:00:00`).toISOString(),
-            end: new Date(`${form.end_date}T00:00:00`).toISOString(),
+            start: startDate.toISOString(),
+            end: endDate.toISOString(), // 🔹 CAMBIO: Usar fecha calculada
             progress: Number(form.progress || 0),
             dependencies: form.dependencies || [],
             interesados_id: interesadosUUID,
             parent_id: form.parent_id || null,
             status: form.status,
-            is_critical: false, // se marcará luego por lógica de ruta crítica
+            is_critical: false,
         };
+
         console.log(payload);
+
         if (modalMode === "create") {
             dispatch(ganttActions.createTask(payload));
         } else {
@@ -1115,44 +1127,45 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                             />
                         </Form.Group>
                         <Form.Group className="mb-3">
-                            <Form.Label>Fechas</Form.Label>
-                            <div className="d-flex gap-2">
-                                <Form.Control
-                                    type="date"
-                                    value={form.start_date}
-                                    onChange={(e) => {
-                                        const newStart = e.target.value;
+                            <Form.Label>Fecha de Inicio</Form.Label>
+                            <Form.Control
+                                type="date"
+                                value={form.start_date}
+                                onChange={(e) => {
+                                    setForm({ ...form, start_date: e.target.value });
+                                }}
+                            />
+                        </Form.Group>
 
-                                        // Si la fecha de fin es menor o igual a la nueva fecha de inicio
-                                        if (form.end_date <= newStart) {
-                                            // Crear una nueva fecha end_date = start_date + 1 día
-                                            const nextDay = new Date(newStart);
-                                            nextDay.setDate(nextDay.getDate() + 1);
-
-                                            // Convertir a formato YYYY-MM-DD
-                                            const nextDayFormatted = nextDay.toISOString().split("T")[0];
-
-                                            // Actualizar ambos campos
-                                            setForm({ ...form, start_date: newStart, end_date: nextDayFormatted });
-                                        } else {
-                                            // Solo actualizar la fecha de inicio
-                                            setForm({ ...form, start_date: newStart });
-                                        }
-                                    }}
-                                />
-                                <Form.Control
-                                    type="date"
-                                    value={form.end_date}
-                                    onChange={(e) => {
-                                        const newEndDate = e.target.value;
-                                        if (newEndDate < form.start_date) {
-                                            alert("La fecha de fin no puede ser anterior a la fecha de inicio.");
-                                            return; // evita actualizar el estado
-                                        }
-                                        setForm({ ...form, end_date: newEndDate });
-                                    }}
-                                />
-                            </div>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Duración (días)</Form.Label>
+                            <Form.Control
+                                type="number"
+                                min={1}
+                                value={form.duration}
+                                onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 1;
+                                    setForm({ ...form, duration: value });
+                                }}
+                                placeholder="Ingrese la duración en días"
+                            />
+                            <Form.Text className="text-muted">
+                                {form.start_date && form.duration ? (
+                                    <>
+                                        Fecha final calculada:{" "}
+                                        <strong>
+                                            {(() => {
+                                                const start = new Date(form.start_date);
+                                                const end = new Date(start);
+                                                end.setDate(end.getDate() + parseInt(form.duration));
+                                                return end.toLocaleDateString('es-EC');
+                                            })()}
+                                        </strong>
+                                    </>
+                                ) : (
+                                    "Seleccione una fecha de inicio para ver la fecha final"
+                                )}
+                            </Form.Text>
                         </Form.Group>
 
                         <Form.Group className="mb-3">
@@ -1241,8 +1254,13 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                 min={0}
                                 max={100}
                                 value={form.progress}
-                                onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })}
-                                disabled={form.type === "group"} // 🔹 NUEVO: Deshabilitar para grupos
+                                onChange={(e) => {
+                                    // 🔹 NUEVO: Limitar el valor entre 0 y 100
+                                    const value = Number(e.target.value);
+                                    const limitedValue = Math.min(Math.max(value, 0), 100);
+                                    setForm({ ...form, progress: limitedValue });
+                                }}
+                                disabled={form.type === "group"}
                             />
                             {form.type === "group" && (
                                 <Form.Text className="text-muted">

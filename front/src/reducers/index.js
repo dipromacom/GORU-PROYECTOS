@@ -18,6 +18,7 @@ import gantt from "./gantt"
 import tipoProyecto from "./tipoProyecto"
 import whiteboard from "./whiteboard";
 import rolProyecto from "./rolProyecto";
+import encuesta from "./encuesta-satisfaccion";
 
 const createRootReducer = (history) => combineReducers({
   router: connectRouter(history),
@@ -37,7 +38,8 @@ const createRootReducer = (history) => combineReducers({
   gantt,
   whiteboard,
   tipoProyecto,
-  rolProyecto
+  rolProyecto,
+  encuesta
 });
 
 export default createRootReducer;

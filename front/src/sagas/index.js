@@ -16,6 +16,7 @@ import whiteboard from "./whiteboard";
 import tipoProyecto from "./tipoProyecto"
 import { all, spawn, call } from "redux-saga/effects";
 import rolProyecto from "./rolProyecto"
+import encuesta from "./encuesta-satisfaccion"
 
 
 
@@ -37,7 +38,8 @@ const sagas = [
   ...gantt,
   ...whiteboard,
   ...tipoProyecto,
-  ...rolProyecto
+  ...rolProyecto,
+  ...encuesta
 ];
 
 export default function* rootSaga() {

@@ -4,7 +4,7 @@
 import React, { useEffect, useState, useRef, useCallback } from "react";
 import { connect } from "react-redux";
 import LoaderButton from "../components/loaderButton/LoaderButton";
-import { Form, Col, Row, InputGroup, Button, DropdownButton, Dropdown, Badge } from "react-bootstrap";
+import { Form, Col, Row, InputGroup, Button, DropdownButton, Dropdown, Badge, Modal } from "react-bootstrap";
 import "./ProyectoNew.css"
 import { actions, selectors } from "../reducers/project";
 import { actions as routesActions } from "../reducers/routes";
@@ -15,11 +15,8 @@ import Tab from 'react-bootstrap/Tab';
 import { onError } from "../libs/errorLib";
 import { useParams } from 'react-router-dom'
 import regexValidator from "../libs/regexValidator";
-import InputTextList from "../components/inputList/InputTextList";
 import moment from "moment";
-import InputTextListWithDate from "../components/inputList/InputTexListWithDate";
-import InputCostToList from "../components/inputList/InputCostToList";
-import InputCriteriosInput from "../components/inputList/InputCriteriosInput"
+
 import InputRiesgosList from "../components/inputList/InputRiesgosList";
 import Collapse from "react-bootstrap/Collapse"
 import GoogleDocInputCheckerComponent from "../components/custom/GoogleDocInputCheckerComponent";
@@ -30,15 +27,12 @@ import Kanban from "../components/kanban/Kanban";
 import { toast } from "react-toastify";
 import { actions as kanbanActions } from "../reducers/kanban";
 
-import { GeneralDataComponent, PriorizationDataComponent } from '../components/proyectoDetails/tabbedComponents'
 import { AnalisisAmbiental } from '../components/ProyectoDetailAnalisis/AnalisisImpacto'
 import { ViewAnalisisAmbiental } from '../components/ProyectoDetailAnalisis/ViewAnalisisAmbiental'
 import { selectors as sessionSelectors } from "../reducers/session";
 import { selectors as personaSelectors, actions as personaActions } from "../reducers/persona";
 import {ViewInteresados} from "../components/ProyectoDetailMatriz/ViewInteresados";
 import { CreateInteresados } from "../components/ProyectoDetailMatriz/CreateInteresados";
-import Task from "../components/kanban/Task";
-import { getInteresadosByProjectId } from "../api";
 import SummaryChart from '../components/summaryChart/SummaryChart';
 
 // nuevos componentes para alcance/hitos/costo/calidad
@@ -63,7 +57,11 @@ import { actions as sessionActions} from "../reducers/session";
 
 import { actions as rolProyectoActions } from "../reducers/rolProyecto";
 
-function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado }) {
+import { actions as surveyActions, selectors as surveySelectors } from "../reducers/encuesta-satisfaccion";
+import SurveyModal from "../components/surveyForm/SurveyModal";
+import SurveyViewModal from "../components/surveyForm/SurveyViewModal";
+
+function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual }) {
     const routeParams = useParams();
     const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
@@ -95,6 +93,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     ]
 
     const numericId = parseInt(routeParams.id, 10);
+    
+    useEffect(() => {
+        return () => {
+            dispatch(surveyActions.clearSurveyState());
+        };
+    }, [numericId, dispatch]);
+
     useEffect(() => {
         if (numericId) {
             dispatch(actions.getAnalisisAmbientalRequest(numericId));
@@ -238,7 +243,6 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     }, [routeParams.id, dispatch]);
 
     useEffect(() => {
-        console.log(projectDetail);
         if (projectDetail && projectDetail.id === parseInt(routeParams.id)) {
             loadFromDetail();
         }
@@ -298,8 +302,6 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     //Aqui se declaran para manejar los estados de los collapse
     const [openPrimeraParte, setOpenPrimeraParte] = useState(false);
     const [openSegundaParte, setOpenSegundaParte] = useState(false);
-    const [openTerceraParte, setOpenTerceraParte] = useState(false);
-    const [openCuartaParte, setOpenCuartaParte] = useState(false);
     const [openQuintaParte, setOpenQuintaParte] = useState(false);
     const [openSextaParte, setOpenSextaParte] = useState(false);
 
@@ -307,6 +309,60 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [showRoleModal, setShowRoleModal] = useState(false);
 
     const isFirstRender = useRef(true);
+
+    const [showVoluntarySurvey, setShowVoluntarySurvey] = useState(false);
+
+    const [showDetailsModal, setShowDetailsModal] = useState(false);
+    const [selectedEncuesta, setSelectedEncuesta] = useState(null);
+
+    const handleVerDetalleEncuesta = (encuesta) => {
+        setSelectedEncuesta(encuesta);
+        setShowDetailsModal(true);
+    };
+
+    const [showInvitation, setShowInvitation] = useState(false);
+    const surveyCheckedRef = useRef(false); 
+
+    useEffect(() => {
+        if (cerrado && numericId && !surveyCheckedRef.current) {
+            dispatch(surveyActions.checkSurveyStatus(numericId));
+            surveyCheckedRef.current = true;
+        }
+    }, [cerrado, numericId, dispatch]);
+
+    useEffect(() => {
+        if (cerrado && numericId) {
+            dispatch(surveyActions.getAllSurveys(numericId));
+        }
+    }, [cerrado, numericId, dispatch]);
+
+    useEffect(() => {
+        if (debeVerEncuesta === true && cerrado) {
+            setShowInvitation(true);
+        }
+    }, [debeVerEncuesta]);
+
+    const handleAcceptInvitation = () => {
+        setShowInvitation(false);
+        setShowVoluntarySurvey(true); // Abre el modal de las preguntas
+    };
+
+    const handleRejectInvitation = () => {
+        setShowInvitation(false);
+        dispatch(surveyActions.rejectSurvey(numericId));
+    };
+
+    const calcularPromedioEncuesta = (encuesta) => {
+        const campos = [
+            'comunicacion', 'rapidez_respuesta', 'manejo_reuniones',
+            'cumplimiento_plazos', 'cumplimiento_alcance', 'calidad_entregado',
+            'nivel_capacitaciones', 'gestion_documentacion', 'experiencia_director',
+            'satisfaccion_general'
+        ];
+
+        const suma = campos.reduce((acc, campo) => acc + (encuesta[campo] || 0), 0);
+        return (suma / campos.length).toFixed(2);
+    };
 
     const calculateTotalCost = () => {
         let total = 0
@@ -327,21 +383,6 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
         setPresupuesto(totalPresupuesto)
     }, [costoReservaContingencia, costoReservaGestion, costoEntregable])
-
-    const getEntregableNames = (alcanceEntregables) => {
-        if (!alcanceEntregables) return [];
-        if (alcanceEntregables.length === 0) return [];
-
-        // Si el primer elemento es un string, asumimos el formato antiguo.
-        if (typeof alcanceEntregables[0] === 'string') {
-            return alcanceEntregables;
-        }
-        // Si es un objeto y tiene la propiedad 'nombre', asumimos el nuevo formato.
-        else if (typeof alcanceEntregables[0] === 'object' && alcanceEntregables[0].hasOwnProperty('nombre')) {
-            return alcanceEntregables.map(item => item.nombre);
-        }
-        return [];
-    };
 
     useEffect(() => {
         if (!alcanceEntregables || !Array.isArray(alcanceEntregables)) return;
@@ -897,6 +938,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                     <i className="bi bi-speedometer2 mr-2"></i>Resumen de Desempeño
                                                 </Nav.Link>
                                             </Nav.Item>
+                                            
+                                            <Nav.Item>
+                                                <Nav.Link eventKey="encuesta" className="px-4 py-2">
+                                                    <i className="bi bi-journal-bookmark mr-2"></i>Encuesta de satisfacción
+                                                </Nav.Link>
+                                            </Nav.Item>
+                                            
                                         </Nav>
 
                                         <Tab.Content>
@@ -953,6 +1001,131 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                     </Col>
                                                 </Row>
                                             </Tab.Pane>
+                                        
+                                            <Tab.Pane eventKey="encuesta">
+                                                <div className="survey-container mt-4 p-3 border rounded bg-light">
+                                                    <div className="d-flex justify-content-between align-items-center mb-3">
+                                                        <h4>Encuesta de Satisfacción - Proyecto #{numericId}</h4>
+                                                        {(!encuestaActual || !encuestaActual.completada) && (
+                                                            <Button
+                                                                variant="outline-primary"
+                                                                onClick={() => setShowVoluntarySurvey(true)}
+                                                            >
+                                                                Realizar Encuesta
+                                                            </Button>
+                                                        )}
+                                                    </div>
+
+                                                    {estadisticas && estadisticas.totalEncuestas > 0 && (
+                                                        <div className="row mb-4">
+                                                            <div className="col-md-4">
+                                                                <div className="card text-center">
+                                                                    <div className="card-body">
+                                                                        <h6>Promedio General</h6>
+                                                                        <h2 className="text-success">
+                                                                            {estadisticas.satisfaccionGeneral} / 5
+                                                                        </h2>
+                                                                        <small className="text-muted">
+                                                                            Basado en {estadisticas.totalEncuestas} respuesta{estadisticas.totalEncuestas !== 1 ? 's' : ''}
+                                                                        </small>
+                                                                    </div>
+                                                                </div>
+                                                            </div>
+                                                        </div>
+                                                    )}
+
+                                                    <h5>Encuestas Realizadas</h5>
+                                                    <div className="table-responsive">
+                                                        <table className="table table-hover">
+                                                            <thead className="table-light">
+                                                                <tr>
+                                                                    <th>Nombre</th>
+                                                                    <th>Fecha</th>
+                                                                    <th className="text-center">Promedio</th>
+                                                                    <th className="text-center">Acción</th>
+                                                                </tr>
+                                                            </thead>
+                                                            <tbody>
+                                                                {listaEncuestas.map(enc => (
+                                                                    <tr key={enc.id}>
+                                                                        <td>
+                                                                            <strong>{enc.nombre}</strong>
+                                                                        </td>
+                                                                        <td>
+                                                                            {new Date(enc.createdAt).toLocaleDateString('es-ES', {
+                                                                                year: 'numeric',
+                                                                                month: 'long',
+                                                                                day: 'numeric',
+                                                                                hour: '2-digit',
+                                                                                minute: '2-digit'
+                                                                            })}
+                                                                        </td>
+                                                                        <td className="text-center">
+                                                                            
+                                                                                {calcularPromedioEncuesta(enc)} / 5
+                                                                            
+                                                                        </td>
+                                                                        <td className="text-center">
+                                                                            <Button
+                                                                                variant="outline-info"
+                                                                                size="sm"
+                                                                                onClick={() => handleVerDetalleEncuesta(enc)}
+                                                                            >
+                                                                                <i className="bi bi-eye me-1"></i>
+                                                                                Ver Detalle
+                                                                            </Button>
+                                                                        </td>
+                                                                    </tr>
+                                                                ))}
+                                                                {listaEncuestas.length === 0 && (
+                                                                    <tr>
+                                                                        <td colSpan="4" className="text-center text-muted py-4">
+                                                                            <i className="bi bi-inbox fs-1 d-block mb-2"></i>
+                                                                            No hay encuestas registradas aún para este proyecto
+                                                                        </td>
+                                                                    </tr>
+                                                                )}
+                                                            </tbody>
+                                                        </table>
+                                                    </div>
+                                                </div>
+                                            </Tab.Pane>
+
+                                            
+
+                                            <SurveyModal
+                                                show={showVoluntarySurvey}
+                                                onHide={() => setShowVoluntarySurvey(false)}
+                                                proyectoId={numericId}
+                                                encuestaPrevia={encuestaActual}
+                                                nombreProyecto={nombreProyecto}
+                                                tipoProyecto="proyecto"
+                                            />
+
+                                            <SurveyViewModal
+                                                show={showDetailsModal}
+                                                onHide={() => setShowDetailsModal(false)}
+                                                encuesta={selectedEncuesta}
+                                            />
+                                            {/* Modal de Invitación a la Encuesta */}
+                                            <Modal show={showInvitation} onHide={() => setShowInvitation(false)} centered>
+                                                <Modal.Header closeButton>
+                                                    <Modal.Title>Encuesta de Satisfacción</Modal.Title>
+                                                </Modal.Header>
+                                                <Modal.Body>
+                                                    <p>Este proyecto ha finalizado. ¿Te gustaría compartir tu experiencia con nosotros?
+                                                        Tus respuestas nos ayudan a mejorar.</p>
+                                                </Modal.Body>
+                                                <Modal.Footer>
+                                                    <Button variant="secondary" onClick={handleRejectInvitation}>
+                                                        No, gracias
+                                                    </Button>
+                                                    <Button variant="primary" onClick={handleAcceptInvitation}>
+                                                        Sí, responder encuesta
+                                                    </Button>
+                                                </Modal.Footer>
+                                            </Modal>
+                                            
                                         </Tab.Content>
                                     </Tab.Container>
                                 </div>
@@ -1674,7 +1847,14 @@ const mapStateToProps = state => ({
     interesados: selectors.getInteresadosRequest(state),
     interesado: selectors.getInteresadoList(state),
     showNotification: selectors.getShowNotification(state),
-    tipoProyectoList: tipoProyectoSelector.getTipoProyectoList(state)
+    tipoProyectoList: tipoProyectoSelector.getTipoProyectoList(state),
+
+    // --- NUEVAS LÍNEAS PARA LA ENCUESTA ---
+    debeVerEncuesta: surveySelectors.getDebeVerEncuesta(state),
+    listaEncuestas: surveySelectors.getListaEncuestas(state),
+    estadisticas: surveySelectors.getEstadisticas(state),
+    encuestaActual: surveySelectors.getEncuestaActual(state),
+    surveyLoading: surveySelectors.getIsLoading(state)
 });
 
 export default connect(mapStateToProps)(ProyectoDetail);

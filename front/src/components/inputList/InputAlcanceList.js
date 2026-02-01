@@ -32,18 +32,27 @@ const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode,
     const porcentajeCompletado = totalAlcances > 0 ? Math.round((completados / totalAlcances) * 100) : 0;
 
     const calculatePerformance = () => {
-        if (!alcanceEntregables || alcanceEntregables.length === 0) return 0;
+        if (!alcanceEntregables || alcanceEntregables.length === 0) return 1.0; // Cambiado a 1.0 para neutralidad
         const today = new Date().toISOString().split('T')[0];
 
+        // EV (Valor Ganado): Entregables terminados A TIEMPO o ANTES
         const successful = alcanceEntregables.filter(a => {
             if (!a.completado || !a.fecha_entregable || !a.deadline) return false;
             return a.fecha_entregable <= a.deadline;
         }).length;
 
+        // PV (Valor Planeado): Lo que ya debería estar listo
         const shouldBeDone = alcanceEntregables.filter(a => a.deadline && a.deadline <= today).length;
 
-        if (shouldBeDone === 0) return successful > 0 ? 1.0 : 0;
+        // --- LÓGICA CORREGIDA ---
+        if (shouldBeDone === 0) {
+            // Si no vence nada hoy pero ya terminaste algo: Desempeño Sobresaliente (2.0)
+            // Si no vence nada y no has hecho nada: Desempeño Al Día (1.0)
+            return successful > 0 ? 2.0 : 1.0;
+        }
+
         const calc = Number((successful / shouldBeDone).toFixed(2));
+        // Permitimos que suba hasta 2.0 si successful > shouldBeDone
         return Math.min(calc, 2.0);
     };
 

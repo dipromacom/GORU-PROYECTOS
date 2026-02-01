@@ -41,25 +41,31 @@ const InputHitosList = ({
 
     // 2. Cálculo de Índice de Desempeño
     const calculatePerformance = () => {
-        if (!transformedFechasCriticas || totalHitos === 0) return 0;
+        if (!transformedFechasCriticas || totalHitos === 0) return 1.0;
         const today = new Date().toISOString().split('T')[0];
 
+        // EV: Hitos cerrados antes o igual a su fecha programada
         const successful = transformedFechasCriticas.filter(h => {
             if (!h.completado || !h.fecha_hito || !h.date) return false;
-            // date es el deadline, fecha_hito es cuando se cerró
-            return h.fecha_hito <= h.date;
+            const deadlineStr = typeof h.date === 'string' ? h.date.split('T')[0] : new Date(h.date).toISOString().split('T')[0];
+            return h.fecha_hito <= deadlineStr;
         }).length;
 
+        // PV: Hitos que según el calendario ya deberían estar cerrados
         const shouldBeDone = transformedFechasCriticas.filter(h => {
             if (!h.date) return false;
-            // 🔹 Convertimos a string por seguridad antes del split
             const dateStr = typeof h.date === 'string' ? h.date : new Date(h.date).toISOString();
             return dateStr.split('T')[0] <= today;
         }).length;
 
-        if (shouldBeDone === 0) return successful > 0 ? 1.0 : 0;
+        // --- LÓGICA CORREGIDA ---
+        if (shouldBeDone === 0) {
+            // Si adelantaste hitos de meses futuros, tu SPI es 2.0
+            return successful > 0 ? 2.0 : 1.0;
+        }
+
         const calc = Number((successful / shouldBeDone).toFixed(2));
-        return Math.min(calc, 2.0); // 🔹 Tope de 2.0
+        return Math.min(calc, 2.0);
     };
 
     const performanceIndex = calculatePerformance();

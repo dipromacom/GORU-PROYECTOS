@@ -25,6 +25,8 @@ const InputCostosList = ({
 }) => {
     const [focusedField, setFocusedField] = useState(null);
 
+    const safeCostoEntregable = Array.isArray(costoEntregable) ? costoEntregable : [];
+
     const unformatToNumber = (value) => {
         if (!value || value === "") return "0";
         let str = value.toString().trim();
@@ -32,14 +34,14 @@ const InputCostosList = ({
         return str;
     };
 
-    // --- LÓGICA DE PRESUPUESTO (EXISTENTE) ---
+    // --- LÓGICA DE PRESUPUESTO CORREGIDA ---
     const totalCostoEntregablesEstimado = useMemo(() =>
-        costoEntregable.reduce((total, item) => total + parseFloat(unformatToNumber(item.costo) || 0), 0)
-        , [costoEntregable]);
+        safeCostoEntregable.reduce((total, item) => total + parseFloat(unformatToNumber(item?.costo) || 0), 0)
+        , [safeCostoEntregable]);
 
     const totalCostoEntregablesReal = useMemo(() =>
-        costoEntregable.reduce((total, item) => total + parseFloat(unformatToNumber(item.costoReal) || 0), 0)
-        , [costoEntregable]);
+        safeCostoEntregable.reduce((total, item) => total + parseFloat(unformatToNumber(item?.costoReal) || 0), 0)
+        , [safeCostoEntregable]);
 
     const presupuestoEstimadoTotal = useMemo(() =>
         totalCostoEntregablesEstimado + parseFloat(unformatToNumber(costoReservaContingencia) || 0) + parseFloat(unformatToNumber(costoReservaGestion) || 0)
@@ -54,25 +56,26 @@ const InputCostosList = ({
         return ((presupuestoRealTotal / presupuestoEstimadoTotal) * 100).toFixed(2);
     }, [presupuestoRealTotal, presupuestoEstimadoTotal]);
 
-    // --- LÓGICA DE DESEMPEÑO (NUEVA - IGUAL A HITOS) ---
+    // --- LÓGICA DE DESEMPEÑO CORREGIDA ---
     const performanceData = useMemo(() => {
+        if (safeCostoEntregable.length === 0) return 1.00; // Valor neutro si no hay tareas
+
         const hoy = moment().startOf('day');
 
-        // 1. Valor Planeado (PV): Tareas que ya deberían estar cerradas a la fecha de hoy
-        const tareasQueDebianEstarCerradas = costoEntregable.filter(item => {
+        // 1. Valor Planeado (PV)
+        const tareasQueDebianEstarCerradas = safeCostoEntregable.filter(item => {
+            if (!item?.deadline) return false;
             const deadline = moment(item.deadline).startOf('day');
             return deadline.isSameOrBefore(hoy);
         }).length;
 
-        // 2. Valor Ganado (EV): Tareas cerradas A TIEMPO (o antes de su deadline)
-        // Según tu regla: si se cierra después del deadline, no cuenta para desempeño final.
-        const tareasCerradasATiempo = costoEntregable.filter(item => {
-            if (!item.completado || !item.fecha_cerrado) return false;
+        // 2. Valor Ganado (EV)
+        const tareasCerradasATiempo = safeCostoEntregable.filter(item => {
+            if (!item?.completado || !item?.fecha_cerrado || !item?.deadline) return false;
 
             const deadline = moment(item.deadline).startOf('day');
             const fechaCierre = moment(item.fecha_cerrado).startOf('day');
 
-            // Solo cuenta si se cerró antes o el mismo día del deadline
             return fechaCierre.isSameOrBefore(deadline);
         }).length;
 
@@ -83,8 +86,8 @@ const InputCostosList = ({
         }
 
         const spi = tareasCerradasATiempo / tareasQueDebianEstarCerradas;
-        return Math.min(spi, 2.00); // Tope de 2.00
-    }, [costoEntregable]);
+        return Number(Math.min(spi, 2.00).toFixed(2));
+    }, [safeCostoEntregable]);
 
     useEffect(() => {
         if (ejecutado || cerrado) {
@@ -191,7 +194,7 @@ const InputCostosList = ({
 
             <Form.Group>
                 <InputCostToList
-                    costoList={costoEntregable}
+                    costoList={safeCostoEntregable}
                     setResultCostoList={setCostoEntregable}
                     disabled={!editMode}
                     ejecutado={ejecutado}
@@ -222,17 +225,14 @@ const InputCostosList = ({
             </Row>
 
             {/* CURVA S DE COSTOS */}
-            {(ejecutado || cerrado) && costoEntregable.length > 0 && (
+            {(ejecutado || cerrado) && safeCostoEntregable.length > 0 && (
                 <div className="mt-5 border-top pt-4">
                     <SCurveChart
                         title="Curva S: Control de Costos (PV vs EV)"
-                        dataPoints={costoEntregable}
+                        dataPoints={safeCostoEntregable}
                         dateField="deadline"
                         realDateField="fecha_cerrado"
                     />
-                    <p className="text-center text-muted small mt-2">
-                        Progresión de entregables planificados vs. completados.
-                    </p>
                 </div>
             )}
         </div>

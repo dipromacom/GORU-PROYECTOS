@@ -47,38 +47,35 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
   const calculateEfficiency = () => {
     const allTasks = tasksByStatus.flatMap(s => s.tasks).filter(t => !!t);
     const today = new Date();
-    today.setHours(0, 0, 0, 0); // Normalizar hoy para comparar
+    today.setHours(0, 0, 0, 0);
 
-    // Consideramos tareas relevantes: las que tienen deadline O ya están cerradas
-    const relevantTasks = allTasks.filter(t => t.deadline || t.closed_at);
-
-    if (relevantTasks.length === 0) return 0;
-
-    let successfulTasks = 0;
-    let failedTasks = 0;
-
-    relevantTasks.forEach(t => {
+    // EV (Valor Ganado): Tareas cerradas a tiempo o antes
+    const successfulTasks = allTasks.filter(t => {
+      if (!t.closed_at) return false;
+      const closedAt = new Date(t.closed_at.split('T')[0] + 'T00:00:00');
       const deadline = t.deadline ? new Date(t.deadline.split('T')[0] + 'T00:00:00') : null;
-      const closedAt = t.closed_at ? new Date(t.closed_at.split('T')[0] + 'T00:00:00') : null;
 
-      if (closedAt) {
-        // Caso 1: Está cerrada. ¿Fue a tiempo?
-        if (!deadline || closedAt <= deadline) {
-          successfulTasks++;
-        } else {
-          // Se cerró pero tarde (según tu punto 3)
-          failedTasks++;
-        }
-      } else if (deadline && deadline < today) {
-        // Caso 2: No está cerrada y el plazo ya venció
-        failedTasks++;
-      }
-    });
+      // Si no tiene deadline pero se cerró, cuenta como éxito. 
+      // Si tiene deadline, debe ser menor o igual.
+      return !deadline || closedAt <= deadline;
+    }).length;
 
-    const totalEvaluated = successfulTasks + failedTasks;
-    if (totalEvaluated === 0) return 0;
+    // PV (Valor Planeado): Tareas que ya deberían estar listas a hoy
+    const shouldBeDone = allTasks.filter(t => {
+      if (!t.deadline) return false;
+      const deadline = new Date(t.deadline.split('T')[0] + 'T00:00:00');
+      return deadline <= today;
+    }).length;
 
-    return Number((successfulTasks / totalEvaluated).toFixed(2));
+    // --- LÓGICA DE CÁLCULO SPI ---
+    if (shouldBeDone === 0) {
+      // Si no vencía nada hoy pero ya terminaste tareas: 2.00
+      // Si no vencía nada y no has hecho nada: 1.00
+      return successfulTasks > 0 ? 2.00 : 1.00;
+    }
+
+    const spi = successfulTasks / shouldBeDone;
+    return Number(Math.min(spi, 2.00).toFixed(2));
   };
 
   const efficiency = calculateEfficiency();
@@ -145,15 +142,25 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
     <Container fluid className="h-100 d-flex flex-column kanban">
       {/* --- Barra de Eficiencia --- */}
       {(ejecutado || cerrado) && (
-        <div className="mt-3 px-3">
-          <small className="font-weight-bold">ÍNDICE DE EFICIENCIA (KANBAN)</small>
+        <div className="mt-4 px-3" >
+          <div className="d-flex justify-content-between align-items-center mb-1">
+            <small className="fw-bold text-muted text-uppercase">
+              Índice de Desempeño (Kanban)
+            </small>
+            <span
+              className={`fw-bold text-${efficiency >= 1 ? "success" : efficiency >= 0.6 ? "warning" : "danger"}`}
+              style={{ fontSize: '1.2rem' }}
+            >
+              {efficiency.toFixed(2)}
+            </span>
+          </div>
           <ProgressBar
-            now={efficiency * 100}
-            label={`${efficiency.toFixed(2)}`}
+            now={Math.min((efficiency / 1) * 100, 100)} // Se llena al 100% si llega a 1.0
             variant={efficiency >= 1 ? "success" : efficiency >= 0.6 ? "warning" : "danger"}
-            className="mt-1"
-            style={{ height: '20px' }}
+            style={{ height: '20px', borderRadius: '5px' }}
+            className="shadow-sm"
           />
+         
         </div>
       )}
       <Row className="flex-fill mt-3 overflow-auto">

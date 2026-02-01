@@ -290,3 +290,10 @@ export const getUsuariosProyecto = proyectoId => apiWithToken.get(`/proyecto/${p
 export const deleteUsuarioProyecto = (usuarioId, proyectoId) => apiWithToken.delete(`/proyecto/${proyectoId}/usuario/${usuarioId}`);
 export const getUserProjectRol = (usuarioId, proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/usuario/${usuarioId}/rol`);
 
+// --- ENCUESTA DE SATISFACCIÓN ---
+export const verificarEstadoEncuesta = (proyectoId) => apiWithToken.get(`/proyecto/encuesta-satisfaccion/verificar/${proyectoId}`);
+export const getEncuestasProyecto = (proyectoId) => apiWithToken.get(`/proyecto/encuesta-satisfaccion/proyecto/${proyectoId}`);
+export const guardarEncuesta = (payload) => apiWithToken.post('/proyecto/encuesta-satisfaccion', payload);
+export const rechazarEncuesta = (proyectoId) => apiWithToken.post('/proyecto/encuesta-satisfaccion/rechazar', { proyectoId });
+export const getAllEncuestasProyecto = (proyectoId) => apiWithToken.get(`/proyecto/encuesta-satisfaccion/todas/${proyectoId}`);
+
