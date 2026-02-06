@@ -1,8 +1,9 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useMemo } from "react";
-import { Col, Form, ListGroup, Button, InputGroup, Row, Alert, ProgressBar } from "react-bootstrap"
+import { Col, Form, ListGroup, Button, InputGroup, Row, Alert, ProgressBar, Nav, Tab } from "react-bootstrap"
 import { CriticalBadgeFromText, CriticalBadgeFromTextValue } from "../badge/Badge";
 import PlanRespuestaModal from "./PlanRespuestaModal";
+import RiskHeatmapMatrix from "../summaryChart/RiskHeatmapMatrix";
 
 
 const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabled = false, ejecutado, cerrado, interesados = [], onSummaryChange = () => { } }) => {
@@ -96,15 +97,22 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
         const probNum = claveToNum[probabilidad] || 0;
         const impactNum = claveToNum[impacto] || 0;
 
+        const nextId = `R${(riesgosList?.length || 0) + 1}`;
+
         const riesgo = {
+            id: nextId, 
             descripcion: riesgosDesc,
-            valor: riesgoVal, // Ahora es el resultado numérico (1-9)
-            probabilidad: probNum, // Ahora es el número (1, 2, 3)
-            impacto: impactNum, // Ahora es el número (1, 2, 3)
+            valor: riesgoVal,
+            probabilidad: probNum,
+            impacto: impactNum,
+            probabilidad_residual: null, 
+            impacto_residual: null, 
+            valor_residual: null, 
             plan_descripcion: '',
             fecha_realizacion: '',
             responsable_id: '',
             completado: false,
+            estrategia: '',
         }
 
         const newList = [...(riesgosList || []), riesgo]
@@ -267,7 +275,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                     {(riesgosList || []).map((item, index) => (
                         <ListGroup.Item key={index} className='p-0'>
                             <div className='d-flex align-items-center p-2'>
-                                <div className="col-4 text-break">{item.descripcion}</div>
+                                <div className="col-4 text-break">{item.descripcion} ({item.id})</div>
                                 <div className="col-2 text-center"><CriticalBadgeFromText value={getClaveForDisplay(item.probabilidad)} femenize /></div>
                                 <div className="col-2 text-center"><CriticalBadgeFromText value={getClaveForDisplay(item.impacto)} /></div>
                                 <div className="col-2 text-center">
@@ -314,6 +322,45 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
 
                 </ListGroup>
             </div>
+            {(ejecutado || cerrado) && (riesgosList || []).length > 0 && !isOldFormatDetected && (
+                <div className="mt-5">
+                    <Tab.Container defaultActiveKey="inicial">
+                        <Nav variant="tabs" className="mb-3">
+                            <Nav.Item>
+                                <Nav.Link eventKey="inicial">
+                                    <i className="bi bi-grid-3x3 me-2"></i>
+                                    Matriz de Calor de Riesgos
+                                </Nav.Link>
+                            </Nav.Item>
+                            {/* Solo mostrar pestaña residual si hay planes cerrados */}
+                            {(riesgosList || []).some(r => r.completado) && (
+                                <Nav.Item>
+                                    <Nav.Link eventKey="residual">
+                                        <i className="bi bi-shield-check me-2"></i>
+                                        Matriz de Calor de Riesgos (Residual)
+                                    </Nav.Link>
+                                </Nav.Item>
+                            )}
+                        </Nav>
+
+                        <Tab.Content>
+                            <Tab.Pane eventKey="inicial">
+                                <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={false} />
+                            </Tab.Pane>
+
+                            <Tab.Pane eventKey="residual">
+                                <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={true} />
+
+                                {/* Información adicional sobre riesgos cerrados */}
+                                <div className="alert alert-info mt-3">
+                                    <i className="bi bi-info-circle me-2"></i>
+                                    <strong>Riesgos con plan completado:</strong> {(riesgosList || []).filter(r => r.completado).length} de {(riesgosList || []).length}
+                                </div>
+                            </Tab.Pane>
+                        </Tab.Content>
+                    </Tab.Container>
+                </div>
+            )}
         </div>
     )
 }
