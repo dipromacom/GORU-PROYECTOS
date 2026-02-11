@@ -19,6 +19,7 @@ import tipoProyecto from "./tipoProyecto"
 import whiteboard from "./whiteboard";
 import rolProyecto from "./rolProyecto";
 import encuesta from "./encuesta-satisfaccion";
+import projectLog from "./projectLog";
 
 const createRootReducer = (history) => combineReducers({
   router: connectRouter(history),
@@ -39,7 +40,8 @@ const createRootReducer = (history) => combineReducers({
   whiteboard,
   tipoProyecto,
   rolProyecto,
-  encuesta
+  encuesta,
+  projectLog
 });
 
 export default createRootReducer;

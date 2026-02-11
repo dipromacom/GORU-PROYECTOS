@@ -1,10 +1,11 @@
 const express = require('express');
 const ProyectoController = require('../controllers/proyecto');
 const KabanController = require('../controllers/kanban');
-const encuestaController = require('../controllers/encuesta-satisfaccion')
+const encuestaController = require('../controllers/encuesta-satisfaccion');
 const GanttController = require('../controllers/gantt');
 const WhiteBoartController = require('../controllers/whiteboard');
-const RolProyectoController = require('../controllers/rol-proyecto')
+const RolProyectoController = require('../controllers/rol-proyecto');
+const logController = require('../controllers/log-controller')
 
 const router = express.Router();
 
@@ -64,5 +65,7 @@ router.get('/proyecto/encuesta-satisfaccion/proyecto/:proyectoId',encuestaContro
 router.post('/proyecto/encuesta-satisfaccion',encuestaController.guardarEncuesta);
 router.get('/proyecto/encuesta-satisfaccion/todas/:proyectoId', encuestaController.getAllEncuestasProyecto);
 router.post('/proyecto/encuesta-satisfaccion/rechazar',encuestaController.rechazarEncuesta);
+
+router.get('/proyecto/:proyectoId/estados', logController.getHistorialEstados);
 
 module.exports = router;

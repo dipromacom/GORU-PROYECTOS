@@ -1,5 +1,5 @@
 // utils/log-service.js
-const { Log } = require('../models/index'); // Asegúrate de tener el modelo Log
+const { Log, Usuario, Persona } = require('../models/index');
 
 /**
  * Guarda un registro de auditoría en la base de datos.
@@ -31,6 +31,40 @@ const saveLog = async ({ userId, actionType, resourceType, resourceId, details =
     }
 };
 
+/**
+ * @param {number} proyectoId 
+ */
+const getProjectStatusHistory = async (proyectoId) => {
+    try {
+        const history = await Log.findAll({
+            where: {
+                resource_type: 'Proyecto',
+                resource_id: proyectoId,
+                action_type: 'PROJECT_STATUS_CHANGED'
+            },
+            include: [
+                {
+                    model: Usuario,
+                    as: 'Usuario', // Asegúrate de que el alias coincida con tu modelo Log
+                    attributes: ['id', 'username'],
+                    include: {
+                        model: Persona,
+                        as: 'Persona',
+                        attributes: ['nombre', 'apellido']
+                    }
+                }
+            ],
+            order: [['timestamp', 'DESC']] // El más reciente primero
+        });
+
+        return history;
+    } catch (error) {
+        console.error('Error al obtener el historial de estados:', error.message);
+        throw error;
+    }
+};
+
 module.exports = {
     saveLog,
+    getProjectStatusHistory
 };

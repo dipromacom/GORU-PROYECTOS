@@ -6,7 +6,7 @@ import { connect } from "react-redux";
 import LoaderButton from "../components/loaderButton/LoaderButton";
 import { Form, Col, Row, InputGroup, Button, DropdownButton, Dropdown, Badge, Modal } from "react-bootstrap";
 import "./ProyectoNew.css"
-import { actions, selectors } from "../reducers/project";
+import { actions as projectActions, selectors } from "../reducers/project";
 import { actions as routesActions } from "../reducers/routes";
 import { actions as tipoProyectoAction, selectors as tipoProyectoSelector } from "../reducers/tipoProyecto";
 import { selectors as batchSelectors } from "../reducers/batch";
@@ -58,10 +58,15 @@ import { actions as sessionActions} from "../reducers/session";
 import { actions as rolProyectoActions } from "../reducers/rolProyecto";
 
 import { actions as surveyActions, selectors as surveySelectors } from "../reducers/encuesta-satisfaccion";
+import { actions as logActions, selectors as logSelectors } from "../reducers/projectLog";
+
 import SurveyModal from "../components/surveyForm/SurveyModal";
 import SurveyViewModal from "../components/surveyForm/SurveyViewModal";
 
-function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual }) {
+import ProjectStatusHistory from "../components/log/ProjectStatusHistory";
+
+
+function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading}) {
     const routeParams = useParams();
     const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
@@ -102,20 +107,22 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
     useEffect(() => {
         if (numericId) {
-            dispatch(actions.getAnalisisAmbientalRequest(numericId));
+            dispatch(projectActions.getAnalisisAmbientalRequest(numericId));
         }
     }, [numericId, dispatch]);
 
     useEffect(() => {
         if (numericId) {
-            dispatch(actions.getRespuestaAnalisisAmbientalRequest(numericId))
+            dispatch(projectActions.getRespuestaAnalisisAmbientalRequest(numericId))
             // respuestaAnalisisAmbiental[];
+            dispatch(projectActions.getProjectDetailRequest(numericId));
+            dispatch(logActions.getProjectLogs(numericId));
         }
     }, [numericId, dispatch]); 
 
     useEffect(() => {
         if (numericId) {
-            dispatch(actions.getInteresadoList(numericId));
+            dispatch(projectActions.getInteresadoList(numericId));
         }
     }, [numericId], dispatch);
 
@@ -238,7 +245,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     useEffect(() => {
         if (routeParams.id) {
             clearConstitutionFields(); // limpia primero
-            dispatch(actions.getProjectDetailRequest(routeParams.id)); // luego pide los nuevos
+            dispatch(projectActions.getProjectDetailRequest(routeParams.id)); // luego pide los nuevos
         }
     }, [routeParams.id, dispatch]);
 
@@ -361,7 +368,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         ];
 
         const suma = campos.reduce((acc, campo) => acc + (encuesta[campo] || 0), 0);
-        return (suma / campos.length).toFixed(2);
+        return (suma / campos.length).toFixed(1);
     };
 
     const calculateTotalCost = () => {
@@ -491,7 +498,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             informacionBreve,
         };
         payload = appendActaDeInicio(payload);
-        dispatch(actions.updateProject(routeParams.id,payload));
+        dispatch(projectActions.updateProject(routeParams.id,payload));
     }
 
     function handleSubmitLeccionesAprendidas(payloadLecciones) {
@@ -499,7 +506,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         let payload = {
             leccionesAprendidas: JSON.stringify(payloadLecciones),
         };
-        dispatch(actions.updateProject(routeParams.id, payload));
+        dispatch(projectActions.updateProject(routeParams.id, payload));
     }
 
     function handleSubmitDatosGenerales(event) {
@@ -513,7 +520,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             tipoProyecto,
         };
         
-        dispatch(actions.updateProjectGeneralData(routeParams.id,payload));
+        dispatch(projectActions.updateProjectGeneralData(routeParams.id,payload));
     }
 
     useEffect(() => {
@@ -585,13 +592,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const handleChangeTab = (key) => {
         setActiveKey(key)
         if (key === 'to-do') {
-            dispatch(actions.getTasksById({ idProject: routeParams.id, done: false}))
+            dispatch(projectActions.getTasksById({ idProject: routeParams.id, done: false}))
         }
         if (key === 'project-management') {
             dispatch(kanbanActions.fetch({ projectId: routeParams.id }))
         }
         if (key === 'Analisis-ambiental') {
-            // dispatch(actions.getAnalisisAmbientalRequest({ proyectoId: routeParams.id }))
+            // dispatch(projectActions.getAnalisisAmbientalRequest({ proyectoId: routeParams.id }))
         }
     }
 
@@ -601,9 +608,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
         // recargar tareas con el filtro nuevo (si ya estamos en la pestaña TO DO)
         if (activeKey === "to-do") {
-            dispatch(
-                actions.getTasksById({ idProject: routeParams.id, done: value })
-            );
+            dispatch(projectActions.getTasksById({ idProject: routeParams.id, done: value }));
         }
     };
 
@@ -642,12 +647,12 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     }
 
     const addTaskHandler = task => {
-        dispatch(actions.insertToDoTask({...task, proyectoId: routeParams.id, dueDate: moment(task.dueDate,'DD/MM/YYYY').format('YYYY-MM-DD')}))
+        dispatch(projectActions.insertToDoTask({...task, proyectoId: routeParams.id, dueDate: moment(task.dueDate,'DD/MM/YYYY').format('YYYY-MM-DD')}))
         setTaskFilter("false");
     }
 
     const doneTask = (taskId, closeDate) => {
-        dispatch(actions.doneTask(taskId, closeDate));
+        dispatch(projectActions.doneTask(taskId, closeDate));
     };
 
     const getPlazoPeriodoTitle = () => {
@@ -944,6 +949,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                     <i className="bi bi-journal-bookmark mr-2"></i>Encuesta de satisfacción
                                                 </Nav.Link>
                                             </Nav.Item>
+                                            <Nav.Item>
+                                                <Nav.Link eventKey="historial" className="px-4 py-2">
+                                                    <i className="bi bi-journal-bookmark mr-2"></i>Historial de Estados</Nav.Link>
+                                            </Nav.Item>
                                             
                                         </Nav>
 
@@ -1005,15 +1014,15 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             <Tab.Pane eventKey="encuesta">
                                                 <div className="survey-container mt-4 p-3 border rounded bg-light">
                                                     <div className="d-flex justify-content-between align-items-center mb-3">
-                                                        <h4>Encuesta de Satisfacción - Proyecto #{numericId}</h4>
-                                                        {(!encuestaActual || !encuestaActual.completada) && (
+                                                        <h4>Encuesta de Satisfacción</h4>
+                                                        
                                                             <Button
                                                                 variant="outline-primary"
                                                                 onClick={() => setShowVoluntarySurvey(true)}
                                                             >
                                                                 Realizar Encuesta
                                                             </Button>
-                                                        )}
+                                                       
                                                     </div>
 
                                                     {estadisticas && estadisticas.totalEncuestas > 0 && (
@@ -1089,6 +1098,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         </table>
                                                     </div>
                                                 </div>
+                                            </Tab.Pane>
+
+                                            <Tab.Pane eventKey="historial">
+                                                <ProjectStatusHistory logs={logs} />
                                             </Tab.Pane>
 
                                             
@@ -1854,7 +1867,11 @@ const mapStateToProps = state => ({
     listaEncuestas: surveySelectors.getListaEncuestas(state),
     estadisticas: surveySelectors.getEstadisticas(state),
     encuestaActual: surveySelectors.getEncuestaActual(state),
-    surveyLoading: surveySelectors.getIsLoading(state)
+    surveyLoading: surveySelectors.getIsLoading(state),
+
+    // --- Logs cambio de estados ---
+    logs: logSelectors.getLogs(state),
+    logsLoading: logSelectors.getIsLoading(state)
 });
 
 export default connect(mapStateToProps)(ProyectoDetail);

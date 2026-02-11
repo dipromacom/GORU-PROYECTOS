@@ -22,8 +22,8 @@ import { Form, Dropdown } from "react-bootstrap"
 import { DownloadPdfButton } from "../components/downloadPdfButton/downloadPdfButton";
 import { ProyectoListPDF, csvHeader, convertToCsvData } from "./ProyectosReport"
 import { CSVLink } from "react-csv"
-import { FaPlay, FaArrowRight } from 'react-icons/fa';
-import { MdOutlineDoNotDisturbOn } from "react-icons/md";
+import { FaPlay, FaArrowRight, FaReply } from 'react-icons/fa';
+import { MdOutlineDoNotDisturbOn, MdSettingsBackupRestore } from "react-icons/md";
 import { FaLock } from "react-icons/fa"; // ícono de cerrado
 import Modal from "react-bootstrap/Modal";
 
@@ -241,7 +241,9 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
             case 'P':
               return "Cambiar a Ejecutado";
             case 'X':
-              return "Cerrar Proyecto"; // Este icono no se muestra, pero por completitud
+              return "Regresar a Planificado"; // Nueva descripción
+            case 'E':
+              return "Cerrar Proyecto";
             default:
               return "Cambiar Estado";
           }
@@ -307,6 +309,24 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
                     <FaLock size={16} />
                   </a>
                 </OverlayTrigger>
+
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={<Tooltip id={`tooltip-regresar-${proyecto.id}`}>{getCambiarEstadoTooltip('X')}</Tooltip>}
+                  >
+                    <a
+                      className="btn info"                    
+                      onClick={() => {
+                        const confirmResult = window.confirm("¿Desea regresar el estado del proyecto a 'Planificado'?");
+                        if (confirmResult) {
+                          handleConfirmCambiarEstadoProyecto(proyecto.id, "P");
+                        }
+                      }}
+                    >
+                      <MdSettingsBackupRestore size={16} />
+                    </a>
+                  </OverlayTrigger>
+
               </div>
             ) : proyecto.estado === 'P' ? (
               // 📦 Planificado → Ejecutado (ver, cambiar estado, cerrar)

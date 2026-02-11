@@ -296,4 +296,5 @@ export const getEncuestasProyecto = (proyectoId) => apiWithToken.get(`/proyecto/
 export const guardarEncuesta = (payload) => apiWithToken.post('/proyecto/encuesta-satisfaccion', payload);
 export const rechazarEncuesta = (proyectoId) => apiWithToken.post('/proyecto/encuesta-satisfaccion/rechazar', { proyectoId });
 export const getAllEncuestasProyecto = (proyectoId) => apiWithToken.get(`/proyecto/encuesta-satisfaccion/todas/${proyectoId}`);
+export const getProjectStatusLogs = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/estados`);
 

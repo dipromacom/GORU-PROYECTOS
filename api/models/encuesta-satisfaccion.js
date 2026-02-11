@@ -120,12 +120,12 @@ module.exports = (db, Sequelize) => {
         tableName: 'encuesta_satisfaccion',
         timestamps: true,
         // Índice único para evitar duplicados
-        indexes: [
+        /*indexes: [
             {
                 unique: true,
                 fields: ['proyecto_id', 'usuario_id']
             }
-        ]
+        ]*/
     });
 
     EncuestaSatisfaccion.associate = (models) => {

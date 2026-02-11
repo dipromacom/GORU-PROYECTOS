@@ -119,15 +119,15 @@ const createOrUpdateEncuesta = async (data, usuarioId) => {
         } = data;
 
         // Verificar si ya existe
-        let encuesta = await EncuestaSatisfaccion.findOne({
+        /*let encuesta = await EncuestaSatisfaccion.findOne({
             where: {
                 proyecto_id: proyectoId,
                 usuario_id: usuarioId
             }
-        });
+        });*/
 
         const encuestaData = {
-            proyecto_id: proyectoId,
+            proyecto_id: proyectoId || data.proyecto_id,
             nombre: nombre,
             usuario_id: usuarioId,
             comunicacion,
@@ -152,11 +152,12 @@ const createOrUpdateEncuesta = async (data, usuarioId) => {
             comentario_general,
             comentarios_generales,
             completada: true,
+            rechazada: false,
             tipo_proyecto: tipo_proyecto,
             fecha_completada: new Date()
         };
 
-        if (encuesta) {
+        /*if (encuesta) {
             // Actualizar encuesta existente
             await encuesta.update(encuestaData);
 
@@ -178,7 +179,17 @@ const createOrUpdateEncuesta = async (data, usuarioId) => {
                 resourceId: encuesta.id,
                 details: { proyectoId }
             });
-        }
+        }*/
+
+        encuesta = await EncuestaSatisfaccion.create(encuestaData);
+
+        await saveLog({
+            userId: usuarioId,
+            actionType: 'SURVEY_COMPLETED',
+            resourceType: 'EncuestaSatisfaccion',
+            resourceId: encuesta.id,
+            details: { proyectoId }
+        });
 
         return encuesta;
     } catch (error) {
@@ -245,7 +256,7 @@ const rechazarEncuesta = async (proyectoId, usuarioId) => {
  * @param {number} proyectoId 
  * @returns {Promise<Object>}
  */
-const getEstadisticasEncuesta = async (proyectoId) => {
+const getEstadisticasEncuesta = async (proyectoId) => { 
     try {
         const encuestas = await EncuestaSatisfaccion.findAll({
             where: {
@@ -276,6 +287,9 @@ const getEstadisticasEncuesta = async (proyectoId) => {
         ];
 
         const promedios = {};
+        let sumaDeTodosLosPromedios = 0;
+        let camposConDatos = 0;
+
         campos.forEach(campo => {
             const valores = encuestas
                 .map(e => e[campo])
@@ -283,16 +297,24 @@ const getEstadisticasEncuesta = async (proyectoId) => {
 
             if (valores.length > 0) {
                 const suma = valores.reduce((acc, val) => acc + val, 0);
-                promedios[campo] = (suma / valores.length).toFixed(2);
+                const promedioCampo = suma / valores.length;
+
+                promedios[campo] = parseFloat(promedioCampo.toFixed(1));
+                sumaDeTodosLosPromedios += promedioCampo;
+                camposConDatos++;
             } else {
                 promedios[campo] = 0;
             }
         });
 
+        const satisfaccionGeneralTotal = camposConDatos > 0
+            ? parseFloat((sumaDeTodosLosPromedios / camposConDatos).toFixed(1))
+            : 0;
+
         return {
             totalEncuestas: encuestas.length,
             promedios,
-            satisfaccionGeneral: parseFloat(promedios.satisfaccion_general || 0)
+            satisfaccionGeneral: satisfaccionGeneralTotal
         };
     } catch (error) {
         logger.error({
