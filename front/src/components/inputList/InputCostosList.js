@@ -163,7 +163,7 @@ const InputCostosList = ({
                     <Row>
                         <Col md={6} className="mb-3 mb-md-0">
                             <div className="d-flex justify-content-between small fw-bold mb-1 text-uppercase">
-                                <span>presupuesto real vs. estimado</span>
+                                <span>presupuesto real vs. estimado</span>                              
                                 <span className={parseFloat(porcentajeDesviacion) <= 100 ? "text-success" : "text-danger"}>
                                     {porcentajeDesviacion}%
                                 </span>
@@ -173,6 +173,9 @@ const InputCostosList = ({
                                 variant={parseFloat(porcentajeDesviacion) <= 100 ? "success" : "danger"}
                                 style={{ height: '20px' }}
                             />
+                            <small className="text-muted d-block mt-1">
+                                Fórmula: (Gasto total real / Presupuesto total estimado) × 100
+                            </small>
                         </Col>
                         <Col md={6}>
                             <div className="d-flex justify-content-between small fw-bold mb-1 text-uppercase">
@@ -186,6 +189,9 @@ const InputCostosList = ({
                                 variant={performanceData >= 1 ? "success" : "warning"}
                                 style={{ height: '20px'}}
                             />
+                            <small className="text-muted d-block mt-1">
+                                Fórmula: Tareas cerradas a tiempo / Tareas que debían cerrar hoy
+                            </small>
                         </Col>
                         
                     </Row>

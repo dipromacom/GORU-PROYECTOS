@@ -160,6 +160,9 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
             style={{ height: '20px', borderRadius: '5px' }}
             className="shadow-sm"
           />
+          <small className="text-muted d-block mt-1">
+            Fórmula: Tareas movidas a "Cerrado" a tiempo / Tareas con fecha vencida a hoy
+          </small>
          
         </div>
       )}

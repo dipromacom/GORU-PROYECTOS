@@ -65,8 +65,15 @@ import SurveyViewModal from "../components/surveyForm/SurveyViewModal";
 
 import ProjectStatusHistory from "../components/log/ProjectStatusHistory";
 
+import { actions as informeActions, selectors as informeSelectors } from "../reducers/informe-avance";
+import InformeAvanceModal from "../components/informeAvance/InformeAvanceModal";
+import InformeAvanceList from "../components/informeAvance/InformeAvanceList";
 
-function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading}) {
+import { pdf } from '@react-pdf/renderer';
+import InformeAvancePdf from "../components/informeAvance/InformeAvancePdf";
+
+
+function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading }) {
     const routeParams = useParams();
     const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
@@ -88,7 +95,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     }
 
 
-    const [editMode, setEditMode] = useState(false)
+    const [editMode, setEditMode] = useState(false);
 
     // Combos Seccion Descripcion del proyecto a alto nivel - periodo de tiempo
     const values = [
@@ -321,6 +328,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
     const [showDetailsModal, setShowDetailsModal] = useState(false);
     const [selectedEncuesta, setSelectedEncuesta] = useState(null);
+    const [modoEdicion, setModoEdicion] = useState(false);
+    const [activeTabSummary, setActiveTabSummary] = useState("ejecucion");
+
+    const [showInformeModal, setShowInformeModal] = useState(false);
+    const [informeEditar, setInformeEditar] = useState(null);
 
     const handleVerDetalleEncuesta = (encuesta) => {
         setSelectedEncuesta(encuesta);
@@ -330,27 +342,127 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [showInvitation, setShowInvitation] = useState(false);
     const surveyCheckedRef = useRef(false); 
 
+    const [isLoadingProject, setIsLoadingProject] = useState(true);
+
+    useEffect(() => {
+        if (planificado) {
+            setActiveTabSummary("encuesta");
+        } else if (ejecutado || cerrado) {
+            setActiveTabSummary("ejecucion");
+        }
+    }, [planificado, ejecutado, cerrado]);
+
+    useEffect(() => {
+        surveyCheckedRef.current = false;
+        setShowInvitation(false);
+    }, [numericId]);
+
     useEffect(() => {
         if (cerrado && numericId && !surveyCheckedRef.current) {
             dispatch(surveyActions.checkSurveyStatus(numericId));
             surveyCheckedRef.current = true;
+        } else if (!cerrado && surveyCheckedRef.current) {
+            surveyCheckedRef.current = false;
         }
     }, [cerrado, numericId, dispatch]);
 
     useEffect(() => {
-        if (cerrado && numericId) {
+        if (numericId) {
             dispatch(surveyActions.getAllSurveys(numericId));
         }
-    }, [cerrado, numericId, dispatch]);
+    }, [numericId, dispatch]);
 
     useEffect(() => {
         if (debeVerEncuesta === true && cerrado) {
             setShowInvitation(true);
+        } else {
+            setShowInvitation(false);
         }
-    }, [debeVerEncuesta]);
+    }, [debeVerEncuesta, cerrado]);
+
+    useEffect(() => {
+        if (numericId) {
+            setIsLoadingProject(true);
+        }
+    }, [numericId]);
+
+    useEffect(() => {
+        // El proyecto está cargado cuando tenemos projectDetail Y coincide con el ID de la ruta
+        if (projectDetail && projectDetail.id === numericId) {
+            setIsLoadingProject(false);
+        }
+    }, [projectDetail, numericId]);
+
+    // Cargar informe de avance
+    useEffect(() => {
+        if (numericId && (planificado || ejecutado || cerrado)) {
+            dispatch(informeActions.getInformes(numericId));
+        }
+    }, [numericId, planificado, ejecutado, cerrado, dispatch]);
+
+    // Setear el informe actual cuando se carga la lista
+    /*
+    useEffect(() => {
+        if (listaInformes && listaInformes.length > 0) {
+            setInformeEditar(listaInformes[0]); 
+        } else {
+            setInformeEditar(null);
+        }
+    }, [listaInformes]);
+    */
+
+    const handleOpenInformeModal = () => {
+        setInformeEditar(null); 
+        setShowInformeModal(true);
+    };
+
+    const handleCloseInformeModal = () => {
+        setShowInformeModal(false);
+        setInformeEditar(null);
+    };
+
+    const handleEditInforme = (informe) => {
+        setInformeEditar(informe);
+        setShowInformeModal(true);
+    };
+
+    const handleDeleteInforme = (informeId) => {
+        if (window.confirm('¿Está seguro de eliminar este informe?')) {
+            dispatch(informeActions.deleteInforme(informeId, numericId));
+        }
+    };
+
+    const handleDownloadPDF = async (informe) => {
+        try {
+            const blob = await pdf(
+                <InformeAvancePdf
+                    informe={informe}
+                    projectDetail={projectDetail}
+                    resumenEjecucion={resumenEjecucion}
+                    resumenDesempeno={resumenDesempeno}
+                    estadisticas={estadisticas}
+                    logs={logs}
+                    riesgosList={riesgos}
+                    leccionesAprendidas={leccionesAprendidas}
+                />
+            ).toBlob();
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Informe_Avance_${projectDetail?.nombre}_${informe.nombre_persona}_${new Date(informe.fecha_informe).toLocaleDateString('es-ES').replace(/\//g, '-')}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error al generar PDF:', error);
+            alert('Error al generar el PDF');
+        }
+    };
+
 
     const handleAcceptInvitation = () => {
         setShowInvitation(false);
+        setModoEdicion(false);
         setShowVoluntarySurvey(true); // Abre el modal de las preguntas
     };
 
@@ -722,1127 +834,1207 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
     return (
         <div className="page-menu-container">
-            {/* Renderizar el Modal Configuración */}
-            <RoleSettingsModal
-                show={showRoleModal}
-                handleClose={handleCloseConfig}
-                projectId={routeParams.id}
-                projectDetail={projectDetail}
-            />
-            <Tab.Container defaultActiveKey="general" activeKey={activeKey} onSelect={setActiveKey}>
 
-                <div className="header-wrapper">
-                    {/* Fila Superior: Título y Botones */}
-                    <div className="d-flex justify-content-between align-items-center flex-wrap px-4 pt-3 pb-2">
+            {isLoadingProject ? (
+                <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
+                    <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
+                        <span className="sr-only">Cargando proyecto...</span>
+                    </div>
+                </div>
+            ) : (
+                <>
 
-                        {/* Título */}
-                        <div className="title-container mb-2 mb-md-0">
-                            <h1 className="blue text-capitalize mb-0">{nombreProyecto}</h1>
-                        </div>
+                    {/* Renderizar el Modal Configuración */}
+                    <RoleSettingsModal
+                        show={showRoleModal}
+                        handleClose={handleCloseConfig}
+                        projectId={routeParams.id}
+                        projectDetail={projectDetail}
+                    />
+                    <Tab.Container defaultActiveKey="general" activeKey={activeKey} onSelect={setActiveKey}>
 
-                        {/* Botones de Acción (widget-container) */}
-                        <div className="widget-container d-inline-flex align-items-center flex-wrap flex-shrink-0 gap-2">
-                            {/* Botón de Configuración */}
-                            {!cerrado && (
-                                <>
-                                    <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={handleOpenConfig}>
-                                        <i className="bi bi-gear-fill mr-2" />
-                                        <span>Configuración</span>
-                                    </div>
-                                    <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
-                                </>
-                            )}
+                        <div className="header-wrapper">
+                            {/* Fila Superior: Título y Botones */}
+                            <div className="d-flex justify-content-between align-items-center flex-wrap px-4 pt-3 pb-2">
 
-                            {!isTodoOrKanban() && !(activeKey === 'Crear-Interesado' || activeKey === 'Matriz-Interesados') && (
-                                <>
+                                {/* Título */}
+                                <div className="title-container mb-2 mb-md-0">
+                                    <h1 className="blue text-capitalize mb-0">{nombreProyecto}</h1>
+                                </div>
+
+                                {/* Botones de Acción (widget-container) */}
+                                <div className="widget-container d-inline-flex align-items-center flex-wrap flex-shrink-0 gap-2">
+                                    {/* Botón de Configuración */}
                                     {!cerrado && (
                                         <>
-                                            <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => toggleEdit()}>
-                                                <i className={`bi ${!editMode ? 'bi-pencil-square' : 'bi-eye'} mr-2`} />
-                                                <span>{editMode ? 'Visualizar' : 'Editar'}</span>
+                                            <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={handleOpenConfig}>
+                                                <i className="bi bi-gear-fill mr-2" />
+                                                <span>Configuración</span>
                                             </div>
                                             <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
                                         </>
                                     )}
-                                    <div className="download-document">
-                                        {(activeKey === 'general' || activeKey === 'constitution' || activeKey === 'riesgos' || activeKey === 'alcance' || activeKey === 'hitos' || activeKey === 'costos' || activeKey === 'calidad') && (
-                                            <DownloadPdfButton reportPrefix="Proyecto" pdfReport={<ProyectoPdf proyecto={projectDetail} disabled />}>
-                                                <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }}>
-                                                    <i className="bi bi-cloud-download mr-2 disabled" />
-                                                    <span>Descargar Acta</span>
-                                                </div>
-                                            </DownloadPdfButton>
-                                        )}
-                                    </div>
-                                </>
-                            )}
 
-                            {/* Botones de Interesados */}
-                            {activeKey === 'Matriz-Interesados' && !cerrado && (
-                                <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => setActiveKey('Crear-Interesado')}>
-                                    <i className="bi bi-plus-circle mr-2" /> Crear Interesado
-                                </div>
-                            )}
-
-                            {activeKey === 'Crear-Interesado' && !cerrado && (
-                                <>
-                                    <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
-                                    <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => setActiveKey('Matriz-Interesados')}>
-                                        <i className="bi bi-arrow-left mr-2" /> Volver a Ver Interesados
-                                    </div>
-                                </>
-                            )}
-                        </div>
-                    </div>
-
-                    {/* Fila Inferior: Navegación de Pestañas */}
-                    <div className="tabbed-form-responsive px-4">
-                        <Nav
-                            activeKey={activeKey}
-                            className="nav-tabs blue nav-responsive-scroll"
-                            onSelect={handleChangeTab}
-                        >
-                            <Nav.Item>
-                                <Nav.Link eventKey="general">Datos Generales</Nav.Link>
-                            </Nav.Item>
-                            {(planificado || ejecutado || cerrado) && (
-                                <>
-                                    {(esPrograma) && (
-                                        <Nav.Item><Nav.Link eventKey="beneficios">Beneficios</Nav.Link></Nav.Item>
-                                    )}
-                                </>
-                            )}
-                            <Nav.Item>
-                                <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
-                            </Nav.Item>
-                            {(planificado || ejecutado || cerrado) && (
-                                <>
-                                    <Nav.Item><Nav.Link eventKey="Matriz-Interesados">Interesados</Nav.Link></Nav.Item>
-                                    {(!esActividad && !esPrograma) && (
-                                        <Nav.Item><Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link></Nav.Item>
-                                    )}
-                                    {mostrarPestanasEstandar && (
+                                    {!isTodoOrKanban() && !(activeKey === 'Crear-Interesado' || activeKey === 'Matriz-Interesados') && (
                                         <>
-                                            <Nav.Item><Nav.Link eventKey="alcance">Alcance</Nav.Link></Nav.Item>
-                                            <Nav.Item><Nav.Link eventKey="hitos">Hitos</Nav.Link></Nav.Item>
-                                            <Nav.Item><Nav.Link eventKey="costos">Costos</Nav.Link></Nav.Item>
+                                            {!cerrado && (
+                                                <>
+                                                    <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => toggleEdit()}>
+                                                        <i className={`bi ${!editMode ? 'bi-pencil-square' : 'bi-eye'} mr-2`} />
+                                                        <span>{editMode ? 'Visualizar' : 'Editar'}</span>
+                                                    </div>
+                                                    <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
+                                                </>
+                                            )}
+                                            <div className="download-document">
+                                                {(activeKey === 'general' || activeKey === 'constitution' || activeKey === 'riesgos' || activeKey === 'alcance' || activeKey === 'hitos' || activeKey === 'costos' || activeKey === 'calidad') && (
+                                                    <DownloadPdfButton reportPrefix="Proyecto" pdfReport={<ProyectoPdf proyecto={projectDetail} disabled />}>
+                                                        <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }}>
+                                                            <i className="bi bi-cloud-download mr-2 disabled" />
+                                                            <span>Descargar Acta</span>
+                                                        </div>
+                                                    </DownloadPdfButton>
+                                                )}
+                                            </div>
                                         </>
                                     )}
-                                    {(!esActividad && !esPrograma) && (
-                                        <Nav.Item><Nav.Link eventKey="calidad">Calidad</Nav.Link></Nav.Item>
+
+                                    {/* Botones de Interesados */}
+                                    {activeKey === 'Matriz-Interesados' && !cerrado && (
+                                        <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => setActiveKey('Crear-Interesado')}>
+                                            <i className="bi bi-plus-circle mr-2" /> Crear Interesado
+                                        </div>
                                     )}
-                                    {mostrarPestanasEstandar && (
-                                        <Nav.Item><Nav.Link eventKey="riesgos">Riesgos</Nav.Link></Nav.Item>
+
+                                    {activeKey === 'Crear-Interesado' && !cerrado && (
+                                        <>
+                                            <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
+                                            <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => setActiveKey('Matriz-Interesados')}>
+                                                <i className="bi bi-arrow-left mr-2" /> Volver a Ver Interesados
+                                            </div>
+                                        </>
                                     )}
-                                    <Nav.Item><Nav.Link eventKey="gantt">{esPrograma? "Roadmap" : "Gantt"}</Nav.Link></Nav.Item>
-                                    <Nav.Item><Nav.Link eventKey="to-do" >To Do</Nav.Link></Nav.Item>
-                                    <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
-                                    {(!esActividad && !esPrograma) && (
-                                        <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
-                                    )} 
-                                </>
-                            )}
-                            {(cerrado) && (
-                                <Nav.Item><Nav.Link eventKey="leccionesAprendidas">Lecciones Aprendidas</Nav.Link></Nav.Item>
-                            )}
-                        </Nav>
-                    </div>
-                </div>
-
-
-                <div className="container">
-                    {/* <h1 className="orange">Creación de Nuevo Proyecto</h1> */}
-                    <br />
-                    <Tab.Content>
-                        <Tab.Pane eventKey="general"><Form className="blue" >
-                            <Form.Group controlId="proyecto">
-                                <Form.Label>{esActividad ? "Proyecto Personal" : esPrograma ? "Nombre del Programa" : "Proyecto Equipo"}</Form.Label>
-                                <Form.Control
-                                    disabled={!editMode}
-                                    autoComplete="off"
-                                    type="text"
-                                    value={nombreProyecto}
-                                    onChange={e => setNombreProyecto(e.target.value)}
-                                />
-                            </Form.Group>
-                            <Form.Group controlId="directorProyecto">
-                                <Form.Label>{esActividad ? "Director del Proyecto Personal" : esPrograma ? "Director del Programa" : "Director del Proyecto Equipo"}</Form.Label>
-                                <Form.Control
-                                    disabled={!editMode}
-                                    autoComplete="off"
-                                    type="text"
-                                    value={directorProyecto}
-                                    onChange={e => setDirectorProyecto(e.target.value)}
-                                />
-                            </Form.Group>
-
-                            <Form.Group controlId="patrocinadorProyecto">
-                                <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : esPrograma ? "Patrocinador del Programa" : "Patrocinador del Proyecto Equipo"}</Form.Label>
-                                <Form.Control
-                                    disabled={!editMode}
-                                    autoComplete="off"
-                                    type="text"
-                                    value={patrocinadorProyecto}
-                                    onChange={e => setPatrocinadorProyecto(e.target.value)}
-                                />
-                            </Form.Group>
-
-                            <Form.Group controlId="departamento">
-                                <Form.Label>Departamento</Form.Label>
-                                <Form.Control
-                                    disabled={!editMode}
-                                    autoComplete="off"
-                                    type="text"
-                                    value={departamento}
-                                    onChange={e => setDepartamento(e.target.value)}
-                                />
-                            </Form.Group>
-
-                            <Form.Group controlId="informacionBreve">
-                                <Form.Label>Información breve</Form.Label>
-                                <Form.Control
-                                    disabled={!editMode}
-                                    autoComplete="off"
-                                    type="text"
-                                    value={informacionBreve}
-                                    as="textarea"
-                                    rows={2}
-                                    onChange={e => setInformacionBreve(e.target.value)}
-                                />
-                            </Form.Group>
-
-                            {!esPrograma && (
-                                <Form.Group controlId="tipoProyecto">
-                                    <Form.Label>{esActividad ? "Tipo de Proyecto Personal" : esPrograma ? "Tipo de Programa" : "Tipo de Proyecto Equipo"}</Form.Label>
-                                    <Form.Control
-                                        disabled={!editMode}
-                                        as="select"
-                                        className="form-select"
-                                        value={tipoProyecto}
-                                        onChange={(e) => { setTipoProyecto(e.target.value)}}
-                                    >
-                                        <option value="">Elija el tipo de {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"}...</option>
-                                        {tipoProyectoList.map(tipo => (
-                                            <option value={tipo.id}>{tipo.nombre}</option>
-                                        ))}
-                                    </Form.Control>
-                                </Form.Group>
-                            )}
-                            {(ejecutado || cerrado) && (
-                                <div className="summary-section mt-5">
-                                    <hr className="mb-4" />
-                                    <Tab.Container defaultActiveKey="ejecucion">
-                                        <Nav variant="tabs" className="justify-content-start mb-4 custom-tabs-style">
-                                            <Nav.Item>
-                                                <Nav.Link eventKey="ejecucion" className="px-4 py-2">
-                                                    <i className="bi bi-graph-up-arrow mr-2"></i>Resumen de Ejecución
-                                                </Nav.Link>
-                                            </Nav.Item>
-                                            <Nav.Item>
-                                                <Nav.Link eventKey="desempeno" className="px-4 py-2">
-                                                    <i className="bi bi-speedometer2 mr-2"></i>Resumen de Desempeño
-                                                </Nav.Link>
-                                            </Nav.Item>
-                                            
-                                            <Nav.Item>
-                                                <Nav.Link eventKey="encuesta" className="px-4 py-2">
-                                                    <i className="bi bi-journal-bookmark mr-2"></i>Encuesta de satisfacción
-                                                </Nav.Link>
-                                            </Nav.Item>
-                                            <Nav.Item>
-                                                <Nav.Link eventKey="historial" className="px-4 py-2">
-                                                    <i className="bi bi-journal-bookmark mr-2"></i>Historial de Estados</Nav.Link>
-                                            </Nav.Item>
-                                            
-                                        </Nav>
-
-                                        <Tab.Content>
-                                            {/* PESTAÑA 1: RESUMEN DE EJECUCIÓN */}
-                                            <Tab.Pane eventKey="ejecucion">
-                                                
-                                                <Row className="mb-4" style={{ rowGap: "50px", alignItems: "end" }}>
-                                                    {!esActividad && (
-                                                        <>
-                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                <SummaryChart type="Avance de Alcance" value={resumenEjecucion.alcance} />
-                                                            </Col>
-                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                <SummaryChart type="Avance de Hitos" value={resumenEjecucion.hitos} />
-                                                            </Col>
-                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
-                                                            </Col>
-                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                <SummaryChart type={esPrograma ? "Avance de Beneficios" : "Avance de Calidad"}
-                                                                    value={esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad} />
-                                                            </Col>
-                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
-                                                            </Col>
-                                                        </>
-                                                    )}
-                                                    {(tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO) && (
-                                                        <Col md={4} className="d-flex justify-content-center pb-4">
-                                                            <SummaryChart type="Avance de Gantt" value={resumenEjecucion.gantt} />
-                                                        </Col>
-                                                    )}
-                                                </Row>
-                                            </Tab.Pane>
-
-                                            {/* PESTAÑA 2: RESUMEN DE DESEMPEÑO */}
-                                            <Tab.Pane eventKey="desempeno">
-                                                <Row className="mb-4 justify-content-center">
-                                                    <Col md={8} lg={6} className="d-flex justify-content-center pb-4">
-                                                        {/* 🔹 Enviamos el objeto completo 'resumenDesempeno' al gráfico Polar */}
-                                                        <SummaryChart
-                                                            type="performance"
-                                                            dataValues={resumenDesempeno}
-                                                        />
-                                                    </Col>
-                                                </Row>
-
-                                                {/* Opcional: Leyenda informativa de los valores */}
-                                                <Row className="justify-content-center">
-                                                    <Col md={8} className="text-center">
-                                                        <Badge bg="success">1.0+ Excelente</Badge>{' '}
-                                                        <Badge bg="warning">0.8 - 1.0 Regular</Badge>{' '}
-                                                        <Badge bg="danger">{"< 0.8 Crítico"}</Badge>
-                                                    </Col>
-                                                </Row>
-                                            </Tab.Pane>
-                                        
-                                            <Tab.Pane eventKey="encuesta">
-                                                <div className="survey-container mt-4 p-3 border rounded bg-light">
-                                                    <div className="d-flex justify-content-between align-items-center mb-3">
-                                                        <h4>Encuesta de Satisfacción</h4>
-                                                        
-                                                            <Button
-                                                                variant="outline-primary"
-                                                                onClick={() => setShowVoluntarySurvey(true)}
-                                                            >
-                                                                Realizar Encuesta
-                                                            </Button>
-                                                       
-                                                    </div>
-
-                                                    {estadisticas && estadisticas.totalEncuestas > 0 && (
-                                                        <div className="row mb-4">
-                                                            <div className="col-md-4">
-                                                                <div className="card text-center">
-                                                                    <div className="card-body">
-                                                                        <h6>Promedio General</h6>
-                                                                        <h2 className="text-success">
-                                                                            {estadisticas.satisfaccionGeneral} / 5
-                                                                        </h2>
-                                                                        <small className="text-muted">
-                                                                            Basado en {estadisticas.totalEncuestas} respuesta{estadisticas.totalEncuestas !== 1 ? 's' : ''}
-                                                                        </small>
-                                                                    </div>
-                                                                </div>
-                                                            </div>
-                                                        </div>
-                                                    )}
-
-                                                    <h5>Encuestas Realizadas</h5>
-                                                    <div className="table-responsive">
-                                                        <table className="table table-hover">
-                                                            <thead className="table-light">
-                                                                <tr>
-                                                                    <th>Nombre</th>
-                                                                    <th>Fecha</th>
-                                                                    <th className="text-center">Promedio</th>
-                                                                    <th className="text-center">Acción</th>
-                                                                </tr>
-                                                            </thead>
-                                                            <tbody>
-                                                                {listaEncuestas.map(enc => (
-                                                                    <tr key={enc.id}>
-                                                                        <td>
-                                                                            <strong>{enc.nombre}</strong>
-                                                                        </td>
-                                                                        <td>
-                                                                            {new Date(enc.createdAt).toLocaleDateString('es-ES', {
-                                                                                year: 'numeric',
-                                                                                month: 'long',
-                                                                                day: 'numeric',
-                                                                                hour: '2-digit',
-                                                                                minute: '2-digit'
-                                                                            })}
-                                                                        </td>
-                                                                        <td className="text-center">
-                                                                            
-                                                                                {calcularPromedioEncuesta(enc)} / 5
-                                                                            
-                                                                        </td>
-                                                                        <td className="text-center">
-                                                                            <Button
-                                                                                variant="outline-info"
-                                                                                size="sm"
-                                                                                onClick={() => handleVerDetalleEncuesta(enc)}
-                                                                            >
-                                                                                <i className="bi bi-eye me-1"></i>
-                                                                                Ver Detalle
-                                                                            </Button>
-                                                                        </td>
-                                                                    </tr>
-                                                                ))}
-                                                                {listaEncuestas.length === 0 && (
-                                                                    <tr>
-                                                                        <td colSpan="4" className="text-center text-muted py-4">
-                                                                            <i className="bi bi-inbox fs-1 d-block mb-2"></i>
-                                                                            No hay encuestas registradas aún para este proyecto
-                                                                        </td>
-                                                                    </tr>
-                                                                )}
-                                                            </tbody>
-                                                        </table>
-                                                    </div>
-                                                </div>
-                                            </Tab.Pane>
-
-                                            <Tab.Pane eventKey="historial">
-                                                <ProjectStatusHistory logs={logs} />
-                                            </Tab.Pane>
-
-                                            
-
-                                            <SurveyModal
-                                                show={showVoluntarySurvey}
-                                                onHide={() => setShowVoluntarySurvey(false)}
-                                                proyectoId={numericId}
-                                                encuestaPrevia={encuestaActual}
-                                                nombreProyecto={nombreProyecto}
-                                                tipoProyecto="proyecto"
-                                            />
-
-                                            <SurveyViewModal
-                                                show={showDetailsModal}
-                                                onHide={() => setShowDetailsModal(false)}
-                                                encuesta={selectedEncuesta}
-                                            />
-                                            {/* Modal de Invitación a la Encuesta */}
-                                            <Modal show={showInvitation} onHide={() => setShowInvitation(false)} centered>
-                                                <Modal.Header closeButton>
-                                                    <Modal.Title>Encuesta de Satisfacción</Modal.Title>
-                                                </Modal.Header>
-                                                <Modal.Body>
-                                                    <p>Este proyecto ha finalizado. ¿Te gustaría compartir tu experiencia con nosotros?
-                                                        Tus respuestas nos ayudan a mejorar.</p>
-                                                </Modal.Body>
-                                                <Modal.Footer>
-                                                    <Button variant="secondary" onClick={handleRejectInvitation}>
-                                                        No, gracias
-                                                    </Button>
-                                                    <Button variant="primary" onClick={handleAcceptInvitation}>
-                                                        Sí, responder encuesta
-                                                    </Button>
-                                                </Modal.Footer>
-                                            </Modal>
-                                            
-                                        </Tab.Content>
-                                    </Tab.Container>
                                 </div>
-                            )}
-
-
-
-                            {/* Boton Guardar Datos Generales*/}
-                            <div className="mt-5 pb-5"> {
-                                editMode && (
-                                    <LoaderButton
-                                        type="submit"
-                                        className="btn-success btn-save"
-                                        disabled={!validateForm()}
-                                        onClick={handleSubmitDatosGenerales}
-                                    >
-                                        Guardar Cambios
-                                    </LoaderButton>
-                                )
-                            }
                             </div>
-                            </Form>
-                        
-                        </Tab.Pane>
-                        <Tab.Pane eventKey="constitution">
-                            <Form.Group>
-                                <Form.Check inline label="Pendiente Asignacion" checked={pendienteAsignacion} value={pendienteAsignacion} onChange={e => setPendienteAsignacion(e.target.checked)} disabled={!editMode} />
-                            </Form.Group>
-                            <Row>
-                                <Col>
-                                    <Form.Group>
+
+                            {/* Fila Inferior: Navegación de Pestañas */}
+                            <div className="tabbed-form-responsive px-4">
+                                <Nav
+                                    activeKey={activeKey}
+                                    className="nav-tabs blue nav-responsive-scroll"
+                                    onSelect={handleChangeTab}
+                                >
+                                    <Nav.Item>
+                                        <Nav.Link eventKey="general">Datos Generales</Nav.Link>
+                                    </Nav.Item>
+                                    {(planificado || ejecutado || cerrado) && (
+                                        <>
+                                            {(esPrograma) && (
+                                                <Nav.Item><Nav.Link eventKey="beneficios">Beneficios</Nav.Link></Nav.Item>
+                                            )}
+                                        </>
+                                    )}
+                                    <Nav.Item>
+                                        <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
+                                    </Nav.Item>
+                                    {(planificado || ejecutado || cerrado) && (
+                                        <>
+                                            <Nav.Item><Nav.Link eventKey="Matriz-Interesados">Interesados</Nav.Link></Nav.Item>
+                                            {(!esActividad && !esPrograma) && (
+                                                <Nav.Item><Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link></Nav.Item>
+                                            )}
+                                            {mostrarPestanasEstandar && (
+                                                <>
+                                                    <Nav.Item><Nav.Link eventKey="alcance">Alcance</Nav.Link></Nav.Item>
+                                                    <Nav.Item><Nav.Link eventKey="hitos">Hitos</Nav.Link></Nav.Item>
+                                                    <Nav.Item><Nav.Link eventKey="costos">Costos</Nav.Link></Nav.Item>
+                                                </>
+                                            )}
+                                            {(!esActividad && !esPrograma) && (
+                                                <Nav.Item><Nav.Link eventKey="calidad">Calidad</Nav.Link></Nav.Item>
+                                            )}
+                                            {mostrarPestanasEstandar && (
+                                                <Nav.Item><Nav.Link eventKey="riesgos">Riesgos</Nav.Link></Nav.Item>
+                                            )}
+                                            <Nav.Item><Nav.Link eventKey="gantt">{esPrograma? "Roadmap" : "Gantt"}</Nav.Link></Nav.Item>
+                                            <Nav.Item><Nav.Link eventKey="to-do" >To Do</Nav.Link></Nav.Item>
+                                            <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
+                                            {(!esActividad && !esPrograma) && (
+                                                <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
+                                            )} 
+                                        </>
+                                    )}
+                                    {(cerrado) && (
+                                        <Nav.Item><Nav.Link eventKey="leccionesAprendidas">Lecciones Aprendidas</Nav.Link></Nav.Item>
+                                    )}
+                                </Nav>
+                            </div>
+                        </div>
+
+
+                        <div className="container">
+                            {/* <h1 className="orange">Creación de Nuevo Proyecto</h1> */}
+                            <br />
+                            <Tab.Content>
+                                <Tab.Pane eventKey="general"><Form className="blue" >
+                                    <Form.Group controlId="proyecto">
+                                        <Form.Label>{esActividad ? "Proyecto Personal" : esPrograma ? "Nombre del Programa" : "Proyecto Equipo"}</Form.Label>
+                                        <Form.Control
+                                            disabled={!editMode}
+                                            autoComplete="off"
+                                            type="text"
+                                            value={nombreProyecto}
+                                            onChange={e => setNombreProyecto(e.target.value)}
+                                        />
+                                    </Form.Group>
+                                    <Form.Group controlId="directorProyecto">
                                         <Form.Label>{esActividad ? "Director del Proyecto Personal" : esPrograma ? "Director del Programa" : "Director del Proyecto Equipo"}</Form.Label>
-                                        <Form.Control type="text" value={directorProyecto} disabled />
+                                        <Form.Control
+                                            disabled={!editMode}
+                                            autoComplete="off"
+                                            type="text"
+                                            value={directorProyecto}
+                                            onChange={e => setDirectorProyecto(e.target.value)}
+                                        />
                                     </Form.Group>
-                                </Col>
-                                <Col>
-                                    <Form.Group>
+
+                                    <Form.Group controlId="patrocinadorProyecto">
                                         <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : esPrograma ? "Patrocinador del Programa" : "Patrocinador del Proyecto Equipo"}</Form.Label>
-                                        <Form.Control type="text" value={patrocinadorProyecto} disabled />
-                                    </Form.Group>
-                                </Col>
-                            </Row>
-                            <Row>
-                                <Col>
-                                    <Form.Group>
-                                        <Form.Label>Documentacion Adjunta</Form.Label>
-                                        <GoogleDocInputCheckerComponent link={documentacionAdjunta} setLink={setDocumentacionAdjunta} disabled={!editMode} />
-                                    </Form.Group>
-                                </Col>
-                                {!esPrograma && (
-                                    <Col>
-                                        <Form.Group>
-                                            <Form.Label>Contrato</Form.Label>
-                                            <GoogleDocInputCheckerComponent link={contrato} setLink={setContrato} disabled={!editMode} />
-                                        </Form.Group>
-                                    </Col>
-                                )}
-                            </Row>
-                            <Row>
-                                <Col>
-                                    <Form.Group>
-                                        <Form.Label>Caso Negocio</Form.Label>
-                                        <GoogleDocInputCheckerComponent link={casoNegocio} setLink={setCasoNegocio} disabled={!editMode} />
-                                    </Form.Group>
-                                </Col>
-                                {!esPrograma && (
-                                    <Col>
-                                        <Form.Group>
-                                            <Form.Label>Enunciado trabajo</Form.Label>
-                                            <GoogleDocInputCheckerComponent link={enunciadoTrabajo} setLink={setEnunciadoTrabajo} disabled={!editMode} />
-                                        </Form.Group>
-                                    </Col>
-                                )}
-                            </Row>
-                            {/*<Form.Group controlId="portafolio">
-                                <Form.Label>Portafolio</Form.Label>
-                                <Form.Control
-                                    disabled={!editMode}
-                                    autoFocus
-                                    autoComplete="off"
-                                    type="text"
-                                    value={portafolio}
-                                    onChange={e => setPortafolio(e.target.value)}
-                                />
-                            </Form.Group>*/}
-                            <Form.Group controlId="programa">
-                                <Form.Label>{esPrograma ? "Portafolio" : "Programa"}</Form.Label>
-                                <Form.Control
-                                    disabled={!editMode}
-                                    autoFocus
-                                    autoComplete="off"
-                                    type="text"
-                                    value={programa}
-                                    onChange={e => setPrograma(e.target.value)}
-                                />
-                            </Form.Group>
-                            <h2
-                                onClick={() => setOpenPrimeraParte(!openPrimeraParte)}
-                                aria-controls="primera-parte-expand"
-                                aria-expanded={openPrimeraParte}
-                            >Información Previa <span className={`bi ${openPrimeraParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
-                            <Collapse in={openPrimeraParte} >
-                                <div>
-                                    <Form.Group controlId="justificacion">
-                                        <Form.Label>{esActividad ? "Justificación del Proyecto Personal" : esPrograma ? "Justificación del Programa" : "Justificación del Proyecto Equipo"}</Form.Label>
                                         <Form.Control
                                             disabled={!editMode}
-                                            autoFocus
                                             autoComplete="off"
                                             type="text"
-                                            as="textarea"
-                                            value={justificacion}
-                                            onChange={e => setJustificacion(e.target.value)}
+                                            value={patrocinadorProyecto}
+                                            onChange={e => setPatrocinadorProyecto(e.target.value)}
                                         />
                                     </Form.Group>
-                                    <Form.Group controlId="descripcion">
-                                        <Form.Label>{esActividad ? "Descripción del Proyecto Personal" : esPrograma ? "Descripción del Programa" : "Descripción del Proyecto Equipo"}</Form.Label>
+
+                                    <Form.Group controlId="departamento">
+                                        <Form.Label>Departamento</Form.Label>
                                         <Form.Control
                                             disabled={!editMode}
-                                            autoFocus
                                             autoComplete="off"
-                                            as="textarea"
                                             type="text"
-                                            value={descripcion}
-                                            onChange={e => setDescripcion(e.target.value)}
+                                            value={departamento}
+                                            onChange={e => setDepartamento(e.target.value)}
                                         />
                                     </Form.Group>
+
+                                    <Form.Group controlId="informacionBreve">
+                                        <Form.Label>Información breve</Form.Label>
+                                        <Form.Control
+                                            disabled={!editMode}
+                                            autoComplete="off"
+                                            type="text"
+                                            value={informacionBreve}
+                                            as="textarea"
+                                            rows={2}
+                                            onChange={e => setInformacionBreve(e.target.value)}
+                                        />
+                                    </Form.Group>
+
                                     {!esPrograma && (
-                                        <Form.Group controlId="analisisViabilidad">
-                                            <Form.Label>Análisis previo de viabilidad / Caso de Negocio / Criterios de negocio</Form.Label>
+                                        <Form.Group controlId="tipoProyecto">
+                                            <Form.Label>{esActividad ? "Tipo de Proyecto Personal" : esPrograma ? "Tipo de Programa" : "Tipo de Proyecto Equipo"}</Form.Label>
                                             <Form.Control
                                                 disabled={!editMode}
-                                                autoFocus
-                                                autoComplete="off"
-                                                type="text"
-                                                as="textarea"
-                                                value={analisisViabilidad}
-                                                onChange={e => setAnalisisViabilidad(e.target.value)}
-                                            />
+                                                as="select"
+                                                className="form-select"
+                                                value={tipoProyecto}
+                                                onChange={(e) => { setTipoProyecto(e.target.value)}}
+                                            >
+                                                <option value="">Elija el tipo de {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"}...</option>
+                                                {tipoProyectoList.map(tipo => (
+                                                    <option value={tipo.id}>{tipo.nombre}</option>
+                                                ))}
+                                            </Form.Control>
                                         </Form.Group>
                                     )}
-                                </div>
-                            </Collapse>
-                            <h2
-                                onClick={() => setOpenSegundaParte(!openSegundaParte)}
-                                aria-controls="segunda-parte-expand"
-                                aria-expanded={openSegundaParte}
-                            >{esActividad ? "Objetivos de la Actividad" : esPrograma ? "Objetivos del Programa" : "Objetivos del Proyecto"} <span className={`bi ${openSegundaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
-                            <Collapse in={openSegundaParte} >
-                                <div>
+                                    {(planificado || ejecutado || cerrado) && (
+                                        <div className="summary-section mt-5">
+                                            <hr className="mb-4" />
+                                            <Tab.Container activeKey={activeTabSummary} onSelect={(k) => setActiveTabSummary(k)}>
+                                                <Nav variant="tabs" className="justify-content-start mb-4 custom-tabs-style">
+                                                    {(ejecutado || cerrado) && (
+                                                        <>
+                                                            <Nav.Item>
+                                                                <Nav.Link eventKey="ejecucion" className="px-4 py-2">
+                                                                    <i className="bi bi-graph-up-arrow mr-2"></i>Resumen de Ejecución
+                                                                </Nav.Link>
+                                                            </Nav.Item>
+                                                            <Nav.Item>
+                                                                <Nav.Link eventKey="desempeno" className="px-4 py-2">
+                                                                    <i className="bi bi-speedometer2 mr-2"></i>Resumen de Desempeño
+                                                                </Nav.Link>
+                                                            </Nav.Item>
+                                                        </>
+                                                    )}
+                                                    
+                                                    <Nav.Item>
+                                                        <Nav.Link eventKey="encuesta" className="px-4 py-2">
+                                                            <i className="bi bi-journal-bookmark mr-2"></i>Encuesta de satisfacción
+                                                        </Nav.Link>
+                                                    </Nav.Item>
+                                                    
+                                                    <Nav.Item>
+                                                        <Nav.Link eventKey="historial" className="px-4 py-2">
+                                                            <i className="bi bi-clock-history me-2"></i>Historial de Estados
+                                                        </Nav.Link>
+                                                    </Nav.Item>
+                                                    <Nav.Item>
+                                                        <Nav.Link eventKey="informe" className="px-4 py-2">
+                                                            <i className="bi bi-file-earmark-text me-2"></i>Informe de Avance
+                                                        </Nav.Link>
+                                                    </Nav.Item>
+                                                    
+                                                </Nav>
+
+                                                <Tab.Content>
+                                                    {(ejecutado || cerrado) && (
+                                                        <>
+                                                            <Tab.Pane eventKey="ejecucion">
+                                                                {/* PESTAÑA 1: RESUMEN DE EJECUCIÓN */}
+                                                                <Row className="mb-4" style={{ rowGap: "50px", alignItems: "end" }}>
+                                                                    {!esActividad && (
+                                                                        <>
+                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                <SummaryChart type="Avance de Alcance" value={resumenEjecucion.alcance} />
+                                                                            </Col>
+                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                <SummaryChart type="Avance de Hitos" value={resumenEjecucion.hitos} />
+                                                                            </Col>
+                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
+                                                                            </Col>
+                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                <SummaryChart type={esPrograma ? "Avance de Beneficios" : "Avance de Calidad"}
+                                                                                    value={esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad} />
+                                                                            </Col>
+                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
+                                                                            </Col>
+                                                                        </>
+                                                                    )}
+                                                                    {(tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO) && (
+                                                                        <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                            <SummaryChart type="Avance de Gantt" value={resumenEjecucion.gantt} />
+                                                                        </Col>
+                                                                    )}
+                                                                </Row>
+                                                            </Tab.Pane>
+
+                                                            {/* PESTAÑA 2: RESUMEN DE DESEMPEÑO */}
+                                                            <Tab.Pane eventKey="desempeno">
+                                                                <Row className="mb-4 justify-content-center">
+                                                                    <Col md={8} lg={6} className="d-flex justify-content-center pb-4">
+                                                                        {/* 🔹 Enviamos el objeto completo 'resumenDesempeno' al gráfico Polar */}
+                                                                        <SummaryChart
+                                                                            type="performance"
+                                                                            dataValues={resumenDesempeno}
+                                                                        />
+                                                                    </Col>
+                                                                </Row>
+
+                                                                {/* Opcional: Leyenda informativa de los valores */}
+                                                                <Row className="justify-content-center">
+                                                                    <Col md={8} className="text-center">
+                                                                        <Badge bg="success">1.0+ Excelente</Badge>{' '}
+                                                                        <Badge bg="warning">0.8 - 1.0 Regular</Badge>{' '}
+                                                                        <Badge bg="danger">{"< 0.8 Crítico"}</Badge>
+                                                                    </Col>
+                                                                </Row>
+                                                            </Tab.Pane>
+                                                        </>
+                                                    )}
+                                                    <Tab.Pane eventKey="encuesta">
+                                                        <div className="survey-container mt-4 p-3 border rounded bg-light">
+                                                            <div className="d-flex justify-content-between align-items-center mb-3">
+                                                                <h4>Encuesta de Satisfacción - {projectDetail?.nombre}</h4>
+                                                            
+                                                                <Button
+                                                                    variant="outline-primary"
+                                                                    onClick={() => {
+                                                                        setModoEdicion(false);
+                                                                        setShowVoluntarySurvey(true);
+                                                                    }}
+                                                                >
+                                                                    Realizar Encuesta
+                                                                </Button>
+                                                            
+                                                            </div>
+
+                                                            {estadisticas && estadisticas.totalEncuestas > 0 && (
+                                                                <div className="row mb-4">
+                                                                    <div className="col-md-4">
+                                                                        <div className="card text-center">
+                                                                            <div className="card-body">
+                                                                                <h6>Promedio General</h6>
+                                                                                <h2 className="text-success">
+                                                                                    {estadisticas.satisfaccionGeneral} / 5
+                                                                                </h2>
+                                                                                <small className="text-muted">
+                                                                                    Basado en {estadisticas.totalEncuestas} respuesta{estadisticas.totalEncuestas !== 1 ? 's' : ''}
+                                                                                </small>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                </div>
+                                                            )}
+
+                                                            <h5>Encuestas Realizadas</h5>
+                                                            <div className="table-responsive">
+                                                                <table className="table table-hover">
+                                                                    <thead className="table-light">
+                                                                        <tr>
+                                                                            <th>Nombre</th>
+                                                                            <th>Fecha</th>
+                                                                            <th className="text-center">Promedio</th>
+                                                                            <th className="text-center">Acción</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {listaEncuestas.map(enc => (
+                                                                            <tr key={enc.id}>
+                                                                                <td>
+                                                                                    <strong>{enc.nombre}</strong>
+                                                                                </td>
+                                                                                <td>
+                                                                                    {new Date(enc.createdAt).toLocaleDateString('es-ES', {
+                                                                                        year: 'numeric',
+                                                                                        month: 'long',
+                                                                                        day: 'numeric',
+                                                                                        hour: '2-digit',
+                                                                                        minute: '2-digit'
+                                                                                    })}
+                                                                                </td>
+                                                                                <td className="text-center">
+                                                                                    
+                                                                                        {calcularPromedioEncuesta(enc)} / 5
+                                                                                    
+                                                                                </td>
+                                                                                <td className="text-center">
+                                                                                    <Button
+                                                                                        variant="outline-info"
+                                                                                        size="sm"
+                                                                                        onClick={() => handleVerDetalleEncuesta(enc)}
+                                                                                    >
+                                                                                        <i className="bi bi-eye me-1"></i>
+                                                                                        Ver Detalle
+                                                                                    </Button>
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                        {listaEncuestas.length === 0 && (
+                                                                            <tr>
+                                                                                <td colSpan="4" className="text-center text-muted py-4">
+                                                                                    <i className="bi bi-inbox fs-1 d-block mb-2"></i>
+                                                                                    No hay encuestas registradas aún para este proyecto
+                                                                                </td>
+                                                                            </tr>
+                                                                        )}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </Tab.Pane>
+
+                                                    <Tab.Pane eventKey="historial">
+                                                        <ProjectStatusHistory logs={logs} />
+                                                    </Tab.Pane>
+
+                                                        <Tab.Pane eventKey="informe">
+                                                            <div className="informe-container mt-4 p-4 border rounded bg-light">
+                                                                <div className="d-flex justify-content-between align-items-center mb-4">
+                                                                    <div>
+                                                                        <h4 className="mb-2">
+                                                                            <i className="bi bi-file-earmark-text me-2"></i>
+                                                                            Informes de Avance del Proyecto
+                                                                        </h4>
+                                                                        <p className="text-muted mb-0">
+                                                                            {listaInformes && listaInformes.length > 0
+                                                                                ? `${listaInformes.length} informe${listaInformes.length > 1 ? 's' : ''} registrado${listaInformes.length > 1 ? 's' : ''}`
+                                                                                : 'No se han generado informes aún'
+                                                                            }
+                                                                        </p>
+                                                                    </div>
+                                                                    <Button
+                                                                        variant="primary"
+                                                                        onClick={handleOpenInformeModal}
+                                                                        className="d-flex align-items-center"
+                                                                    >
+                                                                        <i className="bi bi-plus-circle me-2"></i>
+                                                                        Generar Nuevo Informe
+                                                                    </Button>
+                                                                </div>
+
+                                                                <InformeAvanceList
+                                                                    listaInformes={listaInformes || []}
+                                                                    onEdit={handleEditInforme}
+                                                                    onDelete={handleDeleteInforme}
+                                                                    onDownloadPDF={handleDownloadPDF}
+                                                                />
+                                                            </div>
+                                                        </Tab.Pane>
+
+                                                    <SurveyModal
+                                                        show={showVoluntarySurvey}
+                                                        onHide={() => {
+                                                            setShowVoluntarySurvey(false);
+                                                            setModoEdicion(false); // ← AGREGAR: resetear al cerrar
+                                                        }}
+                                                        proyectoId={numericId}
+                                                        encuestaPrevia={modoEdicion ? encuestaActual : null} // ← MODIFICAR ESTA LÍNEA
+                                                        nombreProyecto={nombreProyecto}
+                                                        tipoProyecto="proyecto"
+                                                    />
+
+                                                    <SurveyViewModal
+                                                        show={showDetailsModal}
+                                                        onHide={() => setShowDetailsModal(false)}
+                                                        encuesta={selectedEncuesta}
+                                                    />
+
+                                                        {/* Modal de Informe de Avance */}
+                                                    <InformeAvanceModal
+                                                        show={showInformeModal}
+                                                        onHide={handleCloseInformeModal}
+                                                        proyectoId={numericId}
+                                                        projectDetail={projectDetail}
+                                                        resumenEjecucion={resumenEjecucion}
+                                                        resumenDesempeno={resumenDesempeno}
+                                                        informeEditar={informeEditar}
+                                                        estadisticas={estadisticas}
+                                                        logs={logs}
+                                                        riesgosList={riesgos}                 
+                                                        leccionesAprendidas={leccionesAprendidas}
+                                                        usuario={usuario}
+
+                                                    />
+                                                    {/* Modal de Invitación a la Encuesta */}
+                                                    <Modal show={showInvitation} onHide={() => setShowInvitation(false)} centered>
+                                                        <Modal.Header closeButton>
+                                                            <Modal.Title>Encuesta de Satisfacción</Modal.Title>
+                                                        </Modal.Header>
+                                                        <Modal.Body>
+                                                            <p>Este proyecto ha finalizado. ¿Te gustaría compartir tu experiencia con nosotros?
+                                                                Tus respuestas nos ayudan a mejorar.</p>
+                                                        </Modal.Body>
+                                                        <Modal.Footer>
+                                                            <Button variant="secondary" onClick={handleRejectInvitation}>
+                                                                No, gracias
+                                                            </Button>
+                                                            <Button variant="primary" onClick={handleAcceptInvitation}>
+                                                                Sí, responder encuesta
+                                                            </Button>
+                                                        </Modal.Footer>
+                                                    </Modal>
+                                                    
+                                                </Tab.Content>
+                                            </Tab.Container>
+                                        </div>
+                                    )}
+
+
+
+                                    {/* Boton Guardar Datos Generales*/}
+                                    <div className="mt-5 pb-5"> {
+                                        editMode && (
+                                            <LoaderButton
+                                                type="submit"
+                                                className="btn-success btn-save"
+                                                disabled={!validateForm()}
+                                                onClick={handleSubmitDatosGenerales}
+                                            >
+                                                Guardar Cambios
+                                            </LoaderButton>
+                                        )
+                                    }
+                                    </div>
+                                    </Form>
+                                
+                                </Tab.Pane>
+                                <Tab.Pane eventKey="constitution">
+                                    <Form.Group>
+                                        <Form.Check inline label="Pendiente Asignacion" checked={pendienteAsignacion} value={pendienteAsignacion} onChange={e => setPendienteAsignacion(e.target.checked)} disabled={!editMode} />
+                                    </Form.Group>
                                     <Row>
                                         <Col>
-                                            <Form.Group controlId="objetivoDescripcion">
-                                                <Form.Label>Objetivos {esActividad ? "del Proyecto Personal" : esPrograma ? "del Programa" : "del Proyecto Equipo"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
+                                            <Form.Group>
+                                                <Form.Label>{esActividad ? "Director del Proyecto Personal" : esPrograma ? "Director del Programa" : "Director del Proyecto Equipo"}</Form.Label>
+                                                <Form.Control type="text" value={directorProyecto} disabled />
+                                            </Form.Group>
+                                        </Col>
+                                        <Col>
+                                            <Form.Group>
+                                                <Form.Label>{esActividad ? "Patrocinador del Proyecto Personal" : esPrograma ? "Patrocinador del Programa" : "Patrocinador del Proyecto Equipo"}</Form.Label>
+                                                <Form.Control type="text" value={patrocinadorProyecto} disabled />
+                                            </Form.Group>
+                                        </Col>
+                                    </Row>
+                                    <Row>
+                                        <Col>
+                                            <Form.Group>
+                                                <Form.Label>Documentacion Adjunta</Form.Label>
+                                                <GoogleDocInputCheckerComponent link={documentacionAdjunta} setLink={setDocumentacionAdjunta} disabled={!editMode} />
+                                            </Form.Group>
+                                        </Col>
+                                        {!esPrograma && (
+                                            <Col>
+                                                <Form.Group>
+                                                    <Form.Label>Contrato</Form.Label>
+                                                    <GoogleDocInputCheckerComponent link={contrato} setLink={setContrato} disabled={!editMode} />
+                                                </Form.Group>
+                                            </Col>
+                                        )}
+                                    </Row>
+                                    <Row>
+                                        <Col>
+                                            <Form.Group>
+                                                <Form.Label>Caso Negocio</Form.Label>
+                                                <GoogleDocInputCheckerComponent link={casoNegocio} setLink={setCasoNegocio} disabled={!editMode} />
+                                            </Form.Group>
+                                        </Col>
+                                        {!esPrograma && (
+                                            <Col>
+                                                <Form.Group>
+                                                    <Form.Label>Enunciado trabajo</Form.Label>
+                                                    <GoogleDocInputCheckerComponent link={enunciadoTrabajo} setLink={setEnunciadoTrabajo} disabled={!editMode} />
+                                                </Form.Group>
+                                            </Col>
+                                        )}
+                                    </Row>
+                                    {/*<Form.Group controlId="portafolio">
+                                        <Form.Label>Portafolio</Form.Label>
+                                        <Form.Control
+                                            disabled={!editMode}
+                                            autoFocus
+                                            autoComplete="off"
+                                            type="text"
+                                            value={portafolio}
+                                            onChange={e => setPortafolio(e.target.value)}
+                                        />
+                                    </Form.Group>*/}
+                                    <Form.Group controlId="programa">
+                                        <Form.Label>{esPrograma ? "Portafolio" : "Programa"}</Form.Label>
+                                        <Form.Control
+                                            disabled={!editMode}
+                                            autoFocus
+                                            autoComplete="off"
+                                            type="text"
+                                            value={programa}
+                                            onChange={e => setPrograma(e.target.value)}
+                                        />
+                                    </Form.Group>
+                                    <h2
+                                        onClick={() => setOpenPrimeraParte(!openPrimeraParte)}
+                                        aria-controls="primera-parte-expand"
+                                        aria-expanded={openPrimeraParte}
+                                    >Información Previa <span className={`bi ${openPrimeraParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
+                                    <Collapse in={openPrimeraParte} >
+                                        <div>
+                                            <Form.Group controlId="justificacion">
+                                                <Form.Label>{esActividad ? "Justificación del Proyecto Personal" : esPrograma ? "Justificación del Programa" : "Justificación del Proyecto Equipo"}</Form.Label>
                                                 <Form.Control
                                                     disabled={!editMode}
                                                     autoFocus
                                                     autoComplete="off"
                                                     type="text"
                                                     as="textarea"
-                                                    value={objetivoDescripcion}
-                                                    onChange={e => setObjetivoDescripcion(e.target.value)}
+                                                    value={justificacion}
+                                                    onChange={e => setJustificacion(e.target.value)}
                                                 />
                                             </Form.Group>
-                                        </Col>
-                                    </Row>
-                                    {/*<Row>
-                                        <Col>
-                                            <Form.Group controlId="objetivoCosto">
-                                                <Form.Label>Costo</Form.Label>
-                                                <InputGroup>
-                                                    <InputGroup.Prepend>
-                                                        <InputGroup.Text><strong>$</strong></InputGroup.Text>
-                                                    </InputGroup.Prepend>
-                                                    <Form.Control
-                                                        disabled={!editMode}
-                                                        autoFocus
-                                                        autoComplete="off"
-                                                        type="text"
-                                                        value={objetivoCosto}
-                                                        onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, setObjetivoCosto)}
-                                                    />
-                                                </InputGroup>
-                                            </Form.Group>
-                                        </Col>
-                                        <Col>
-                                            <Form.Group controlId="objetivoPlazo">
-                                                <Form.Label>Plazo</Form.Label>
-                                                <InputGroup>
-                                                    <InputGroup.Prepend>
-                                                        <InputGroup.Text><i className="bi bi-calendar"></i></InputGroup.Text>
-                                                    </InputGroup.Prepend>
-                                                    <Form.Control
-                                                        disabled={!editMode}
-                                                        autoFocus autoComplete="off" type="text"
-                                                        value={objetivoPlazo}
-                                                        onChange={e => regexValidator(e, /^\d+$/g, setObjetivoPlazo)}
-                                                    />
-                                                    <DropdownButton
-                                                        disabled={!editMode}
-                                                        variant="outline-secondary"
-                                                        title={getPlazoPeriodoTitle()}
-                                                        id="input-dropdown-button"
-                                                        onSelect={(e) => {
-                                                            setPlazoPeriodo(e)
-
-                                                        }}   
-                                                    >
-                                                        {values.map( val => (
-                                                            <Dropdown.Item eventKey={val.clave}>{val.valor}</Dropdown.Item>
-                                                        ))}
-                                                    </DropdownButton>
-                                                </InputGroup>
-                                            </Form.Group>
-                                        </Col>
-                                        <Col>
-                                            <Form.Group controlId="objetivoDesempeno">
-                                                <Form.Label>Desempeño</Form.Label>
-                                                <InputGroup>
-                                                    <InputGroup.Prepend>
-                                                        <InputGroup.Text><strong>%</strong></InputGroup.Text>
-                                                    </InputGroup.Prepend>
-                                                    <Form.Control
-                                                        disabled={!editMode}
-                                                        autoFocus
-                                                        autoComplete="off"
-                                                        type="text"
-                                                        value={objetivoDesempeno}
-                                                        onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, setObjetivoDesempeno)}
-                                                    />
-                                                </InputGroup>
-                                            </Form.Group>
-                                        </Col>
-                                    </Row>*/}
-                                </div>
-                            </Collapse>
-                            <h2
-                                onClick={() => setOpenQuintaParte(!openQuintaParte)}
-                                aria-controls="quinta-parte-expand"
-                                aria-expanded={openQuintaParte}
-                            >Alcance {esPrograma && "General"} <span className={`bi ${openQuintaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
-                            <Collapse in={openQuintaParte} >
-                                <div>
-                                    <Form.Group controlId="recursosRequeridos">
-                                        <Form.Label>Recuros Requeridos {esPrograma && "General"}</Form.Label>
-                                        <Form.Control
-                                            disabled={!editMode}
-                                            autoFocus
-                                            autoComplete="off"
-                                            type="text"
-                                            as="textarea"
-                                            value={recursosRequeridos}
-                                            onChange={e => setRecursosRequeridos(e.target.value)}
-                                        />
-                                    </Form.Group>
-                                    <Form.Group controlId="supuestos">
-                                        <Form.Label>Supuestos {esPrograma && "General"}</Form.Label>
-                                        <Form.Control
-                                            disabled={!editMode}
-                                            autoFocus
-                                            autoComplete="off"
-                                            as="textarea"
-                                            type="text"
-                                            value={supuestos}
-                                            onChange={e => setSupuestos(e.target.value)}
-                                        />
-                                    </Form.Group>
-                                    <Form.Group controlId="restricciones">
-                                        <Form.Label>Restricciones {esPrograma && "General"}</Form.Label>
-                                        <Form.Control
-                                            disabled={!editMode}
-                                            autoFocus
-                                            autoComplete="off"
-                                            type="text"
-                                            as="textarea"
-                                            value={restricciones}
-                                            onChange={e => setRestricciones(e.target.value)}
-                                        />
-                                    </Form.Group>
-                                </div>
-                            </Collapse>
-                            <h2
-                                onClick={() => setOpenSextaParte(!openSextaParte)}
-                                aria-controls="quinta-parte-expand"
-                                aria-expanded={openSextaParte}
-                            >Nivel De Autoridad Y Decisión Del Director De {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"} 
-
-                                <span className={`bi ${openSextaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
-                            <Collapse in={openSextaParte} >
-                                <div>
-                                    <Row>
-                                        <Col>
-                                            <Form.Group controlId="maxDesviacionPresupuesto">
-                                                <Form.Label>Máxima Desviación sobre Presupuesto</Form.Label>
-                                                <InputGroup>
-                                                    <InputGroup.Prepend>
-                                                        <InputGroup.Text><strong>$</strong></InputGroup.Text>
-                                                    </InputGroup.Prepend>
-                                                    <Form.Control
-                                                        disabled={!editMode}
-                                                        autoFocus
-                                                        autoComplete="off"
-                                                        type="text"
-                                                        value={maxDesvioPresupuesto}
-                                                        onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, setMaxDesvioPresupuesto)}
-                                                    />
-                                                </InputGroup>
-                                            </Form.Group>
-                                        </Col>
-                                        <Col>
-                                            <Form.Group controlId="maxDesviacionTiempo">
-                                                <Form.Label>Máxima Desviacón sobre Tiempo</Form.Label>
-                                                <InputGroup>
-                                                    <InputGroup.Prepend>
-                                                        <InputGroup.Text><i className="bi bi-calendar"></i></InputGroup.Text>
-                                                    </InputGroup.Prepend>
-                                                    <Form.Control
-                                                        disabled={!editMode}
-                                                        autoFocus autoComplete="off" type="text"
-                                                        value={maxDesvioTiempo}
-                                                        onChange={e => regexValidator(e, /^\d+$/g, setMaxDesvioTiempo)}
-                                                    />
-                                                    <DropdownButton
-                                                        disabled={!editMode}
-                                                        variant="outline-secondary"
-                                                        title={getDesviacionPeriodoTitle()}
-                                                        id="input-dropdown-button"
-                                                        onSelect={(e) => {
-                                                            setMaxDesviacionPeriodo(e)
-
-                                                        }}   
-                                                    >
-                                                        {values.map( val => (
-                                                            <Dropdown.Item eventKey={val.clave}>{val.valor}</Dropdown.Item>
-                                                        ))}
-                                                    </DropdownButton>
-                                                </InputGroup>
-                                            </Form.Group>
-                                        </Col>
-                                        <Col style={{flexDirection: 'column'}} className="d-flex align-items-start justify-content-center">
-                                            <Form.Group controlId="autorizadoFirmasExternas">
-                                                <Form.Check disabled={!editMode} inline type="checkbox" label="Autorizado para firmas externos al proyecto"
-                                                    value={autorizadoFirmasExternas} onChange={e => setAutorizadoFirmasExternas(e.target.checked)} checked={autorizadoFirmasExternas}></Form.Check>
-                                            </Form.Group>
-                                            <Form.Group controlId="objetivoDesempeno">
-                                                <Form.Check disabled={!editMode} inline type="checkbox" label="Autoridad Control de Cambios"
-                                                    value={autoridadControlCambios} onChange={e => setAutoridadControlCambios(e.target.checked)} checked={autoridadControlCambios}></Form.Check>
-                                            </Form.Group>
-                                        </Col>
-                                    </Row>
-                                    <Row>
-                                        <Col>
-                                            <Form.Group controlId="tareasFunciones">
-                                                <Form.Label>Tareas y Funciones</Form.Label>
+                                            <Form.Group controlId="descripcion">
+                                                <Form.Label>{esActividad ? "Descripción del Proyecto Personal" : esPrograma ? "Descripción del Programa" : "Descripción del Proyecto Equipo"}</Form.Label>
                                                 <Form.Control
                                                     disabled={!editMode}
                                                     autoFocus
                                                     autoComplete="off"
-                                                    type="text"
                                                     as="textarea"
-                                                    value={tareasFunciones}
-                                                    onChange={e => setTareasFunciones(e.target.value)}
+                                                    type="text"
+                                                    value={descripcion}
+                                                    onChange={e => setDescripcion(e.target.value)}
                                                 />
                                             </Form.Group>
-                                        </Col>
-                                    </Row>
-                                    <Row>
-                                        {/*<Col>
-                                            <Form.Group controlId="tiposInform">
-                                                <Form.Label>Tipos de Informe</Form.Label>
-                                                <Form.Control
-                                                    multiple
-                                                    autoFocus
-                                                    as="select"
-                                                    disabled={!editMode}
-                                                    value={tiposInformes}
-                                                    onChange={handleMultipleTipoInforme}
-                                                >
-                                                    <option value="1">Comienzo de Proyecto</option>
-                                                    <option value="2">Reuniones Semanales</option>
-                                                    <option value="4">Reuniones Mensuales</option>
-                                                    <option value="8">Reuniones Trimestrales</option>
-                                                    <option value="16">Cuando Ocurran Eventos Importantes</option>
-                                                    <option value="32">Conclusion del proyecto</option>
-                                                </Form.Control>
-                                            </Form.Group>
-                                        </Col>*/}
-                                        <Col>
+                                            {!esPrograma && (
+                                                <Form.Group controlId="analisisViabilidad">
+                                                    <Form.Label>Análisis previo de viabilidad / Caso de Negocio / Criterios de negocio</Form.Label>
+                                                    <Form.Control
+                                                        disabled={!editMode}
+                                                        autoFocus
+                                                        autoComplete="off"
+                                                        type="text"
+                                                        as="textarea"
+                                                        value={analisisViabilidad}
+                                                        onChange={e => setAnalisisViabilidad(e.target.value)}
+                                                    />
+                                                </Form.Group>
+                                            )}
+                                        </div>
+                                    </Collapse>
+                                    <h2
+                                        onClick={() => setOpenSegundaParte(!openSegundaParte)}
+                                        aria-controls="segunda-parte-expand"
+                                        aria-expanded={openSegundaParte}
+                                    >{esActividad ? "Objetivos de la Actividad" : esPrograma ? "Objetivos del Programa" : "Objetivos del Proyecto"} <span className={`bi ${openSegundaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
+                                    <Collapse in={openSegundaParte} >
+                                        <div>
                                             <Row>
                                                 <Col>
-                                                    <Form.Group controlId="incentivo">
-                                                        <Form.Label>Incentivo</Form.Label>
+                                                    <Form.Group controlId="objetivoDescripcion">
+                                                        <Form.Label>Objetivos {esActividad ? "del Proyecto Personal" : esPrograma ? "del Programa" : "del Proyecto Equipo"} y CPD (Costo, Plazo y Desempeño) – De alto Nivel</Form.Label>
                                                         <Form.Control
                                                             disabled={!editMode}
                                                             autoFocus
                                                             autoComplete="off"
                                                             type="text"
                                                             as="textarea"
-                                                            value={incentivo}
-                                                            onChange={e => setIncentivo(e.target.value)}
+                                                            value={objetivoDescripcion}
+                                                            onChange={e => setObjetivoDescripcion(e.target.value)}
+                                                        />
+                                                    </Form.Group>
+                                                </Col>
+                                            </Row>
+                                            {/*<Row>
+                                                <Col>
+                                                    <Form.Group controlId="objetivoCosto">
+                                                        <Form.Label>Costo</Form.Label>
+                                                        <InputGroup>
+                                                            <InputGroup.Prepend>
+                                                                <InputGroup.Text><strong>$</strong></InputGroup.Text>
+                                                            </InputGroup.Prepend>
+                                                            <Form.Control
+                                                                disabled={!editMode}
+                                                                autoFocus
+                                                                autoComplete="off"
+                                                                type="text"
+                                                                value={objetivoCosto}
+                                                                onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, setObjetivoCosto)}
+                                                            />
+                                                        </InputGroup>
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col>
+                                                    <Form.Group controlId="objetivoPlazo">
+                                                        <Form.Label>Plazo</Form.Label>
+                                                        <InputGroup>
+                                                            <InputGroup.Prepend>
+                                                                <InputGroup.Text><i className="bi bi-calendar"></i></InputGroup.Text>
+                                                            </InputGroup.Prepend>
+                                                            <Form.Control
+                                                                disabled={!editMode}
+                                                                autoFocus autoComplete="off" type="text"
+                                                                value={objetivoPlazo}
+                                                                onChange={e => regexValidator(e, /^\d+$/g, setObjetivoPlazo)}
+                                                            />
+                                                            <DropdownButton
+                                                                disabled={!editMode}
+                                                                variant="outline-secondary"
+                                                                title={getPlazoPeriodoTitle()}
+                                                                id="input-dropdown-button"
+                                                                onSelect={(e) => {
+                                                                    setPlazoPeriodo(e)
+
+                                                                }}   
+                                                            >
+                                                                {values.map( val => (
+                                                                    <Dropdown.Item eventKey={val.clave}>{val.valor}</Dropdown.Item>
+                                                                ))}
+                                                            </DropdownButton>
+                                                        </InputGroup>
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col>
+                                                    <Form.Group controlId="objetivoDesempeno">
+                                                        <Form.Label>Desempeño</Form.Label>
+                                                        <InputGroup>
+                                                            <InputGroup.Prepend>
+                                                                <InputGroup.Text><strong>%</strong></InputGroup.Text>
+                                                            </InputGroup.Prepend>
+                                                            <Form.Control
+                                                                disabled={!editMode}
+                                                                autoFocus
+                                                                autoComplete="off"
+                                                                type="text"
+                                                                value={objetivoDesempeno}
+                                                                onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, setObjetivoDesempeno)}
+                                                            />
+                                                        </InputGroup>
+                                                    </Form.Group>
+                                                </Col>
+                                            </Row>*/}
+                                        </div>
+                                    </Collapse>
+                                    <h2
+                                        onClick={() => setOpenQuintaParte(!openQuintaParte)}
+                                        aria-controls="quinta-parte-expand"
+                                        aria-expanded={openQuintaParte}
+                                    >Alcance {esPrograma && "General"} <span className={`bi ${openQuintaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
+                                    <Collapse in={openQuintaParte} >
+                                        <div>
+                                            <Form.Group controlId="recursosRequeridos">
+                                                <Form.Label>Recuros Requeridos {esPrograma && "General"}</Form.Label>
+                                                <Form.Control
+                                                    disabled={!editMode}
+                                                    autoFocus
+                                                    autoComplete="off"
+                                                    type="text"
+                                                    as="textarea"
+                                                    value={recursosRequeridos}
+                                                    onChange={e => setRecursosRequeridos(e.target.value)}
+                                                />
+                                            </Form.Group>
+                                            <Form.Group controlId="supuestos">
+                                                <Form.Label>Supuestos {esPrograma && "General"}</Form.Label>
+                                                <Form.Control
+                                                    disabled={!editMode}
+                                                    autoFocus
+                                                    autoComplete="off"
+                                                    as="textarea"
+                                                    type="text"
+                                                    value={supuestos}
+                                                    onChange={e => setSupuestos(e.target.value)}
+                                                />
+                                            </Form.Group>
+                                            <Form.Group controlId="restricciones">
+                                                <Form.Label>Restricciones {esPrograma && "General"}</Form.Label>
+                                                <Form.Control
+                                                    disabled={!editMode}
+                                                    autoFocus
+                                                    autoComplete="off"
+                                                    type="text"
+                                                    as="textarea"
+                                                    value={restricciones}
+                                                    onChange={e => setRestricciones(e.target.value)}
+                                                />
+                                            </Form.Group>
+                                        </div>
+                                    </Collapse>
+                                    <h2
+                                        onClick={() => setOpenSextaParte(!openSextaParte)}
+                                        aria-controls="quinta-parte-expand"
+                                        aria-expanded={openSextaParte}
+                                    >Nivel De Autoridad Y Decisión Del Director De {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"} 
+
+                                        <span className={`bi ${openSextaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
+                                    <Collapse in={openSextaParte} >
+                                        <div>
+                                            <Row>
+                                                <Col>
+                                                    <Form.Group controlId="maxDesviacionPresupuesto">
+                                                        <Form.Label>Máxima Desviación sobre Presupuesto</Form.Label>
+                                                        <InputGroup>
+                                                            <InputGroup.Prepend>
+                                                                <InputGroup.Text><strong>$</strong></InputGroup.Text>
+                                                            </InputGroup.Prepend>
+                                                            <Form.Control
+                                                                disabled={!editMode}
+                                                                autoFocus
+                                                                autoComplete="off"
+                                                                type="text"
+                                                                value={maxDesvioPresupuesto}
+                                                                onChange={e => regexValidator(e, /^\d+(\.\d{0,2})?$/g, setMaxDesvioPresupuesto)}
+                                                            />
+                                                        </InputGroup>
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col>
+                                                    <Form.Group controlId="maxDesviacionTiempo">
+                                                        <Form.Label>Máxima Desviacón sobre Tiempo</Form.Label>
+                                                        <InputGroup>
+                                                            <InputGroup.Prepend>
+                                                                <InputGroup.Text><i className="bi bi-calendar"></i></InputGroup.Text>
+                                                            </InputGroup.Prepend>
+                                                            <Form.Control
+                                                                disabled={!editMode}
+                                                                autoFocus autoComplete="off" type="text"
+                                                                value={maxDesvioTiempo}
+                                                                onChange={e => regexValidator(e, /^\d+$/g, setMaxDesvioTiempo)}
+                                                            />
+                                                            <DropdownButton
+                                                                disabled={!editMode}
+                                                                variant="outline-secondary"
+                                                                title={getDesviacionPeriodoTitle()}
+                                                                id="input-dropdown-button"
+                                                                onSelect={(e) => {
+                                                                    setMaxDesviacionPeriodo(e)
+
+                                                                }}   
+                                                            >
+                                                                {values.map( val => (
+                                                                    <Dropdown.Item eventKey={val.clave}>{val.valor}</Dropdown.Item>
+                                                                ))}
+                                                            </DropdownButton>
+                                                        </InputGroup>
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col style={{flexDirection: 'column'}} className="d-flex align-items-start justify-content-center">
+                                                    <Form.Group controlId="autorizadoFirmasExternas">
+                                                        <Form.Check disabled={!editMode} inline type="checkbox" label="Autorizado para firmas externos al proyecto"
+                                                            value={autorizadoFirmasExternas} onChange={e => setAutorizadoFirmasExternas(e.target.checked)} checked={autorizadoFirmasExternas}></Form.Check>
+                                                    </Form.Group>
+                                                    <Form.Group controlId="objetivoDesempeno">
+                                                        <Form.Check disabled={!editMode} inline type="checkbox" label="Autoridad Control de Cambios"
+                                                            value={autoridadControlCambios} onChange={e => setAutoridadControlCambios(e.target.checked)} checked={autoridadControlCambios}></Form.Check>
+                                                    </Form.Group>
+                                                </Col>
+                                            </Row>
+                                            <Row>
+                                                <Col>
+                                                    <Form.Group controlId="tareasFunciones">
+                                                        <Form.Label>Tareas y Funciones</Form.Label>
+                                                        <Form.Control
+                                                            disabled={!editMode}
+                                                            autoFocus
+                                                            autoComplete="off"
+                                                            type="text"
+                                                            as="textarea"
+                                                            value={tareasFunciones}
+                                                            onChange={e => setTareasFunciones(e.target.value)}
                                                         />
                                                     </Form.Group>
                                                 </Col>
                                             </Row>
                                             <Row>
-                                                {/*<Col className="h-100">
-                                                    <Form.Group controlId="objetivoDesempeno">
-                                                        <Form.Check disabled={!editMode} inline type="checkbox" label="Autoridad Control de Cambios"
-                                                            value={autoridadControlCambios} onChange={e => setAutoridadControlCambios(e.target.checked)} checked={autoridadControlCambios}></Form.Check>
+                                                {/*<Col>
+                                                    <Form.Group controlId="tiposInform">
+                                                        <Form.Label>Tipos de Informe</Form.Label>
+                                                        <Form.Control
+                                                            multiple
+                                                            autoFocus
+                                                            as="select"
+                                                            disabled={!editMode}
+                                                            value={tiposInformes}
+                                                            onChange={handleMultipleTipoInforme}
+                                                        >
+                                                            <option value="1">Comienzo de Proyecto</option>
+                                                            <option value="2">Reuniones Semanales</option>
+                                                            <option value="4">Reuniones Mensuales</option>
+                                                            <option value="8">Reuniones Trimestrales</option>
+                                                            <option value="16">Cuando Ocurran Eventos Importantes</option>
+                                                            <option value="32">Conclusion del proyecto</option>
+                                                        </Form.Control>
                                                     </Form.Group>
                                                 </Col>*/}
+                                                <Col>
+                                                    <Row>
+                                                        <Col>
+                                                            <Form.Group controlId="incentivo">
+                                                                <Form.Label>Incentivo</Form.Label>
+                                                                <Form.Control
+                                                                    disabled={!editMode}
+                                                                    autoFocus
+                                                                    autoComplete="off"
+                                                                    type="text"
+                                                                    as="textarea"
+                                                                    value={incentivo}
+                                                                    onChange={e => setIncentivo(e.target.value)}
+                                                                />
+                                                            </Form.Group>
+                                                        </Col>
+                                                    </Row>
+                                                    <Row>
+                                                        {/*<Col className="h-100">
+                                                            <Form.Group controlId="objetivoDesempeno">
+                                                                <Form.Check disabled={!editMode} inline type="checkbox" label="Autoridad Control de Cambios"
+                                                                    value={autoridadControlCambios} onChange={e => setAutoridadControlCambios(e.target.checked)} checked={autoridadControlCambios}></Form.Check>
+                                                            </Form.Group>
+                                                        </Col>*/}
+                                                    </Row>
+                                                </Col>
                                             </Row>
-                                        </Col>
-                                    </Row>
-                                </div>
-                            </Collapse>
+                                        </div>
+                                    </Collapse>
 
-                                {/* Boton Guardar*/}
-                                <div className="mt-5 pb-5"> 
-                                {
-                                    editMode && (
-                                        <LoaderButton
-                                            type="submit"
-                                            className="btn-success btn-save"
-                                            disabled={!validateForm()}
-                                            onClick={handleSubmit}
-                                        >
-                                            Guardar Cambios
-                                        </LoaderButton>
+                                        {/* Boton Guardar*/}
+                                        <div className="mt-5 pb-5"> 
+                                        {
+                                            editMode && (
+                                                <LoaderButton
+                                                    type="submit"
+                                                    className="btn-success btn-save"
+                                                    disabled={!validateForm()}
+                                                    onClick={handleSubmit}
+                                                >
+                                                    Guardar Cambios
+                                                </LoaderButton>
+                                            )
+                                        }
+                                        </div>
+
+                                </Tab.Pane>
+                                <Tab.Pane eventKey="Matriz-Interesados">
+                                    <ViewInteresados interesados={interesado} toDo={todo} markAsDoneCallback={id => doneTask(id)} cerrado={cerrado} esPrograma={esPrograma} />
+                                </Tab.Pane>
+                                <Tab.Pane eventKey="Crear-Interesado">
+                                    <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} esPrograma={esPrograma}/>
+                                </Tab.Pane>
+                                <Tab.Pane eventKey="to-do">
+                                    <div className="to-do-container border rounded p-4 bg-white shadow-sm">
+                                        <div className="d-flex justify-content-between align-items-center mb-4">
+                                            <h4 className="m-0 fw-bold">
+                                                <i className="bi bi-check2-square me-2"></i>
+                                                Gestión de tareas
+                                            </h4>
+                                        </div>
+                                        {/* 🔽 Combobox filtro antes del TodoList */}
+                                        <div style={{ marginBottom: "20px" }}>
+                                            <strong>Filtrar Tareas</strong>{" "}
+                                            <select value={taskFilter} onChange={handleFilterChange} class="dropdown-toggle btn btn-outline-primary">                                   
+                                                <option value="false">Abiertas</option>
+                                                <option value="true">Cerradas</option>
+                                                <option value="null">Todas</option>
+                                            </select>
+                                        </div>  
+                                        <TodoList setTaskFilter={setTaskFilter} toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue}></TodoList> 
+                                    </div>                    
+                                </Tab.Pane>
+                                <Tab.Pane eventKey="project-management">
+                                    {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_AGIL || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
+                                        ? <Kanban interesados={interesado} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue} />
+                                        : <p>El tipo de proyecto no es apto para usar el Kanban</p>
+                                    }    
+                                </Tab.Pane>
+                                <Tab.Pane eventKey="Analisis-ambiental">
+                                    {
+                                    (analysisData && analysisData.length > 0) || (respuestaAnalisisAmbiental && respuestaAnalisisAmbiental.length > 0) ? (
+                                        <ViewAnalisisAmbiental analysisData={analysisData} respuestaAnalisisAmbiental={respuestaAnalisisAmbiental} projectID={numericId} cerrado={cerrado}/>
+                                    ) : (
+                                        <AnalisisAmbiental projectID={numericId} cerrado={cerrado}/>
                                     )
-                                }
-                                 </div>
+                                    }
 
-                        </Tab.Pane>
-                        <Tab.Pane eventKey="Matriz-Interesados">
-                            <ViewInteresados interesados={interesado} toDo={todo} markAsDoneCallback={id => doneTask(id)} cerrado={cerrado} esPrograma={esPrograma} />
-                        </Tab.Pane>
-                        <Tab.Pane eventKey="Crear-Interesado">
-                            <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} esPrograma={esPrograma}/>
-                        </Tab.Pane>
-                        <Tab.Pane eventKey="to-do">
-                            <div className="to-do-container border rounded p-4 bg-white shadow-sm">
-                                <div className="d-flex justify-content-between align-items-center mb-4">
-                                    <h4 className="m-0 fw-bold">
-                                        <i className="bi bi-check2-square me-2"></i>
-                                        Gestión de tareas
-                                    </h4>
-                                </div>
-                                {/* 🔽 Combobox filtro antes del TodoList */}
-                                <div style={{ marginBottom: "20px" }}>
-                                    <strong>Filtrar Tareas</strong>{" "}
-                                    <select value={taskFilter} onChange={handleFilterChange} class="dropdown-toggle btn btn-outline-primary">                                   
-                                        <option value="false">Abiertas</option>
-                                        <option value="true">Cerradas</option>
-                                        <option value="null">Todas</option>
-                                    </select>
-                                </div>  
-                                <TodoList setTaskFilter={setTaskFilter} toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue}></TodoList> 
-                            </div>                    
-                        </Tab.Pane>
-                        <Tab.Pane eventKey="project-management">
-                            {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_AGIL || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
-                                ? <Kanban interesados={interesado} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue} />
-                                : <p>El tipo de proyecto no es apto para usar el Kanban</p>
-                            }    
-                        </Tab.Pane>
-                        <Tab.Pane eventKey="Analisis-ambiental">
-                            {
-                            (analysisData && analysisData.length > 0) || (respuestaAnalisisAmbiental && respuestaAnalisisAmbiental.length > 0) ? (
-                                <ViewAnalisisAmbiental analysisData={analysisData} respuestaAnalisisAmbiental={respuestaAnalisisAmbiental} projectID={numericId} cerrado={cerrado}/>
-                            ) : (
-                                <AnalisisAmbiental projectID={numericId} cerrado={cerrado}/>
-                            )
-                            }
+                                </Tab.Pane>
 
-                        </Tab.Pane>
+                                {/* --- Alcance --- */}
+                                <Tab.Pane eventKey="alcance">
+                                    {!editMode && !cerrado && (
+                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar interesados </p>
+                                    )}
+                                    <InputAlcanceList
+                                        alcanceEntregables={alcanceEntregables}
+                                        setAlcanceEntregables={setAlcanceEntregables}
+                                        editMode={editMode}
+                                        ejecutado={ejecutado}
+                                        cerrado={cerrado}
+                                        onSummaryChange={setPorcentajeCompletado}
+                                        esPrograma={esPrograma}
+                                        onPerformanceChange={setDesempenoValue}
+                                    />
+                                    <div className="mt-5 pb-5">
+                                        {
+                                            editMode && (
+                                                <LoaderButton
+                                                    type="submit"
+                                                    className="btn-success btn-save"
+                                                    disabled={!validateForm()}
+                                                    onClick={handleSubmit}
+                                                >
+                                                    Guardar Cambios
+                                                </LoaderButton>
+                                            )
+                                        }
+                                    </div>
+                                </Tab.Pane>
 
-                        {/* --- Alcance --- */}
-                        <Tab.Pane eventKey="alcance">
-                            {!editMode && !cerrado && (
-                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar interesados </p>
-                            )}
-                            <InputAlcanceList
-                                alcanceEntregables={alcanceEntregables}
-                                setAlcanceEntregables={setAlcanceEntregables}
-                                editMode={editMode}
-                                ejecutado={ejecutado}
-                                cerrado={cerrado}
-                                onSummaryChange={setPorcentajeCompletado}
-                                esPrograma={esPrograma}
-                                onPerformanceChange={setDesempenoValue}
-                            />
-                            <div className="mt-5 pb-5">
-                                {
-                                    editMode && (
-                                        <LoaderButton
-                                            type="submit"
-                                            className="btn-success btn-save"
-                                            disabled={!validateForm()}
-                                            onClick={handleSubmit}
-                                        >
-                                            Guardar Cambios
-                                        </LoaderButton>
-                                    )
-                                }
-                            </div>
-                        </Tab.Pane>
+                                {/* --- Hitos --- */}
+                                <Tab.Pane eventKey="hitos">
+                                    {!editMode && !cerrado && (
+                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar hitos </p>
+                                    )}
+                                    <InputHitosList
+                                        tiempoDuracion={tiempoDuracion}
+                                        setTiempoDuracion={setTiempoDuracion}
+                                        tiempoFechasCriticas={tiempoFechasCriticas}
+                                        setTiempoFechasCriticas={setTiempoFechasCriticas}
+                                        editMode={editMode}
+                                        showDuration={showDuration}
+                                        ejecutado={ejecutado}
+                                        cerrado={cerrado}
+                                        onSummaryChange={setPorcentajeCompletado}
+                                        onPerformanceChange={setDesempenoValue}
+                                    />
+                                    <div className="mt-5 pb-5">
+                                        {
+                                            editMode && (
+                                                <LoaderButton
+                                                    type="submit"
+                                                    className="btn-success btn-save"
+                                                    disabled={!validateForm()}
+                                                    onClick={handleSubmit}
+                                                >
+                                                    Guardar Cambios
+                                                </LoaderButton>
+                                            )
+                                        }
+                                    </div>
+                                </Tab.Pane>
 
-                        {/* --- Hitos --- */}
-                        <Tab.Pane eventKey="hitos">
-                            {!editMode && !cerrado && (
-                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar hitos </p>
-                            )}
-                            <InputHitosList
-                                tiempoDuracion={tiempoDuracion}
-                                setTiempoDuracion={setTiempoDuracion}
-                                tiempoFechasCriticas={tiempoFechasCriticas}
-                                setTiempoFechasCriticas={setTiempoFechasCriticas}
-                                editMode={editMode}
-                                showDuration={showDuration}
-                                ejecutado={ejecutado}
-                                cerrado={cerrado}
-                                onSummaryChange={setPorcentajeCompletado}
-                                onPerformanceChange={setDesempenoValue}
-                            />
-                            <div className="mt-5 pb-5">
-                                {
-                                    editMode && (
-                                        <LoaderButton
-                                            type="submit"
-                                            className="btn-success btn-save"
-                                            disabled={!validateForm()}
-                                            onClick={handleSubmit}
-                                        >
-                                            Guardar Cambios
-                                        </LoaderButton>
-                                    )
-                                }
-                            </div>
-                        </Tab.Pane>
+                                {/* --- Costos --- */}
+                                <Tab.Pane eventKey="costos">
+                                    {!editMode && !cerrado && (
+                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar costos </p>
+                                    )}
+                                    <InputCostosList
+                                        costoEntregable={costoEntregable}
+                                        setCostoEntregable={setCostoEntregable}
+                                        costoReservaContingencia={costoReservaContingencia}
+                                        setCostoReservaContingencia={setCostoReservaContingencia}
+                                        costoReservaContingenciaReal={costoReservaContingenciaReal}
+                                        setCostoReservaContingenciaReal={setCostoReservaContingenciaReal}
+                                        costoReservaGestion={costoReservaGestion}
+                                        setCostoReservaGestion={setCostoReservaGestion}
+                                        costoReservaGestionReal={costoReservaGestionReal}
+                                        setCostoReservaGestionReal={setCostoReservaGestionReal}
+                                        presupuesto={presupuesto}
+                                        editMode={editMode}
+                                        regexValidator={regexValidator}
+                                        ejecutado={ejecutado}
+                                        cerrado={cerrado}
+                                        onSummaryChange={setPorcentajeCompletado}
+                                        onPerformanceChange={setDesempenoValue}
+                                    />
+                                    <div className="mt-5 pb-5">
+                                        {
+                                            editMode && (
+                                                <LoaderButton
+                                                    type="submit"
+                                                    className="btn-success btn-save"
+                                                    disabled={!validateForm()}
+                                                    onClick={handleSubmit}
+                                                >
+                                                    Guardar Cambios
+                                                </LoaderButton>
+                                            )
+                                        }
+                                    </div>
+                                </Tab.Pane>
 
-                        {/* --- Costos --- */}
-                        <Tab.Pane eventKey="costos">
-                            {!editMode && !cerrado && (
-                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar costos </p>
-                            )}
-                            <InputCostosList
-                                costoEntregable={costoEntregable}
-                                setCostoEntregable={setCostoEntregable}
-                                costoReservaContingencia={costoReservaContingencia}
-                                setCostoReservaContingencia={setCostoReservaContingencia}
-                                costoReservaContingenciaReal={costoReservaContingenciaReal}
-                                setCostoReservaContingenciaReal={setCostoReservaContingenciaReal}
-                                costoReservaGestion={costoReservaGestion}
-                                setCostoReservaGestion={setCostoReservaGestion}
-                                costoReservaGestionReal={costoReservaGestionReal}
-                                setCostoReservaGestionReal={setCostoReservaGestionReal}
-                                presupuesto={presupuesto}
-                                editMode={editMode}
-                                regexValidator={regexValidator}
-                                ejecutado={ejecutado}
-                                cerrado={cerrado}
-                                onSummaryChange={setPorcentajeCompletado}
-                                onPerformanceChange={setDesempenoValue}
-                            />
-                            <div className="mt-5 pb-5">
-                                {
-                                    editMode && (
-                                        <LoaderButton
-                                            type="submit"
-                                            className="btn-success btn-save"
-                                            disabled={!validateForm()}
-                                            onClick={handleSubmit}
-                                        >
-                                            Guardar Cambios
-                                        </LoaderButton>
-                                    )
-                                }
-                            </div>
-                        </Tab.Pane>
+                                {/* --- Calidad --- */}
+                                <Tab.Pane eventKey="calidad">
+                                    {!editMode && !cerrado && (
+                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar calidad </p>
+                                    )}
+                                    <InputCalidadList
+                                        costoEntregable={costoEntregable}
+                                        calidadMetricas={calidadMetricas}
+                                        setCalidadMetricas={setCalidadMetricas}
+                                        editMode={editMode}
+                                        ejecutado={ejecutado}
+                                        cerrado={cerrado}
+                                        onSummaryChange={setPorcentajeCompletado}
+                                    />
+                                    <div className="mt-5 pb-5">
+                                        {
+                                            editMode && (
+                                                <LoaderButton
+                                                    type="submit"
+                                                    className="btn-success btn-save"
+                                                    disabled={!validateForm()}
+                                                    onClick={handleSubmit}
+                                                >
+                                                    Guardar Cambios
+                                                </LoaderButton>
+                                            )
+                                        }
+                                    </div>
+                                </Tab.Pane>
+                                
+                                {/* --- Riesgos --- */}
+                                <Tab.Pane eventKey="riesgos">
+                                    {!editMode && !cerrado && (
+                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar riesgos </p>
+                                    )}
+                                    <Form.Group controlId="riesgos-criticos">
+                                        <InputRiesgosList
+                                            disabled={!editMode}
+                                            riesgosList={riesgos}
+                                            setRiesgosList={setRiesgos}
+                                            interesados={interesado}
+                                            ejecutado={ejecutado}
+                                            cerrado={cerrado}
+                                            onSummaryChange={setRiesgoPromedio}
+                                        />
+                                    </Form.Group>
 
-                        {/* --- Calidad --- */}
-                        <Tab.Pane eventKey="calidad">
-                            {!editMode && !cerrado && (
-                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar calidad </p>
-                            )}
-                            <InputCalidadList
-                                costoEntregable={costoEntregable}
-                                calidadMetricas={calidadMetricas}
-                                setCalidadMetricas={setCalidadMetricas}
-                                editMode={editMode}
-                                ejecutado={ejecutado}
-                                cerrado={cerrado}
-                                onSummaryChange={setPorcentajeCompletado}
-                            />
-                            <div className="mt-5 pb-5">
-                                {
-                                    editMode && (
-                                        <LoaderButton
-                                            type="submit"
-                                            className="btn-success btn-save"
-                                            disabled={!validateForm()}
-                                            onClick={handleSubmit}
-                                        >
-                                            Guardar Cambios
-                                        </LoaderButton>
-                                    )
-                                }
-                            </div>
-                        </Tab.Pane>
-                        
-                        {/* --- Riesgos --- */}
-                        <Tab.Pane eventKey="riesgos">
-                            {!editMode && !cerrado && (
-                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar riesgos </p>
-                            )}
-                            <Form.Group controlId="riesgos-criticos">
-                                <InputRiesgosList
-                                    disabled={!editMode}
-                                    riesgosList={riesgos}
-                                    setRiesgosList={setRiesgos}
-                                    interesados={interesado}
-                                    ejecutado={ejecutado}
-                                    cerrado={cerrado}
-                                    onSummaryChange={setRiesgoPromedio}
-                                />
-                            </Form.Group>
+                                    {/* Boton Guardar*/}
+                                    <div className="mt-5 pb-5">
+                                        {
+                                            editMode && (
+                                                <LoaderButton
+                                                    type="submit"
+                                                    className="btn-success btn-save"
+                                                    disabled={!validateForm()}
+                                                    onClick={handleSubmit}
+                                                >
+                                                    Guardar Cambios
+                                                </LoaderButton>
+                                            )
+                                        }
+                                    </div>
 
-                            {/* Boton Guardar*/}
-                            <div className="mt-5 pb-5">
-                                {
-                                    editMode && (
-                                        <LoaderButton
-                                            type="submit"
-                                            className="btn-success btn-save"
-                                            disabled={!validateForm()}
-                                            onClick={handleSubmit}
-                                        >
-                                            Guardar Cambios
-                                        </LoaderButton>
-                                    )
-                                }
-                            </div>
+                                </Tab.Pane>
+                                <Tab.Pane eventKey="gantt">
+                                    {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
+                                        ? <GanttChart
+                                            projectId={projectId}
+                                            interesados={interesado}
+                                            cerrado={cerrado}
+                                            ejecutado={ejecutado}
+                                            onSummaryChange={setPorcentajeCompletado}
+                                            onPerformanceChange={setDesempenoValue}
+                                            esPrograma={esPrograma}
+                                        />
+                                        : <p>El tipo de proyecto no es apto para usar el Gantt</p>
+                                    }
 
-                        </Tab.Pane>
-                        <Tab.Pane eventKey="gantt">
-                            {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
-                                ? <GanttChart
-                                    projectId={projectId}
-                                    interesados={interesado}
-                                    cerrado={cerrado}
-                                    ejecutado={ejecutado}
-                                    onSummaryChange={setPorcentajeCompletado}
-                                    onPerformanceChange={setDesempenoValue}
-                                    esPrograma={esPrograma}
-                                />
-                                : <p>El tipo de proyecto no es apto para usar el Gantt</p>
-                            }
-
-                        </Tab.Pane>
-                        <Tab.Pane eventKey="pizarra">
-                            <Whiteboard key={projectId}
-                                projectId={projectId}
-                                cerrado={cerrado}
-                            />
-                        </Tab.Pane>
-                        <Tab.Pane eventKey="beneficios">
-                            {!editMode && !cerrado && (
-                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar beneficios </p>
-                            )}
-                            <InputBeneficiosList
-                                beneficiosList={beneficios}
-                                setBeneficiosList={setBeneficios}
-                                editMode={editMode}
-                                ejecutado={ejecutado}
-                                cerrado={cerrado}
-                                onSummaryChange={setPorcentajeCompletado} // o la función que maneje el resumen
-                            />
-                            {/* Boton Guardar*/}
-                            <div className="mt-5 pb-5">
-                                {
-                                    editMode && (
-                                        <LoaderButton
-                                            type="submit"
-                                            className="btn-success btn-save"
-                                            disabled={!validateForm()}
-                                            onClick={handleSubmit}
-                                        >
-                                            Guardar Cambios
-                                        </LoaderButton>
-                                    )
-                                }
-                            </div>
-                        </Tab.Pane>  
-                        <Tab.Pane eventKey="leccionesAprendidas">
-                            <LeccionesAprendidas
-                                data={leccionesAprendidas}
-                                onSave={handleSubmitLeccionesAprendidas}
-                                cerrado={cerrado} // Prop que ya existe en ProyectoDetail
-                            />
-                        </Tab.Pane>
-                    </Tab.Content>
-                </div>
-            </Tab.Container>
+                                </Tab.Pane>
+                                <Tab.Pane eventKey="pizarra">
+                                    <Whiteboard key={projectId}
+                                        projectId={projectId}
+                                        cerrado={cerrado}
+                                    />
+                                </Tab.Pane>
+                                <Tab.Pane eventKey="beneficios">
+                                    {!editMode && !cerrado && (
+                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar beneficios </p>
+                                    )}
+                                    <InputBeneficiosList
+                                        beneficiosList={beneficios}
+                                        setBeneficiosList={setBeneficios}
+                                        editMode={editMode}
+                                        ejecutado={ejecutado}
+                                        cerrado={cerrado}
+                                        onSummaryChange={setPorcentajeCompletado} // o la función que maneje el resumen
+                                    />
+                                    {/* Boton Guardar*/}
+                                    <div className="mt-5 pb-5">
+                                        {
+                                            editMode && (
+                                                <LoaderButton
+                                                    type="submit"
+                                                    className="btn-success btn-save"
+                                                    disabled={!validateForm()}
+                                                    onClick={handleSubmit}
+                                                >
+                                                    Guardar Cambios
+                                                </LoaderButton>
+                                            )
+                                        }
+                                    </div>
+                                </Tab.Pane>  
+                                <Tab.Pane eventKey="leccionesAprendidas">
+                                    <LeccionesAprendidas
+                                        data={leccionesAprendidas}
+                                        onSave={handleSubmitLeccionesAprendidas}
+                                        cerrado={cerrado} // Prop que ya existe en ProyectoDetail
+                                    />
+                                </Tab.Pane>
+                            </Tab.Content>
+                        </div>
+                    </Tab.Container>
+                </>
+            )}                        
         </div>
     )
 }
@@ -1871,7 +2063,12 @@ const mapStateToProps = state => ({
 
     // --- Logs cambio de estados ---
     logs: logSelectors.getLogs(state),
-    logsLoading: logSelectors.getIsLoading(state)
+    logsLoading: logSelectors.getIsLoading(state),
+
+    // --- INFORME DE AVANCE ---
+    informeAvance: informeSelectors.getInformeActual(state),
+    listaInformes: informeSelectors.getListaInformes(state),
+    informeLoading: informeSelectors.getIsLoading(state),
 });
 
 export default connect(mapStateToProps)(ProyectoDetail);

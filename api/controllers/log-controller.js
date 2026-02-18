@@ -21,9 +21,11 @@ const getHistorialEstados = async (req, res) => {
         const dataFormatted = historial.map(log => ({
             id: log.id,
             fecha: log.timestamp,
-            usuario: `${log.Usuario?.Persona?.nombre || 'Sistema'} ${log.Usuario?.Persona?.apellido || ''}`,
-            estadoAnterior: log.details?.status?.old || 'N/A',
-            estadoNuevo: log.details?.status?.new || 'N/A'
+            usuario: (log.Usuario && log.Usuario.Persona)
+                ? (log.Usuario.Persona.nombre || 'Sistema') + ' ' + (log.Usuario.Persona.apellido || '')
+                : 'Sistema',
+            estadoAnterior: (log.details && log.details.status && log.details.status.old) || 'N/A',
+            estadoNuevo: (log.details && log.details.status && log.details.status.new) || 'N/A'
         }));
 
         return res.status(200).json({

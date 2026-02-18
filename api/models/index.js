@@ -46,6 +46,7 @@ const models = {
   PermisoProyecto: require('./permiso-proyecto')(db, Sequelize),
   UsuarioProyecto: require('./usuario-proyecto')(db, Sequelize),
   EncuestaSatisfaccion: require('./encuesta-satisfaccion')(db, Sequelize),
+  InformeAvance: require('./informe-avance')(db, Sequelize),
 };
 
 Object.keys(models).forEach((modelKey) => {

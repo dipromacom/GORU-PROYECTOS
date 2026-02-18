@@ -103,6 +103,9 @@ const InputHitosList = ({
                             <span className="fw-bold text-primary small">{porcentajeCompletado}%</span>
                         </div>
                         <ProgressBar now={porcentajeCompletado} style={{ height: '20px' }} />
+                        <small className="text-muted d-block mt-1">
+                            Fórmula: (Hitos logrados / Total hitos programados) × 100
+                        </small>
                     </Col>
                     <Col md={6} className="mb-3">
                         <div className="d-flex justify-content-between align-items-center">
@@ -116,6 +119,9 @@ const InputHitosList = ({
                             variant={performanceIndex >= 1 ? "success" : performanceIndex >= 0.8 ? "warning" : "danger"}
                             style={{ height: '20px' }}
                         />
+                        <small className="text-muted d-block mt-1">
+                            Fórmula: Hitos cerrados a tiempo / Hitos que debían estar listos hoy
+                        </small>
                     </Col>
                 </Row>
             )}

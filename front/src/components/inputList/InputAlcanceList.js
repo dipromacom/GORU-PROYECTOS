@@ -95,6 +95,9 @@ const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode,
                             <span className="fw-bold text-primary small">{porcentajeCompletado}%</span>
                         </div>
                         <ProgressBar now={porcentajeCompletado} style={{ height: '20px' }} />
+                        <small className="text-muted d-block mt-1">
+                            Fórmula: (Entregables terminados / Total planeados) × 100
+                        </small>
                     </Col>
                     <Col md={6} className="mb-3">
                         <div className="d-flex justify-content-between align-items-center">
@@ -108,6 +111,9 @@ const InputAlcanceList = ({ alcanceEntregables, setAlcanceEntregables, editMode,
                             variant={performanceIndex >= 1 ? "success" : performanceIndex >= 0.8 ? "warning" : "danger"}
                             style={{ height: '20px' }}
                         />
+                        <small className="text-muted d-block mt-1">
+                            Fórmula: Entregables a tiempo / Entregables que debían estar listos hoy
+                        </small>
                     </Col>
                 </Row>
             )}

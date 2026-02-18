@@ -103,6 +103,9 @@ const TodoList = ({ toDo = [], persona, usuario, setToDos, enableCheck = true, s
                             ? "Eficiencia óptima: Tareas al día o adelantadas."
                             : "Retraso detectado: Hay tareas cerradas fuera de fecha o pendientes vencidas."}
                     </div>
+                    <small className="text-muted d-block" style={{ fontSize: '10px' }}>
+                        Fórmula SPI: Tareas completadas a tiempo / Tareas que debían completarse hoy
+                    </small>
                 </div>
             )}
             {toDo && toDo.length > 0 ? (

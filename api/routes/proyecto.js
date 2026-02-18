@@ -5,7 +5,9 @@ const encuestaController = require('../controllers/encuesta-satisfaccion');
 const GanttController = require('../controllers/gantt');
 const WhiteBoartController = require('../controllers/whiteboard');
 const RolProyectoController = require('../controllers/rol-proyecto');
-const logController = require('../controllers/log-controller')
+const logController = require('../controllers/log-controller');
+const informeAvanceController = require('../controllers/informe-avance');
+const permisoMiddleware = require('../utils/permiso-middleware');
 
 const router = express.Router();
 
@@ -67,5 +69,12 @@ router.get('/proyecto/encuesta-satisfaccion/todas/:proyectoId', encuestaControll
 router.post('/proyecto/encuesta-satisfaccion/rechazar',encuestaController.rechazarEncuesta);
 
 router.get('/proyecto/:proyectoId/estados', logController.getHistorialEstados);
+
+// Rutas de informes de avance
+router.get('/proyecto/:proyectoId/informes-avance', informeAvanceController.getAllInformesByProyecto);
+router.get('/proyecto/informe-avance/:id', informeAvanceController.getInformeById);
+router.post('/proyecto/informe-avance', informeAvanceController.createInforme);
+router.put('/proyecto/informe-avance/:id', informeAvanceController.updateInforme);
+router.delete('/proyecto/informe-avance/:id', informeAvanceController.deleteInforme);
 
 module.exports = router;

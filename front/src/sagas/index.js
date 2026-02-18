@@ -18,6 +18,7 @@ import { all, spawn, call } from "redux-saga/effects";
 import rolProyecto from "./rolProyecto"
 import encuesta from "./encuesta-satisfaccion"
 import projectLogSagas from "./projectLogSagas";
+import informeAvance from "./informe-avance";
 
 
 
@@ -41,7 +42,8 @@ const sagas = [
   ...tipoProyecto,
   ...rolProyecto,
   ...encuesta,
-  ...projectLogSagas
+  ...projectLogSagas,
+  ...informeAvance
 ];
 
 export default function* rootSaga() {

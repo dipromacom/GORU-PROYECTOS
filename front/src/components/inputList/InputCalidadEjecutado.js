@@ -56,6 +56,9 @@ const InputCalidadEjecutado = ({ calidadMetricas, setCalidadMetricas, editMode, 
                     variant="success"
                     style={{ height: '20px', borderRadius: '5px' }}
                 />
+                <small className="text-muted d-block mt-1">
+                    Fórmula: (Requisitos logrados / Total requisitos programados) × 100
+                </small>
             </div>
 
             <div>

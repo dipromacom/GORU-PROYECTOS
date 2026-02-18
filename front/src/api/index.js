@@ -298,3 +298,9 @@ export const rechazarEncuesta = (proyectoId) => apiWithToken.post('/proyecto/enc
 export const getAllEncuestasProyecto = (proyectoId) => apiWithToken.get(`/proyecto/encuesta-satisfaccion/todas/${proyectoId}`);
 export const getProjectStatusLogs = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/estados`);
 
+// Informes de Avance
+export const getAllInformesAvance = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/informes-avance`);
+export const getInformeAvanceById = (id) => apiWithToken.get(`/proyecto/informe-avance/${id}`);
+export const createInformeAvance = (data) => apiWithToken.post(`/proyecto/informe-avance`, data);
+export const updateInformeAvance = (id, data) => apiWithToken.put(`/proyecto/informe-avance/${id}`, data);
+export const deleteInformeAvance = (id) => apiWithToken.delete(`proyecto/informe-avance/${id}`);
