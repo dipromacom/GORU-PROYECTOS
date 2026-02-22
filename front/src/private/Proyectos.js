@@ -27,6 +27,8 @@ import { MdOutlineDoNotDisturbOn, MdSettingsBackupRestore } from "react-icons/md
 import { FaLock } from "react-icons/fa"; // ícono de cerrado
 import Modal from "react-bootstrap/Modal";
 
+import DashboardModal from "../components/dashboard/dashboardModal";
+
 
 function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, dateFilterInput, filtersExpanded }) {
 
@@ -56,6 +58,8 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   const [fechaCierre, setFechaCierre] = useState(moment().format("YYYY-MM-DD"));
   const [isRestricted, setIsRestricted] = useState(false);
   const [subscriptionMode, setSubscriptionMode] = useState(null);
+
+  const [showDashboard, setShowDashboard] = useState(false);
 
   const currentConfig = useMemo(() => {
     const currentPath = location.pathname;
@@ -523,6 +527,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
               newLabel={currentConfig.newLabel}
               total={projectList.length}
               newButtonAction={() => handleClickNewProyect()}
+              DashboardButtonAction={() => setShowDashboard(true)}
             />
 
           {/* <SubMenu
@@ -692,6 +697,13 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
             </Modal>
           </>
         )}
+      <DashboardModal
+        show={showDashboard}
+        onHide={() => setShowDashboard(false)}
+        projectList={projectList}        // lista ya filtrada por modo desde el reducer
+        modo={getCurrentMode()}          // "P" | "A" | "PR"
+      />
+
     </div>
   );
 }

@@ -37,7 +37,7 @@ const getInformeById = async (req, res) => {
 const createInforme = async (req, res) => {
     try {
         const data = req.body;
-        const usuarioId = data.usuarioId || req.user?.id;
+        const usuarioId = data.usuarioId || (req.user && req.user.id);
 
         if (!usuarioId) {
             return res.status(400).json({
