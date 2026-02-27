@@ -304,3 +304,19 @@ export const getInformeAvanceById = (id) => apiWithToken.get(`/proyecto/informe-
 export const createInformeAvance = (data) => apiWithToken.post(`/proyecto/informe-avance`, data);
 export const updateInformeAvance = (id, data) => apiWithToken.put(`/proyecto/informe-avance/${id}`, data);
 export const deleteInformeAvance = (id) => apiWithToken.delete(`proyecto/informe-avance/${id}`);
+
+// --- ENDPOINTS DASHBOARD ---
+export const getTareasDashboard = (usuarioId, modo, done = null) =>
+  apiWithToken.get(`/tarea/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}${done !== null ? `&done=${done}` : ''}`);
+
+export const getEncuestasDashboard = (usuarioId, modo) =>
+  apiWithToken.get(`/proyecto/dashboard/encuestas/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);
+
+export const getInformesDashboard = (usuarioId, modo) =>
+  apiWithToken.get(`/proyecto/dashboard/informes/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);
+
+export const getGanttDashboard = (usuarioId, modo) =>
+  apiWithToken.get(`/proyecto/dashboard/gantt/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);
+
+export const getKanbanDashboard = (usuarioId, modo) =>
+  apiWithToken.get(`/proyecto/dashboard/kanban/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);

@@ -361,11 +361,31 @@ const getAllEncuestasByProyecto = async (proyectoId) => {
     }
 };
 
+const getEncuestasByUser = async (usuarioId, modo) => {
+    return await EncuestaSatisfaccion.findAll({
+        include: [{
+            model: Proyecto,
+            as: 'Proyecto',
+            where: { modo },
+            required: true,
+            include: [{
+                model: Usuario,
+                as: 'Usuarios',
+                where: { id: usuarioId },
+                required: true,
+                through: { attributes: [] }
+            }]
+        }],
+        order: [['createdAt', 'DESC']]
+    });
+};
+
 module.exports = {
     getEncuestaByProyectoUsuario,
     getEncuestasByProyecto,
     getAllEncuestasByProyecto,
     createOrUpdateEncuesta,
     rechazarEncuesta,
-    getEstadisticasEncuesta
+    getEstadisticasEncuesta,
+    getEncuestasByUser
 };

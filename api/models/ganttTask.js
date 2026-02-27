@@ -70,6 +70,12 @@ module.exports = (db, Sequelize) => {
     }, {
         tableName: 'gantt_task'
     });
+    GanttTask.associate = (models) => {
+        GanttTask.belongsTo(models.Proyecto, {
+            as: 'Proyecto',
+            foreignKey: 'project_id'
+        });
+    };
 
     return GanttTask;
 };

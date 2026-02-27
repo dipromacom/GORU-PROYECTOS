@@ -33,7 +33,7 @@ module.exports = (db, Sequelize) => {
     });
 
     KanbanStatus.associate = (models) => {
-        const { KanbanTask } = models;
+        const { KanbanTask, Proyecto } = models;
 
         KanbanStatus.tasks = KanbanStatus.hasMany(
             KanbanTask,{
@@ -41,7 +41,12 @@ module.exports = (db, Sequelize) => {
                 foreignKey: 'status_id'
             }
         )
+        KanbanStatus.Proyecto = KanbanStatus.belongsTo(Proyecto, {
+            as: 'Proyecto',
+            foreignKey: 'project_id'
+        });
     }
+
 
     return KanbanStatus
 }

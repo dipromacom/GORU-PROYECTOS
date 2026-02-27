@@ -58,7 +58,7 @@ module.exports = (db, Sequelize) => {
   Proyecto.associate = (models) => {
     const {
       TipoProyecto, Empresa, Departamento, DirectorProyecto,
-      Patrocinador, Evaluacion, Usuario, UsuarioProyecto, RolProyecto, InformeAvance
+      Patrocinador, Evaluacion, Usuario, UsuarioProyecto, RolProyecto, InformeAvance, GanttTask, KanbanStatus,
     } = models;
 
     Proyecto.TipoProyecto = Proyecto.belongsTo(TipoProyecto, {
@@ -111,6 +111,16 @@ module.exports = (db, Sequelize) => {
     Proyecto.InformeAvance = Proyecto.hasMany(InformeAvance, {
       as: 'InformesAvance',
       foreignKey: 'proyecto_id',
+    });
+
+    Proyecto.GanttTasks = Proyecto.hasMany(GanttTask, {
+      as: 'GanttTasks',
+      foreignKey: 'project_id'
+    });
+
+    Proyecto.KanbanStatuses = Proyecto.hasMany(KanbanStatus, {
+      as: 'KanbanStatuses',
+      foreignKey: 'project_id'
     });
 
 

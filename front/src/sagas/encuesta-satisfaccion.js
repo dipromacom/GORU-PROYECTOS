@@ -102,10 +102,21 @@ function* rejectSurveySaga(action) {
     }
 }
 
+function* getSurveysDashboardSaga(action) {
+    try {
+        const response = yield call(Api.getEncuestasDashboard, action.usuarioId, action.modo);
+        const payload = response.data.data || response.data;
+        yield put({ type: types.GET_SURVEYS_DASHBOARD_SUCCESS, payload });
+    } catch (error) {
+        yield put({ type: types.GET_SURVEYS_DASHBOARD_ERROR, error: error.message });
+    }
+}
+
 export default [
     takeLatest(types.CHECK_SURVEY_STATUS_REQUEST, checkSurveyStatusSaga),
     takeLatest(types.GET_SURVEYS_PROJECT_REQUEST, getSurveysProjectSaga),
     takeLatest(types.GET_ALL_SURVEYS_REQUEST, getAllSurveysSaga), // ✅ NUEVO
     takeLatest(types.SAVE_SURVEY_REQUEST, saveSurveySaga),
     takeLatest(types.REJECT_SURVEY_REQUEST, rejectSurveySaga),
+    takeLatest(types.GET_SURVEYS_DASHBOARD_REQUEST, getSurveysDashboardSaga)
 ];

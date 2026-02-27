@@ -158,10 +158,22 @@ const getAllEncuestasProyecto = async (req, res) => {
     }
 };
 
+const getEncuestasDashboard = async (req, res) => {
+    try {
+        const { usuarioId } = req.params;
+        const { modo } = req.query;
+        const data = await EncuestaUtils.getEncuestasByUser(usuarioId, modo);
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     verificarEstadoEncuesta,
     getEncuestasProyecto,
     guardarEncuesta,
     getAllEncuestasProyecto,
-    rechazarEncuesta
+    rechazarEncuesta,
+    getEncuestasDashboard
 };

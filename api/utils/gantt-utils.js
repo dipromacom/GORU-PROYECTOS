@@ -1,10 +1,9 @@
 const { Op } = require('sequelize');
 const db = require('../db');
-const { GanttTask } = require('../models/index');
+const { GanttTask, Proyecto, Usuario } = require('../models/index');
 const path = require('path');
 const file = path.basename(__filename);
 const logger = require('../logger/logger');
-
 /**
  * 🔹 Recalcula ruta crítica de un proyecto
  * Marca como `is_critical = true` las tareas que forman parte del camino más largo.
@@ -207,6 +206,32 @@ const getGantt = async ({ projectId }) => {
     }
 };
 
+const getGanttByUser = async ({ usuarioId, modo }) => {
+    try {
+        const tasks = await GanttTask.findAll({
+            include: [{
+                model: Proyecto,
+                as: 'Proyecto',
+                where: { modo: modo },
+                required: true,
+                include: [{
+                    model: Usuario,
+                    as: 'Usuarios', 
+                    where: { id: parseInt(usuarioId) }, 
+                    required: true,
+                    through: { attributes: [] }
+                }]
+            }],
+            order: [['start_date', 'ASC']]
+        });
+        return tasks;
+    } catch (e) {
+
+        console.error("Falla en GanttUtils.getGanttByUser:", e.message);
+        throw e;
+    }
+};
+
 /**
  * 🔹 Elimina una tarea (si es grupo, también sus subtareas)
  */
@@ -250,5 +275,6 @@ const deleteGantt = async ({ projectId, taskId }) => {
 module.exports = {
     setGantt,
     getGantt,
-    deleteGantt
+    deleteGantt,
+    getGanttByUser
 };

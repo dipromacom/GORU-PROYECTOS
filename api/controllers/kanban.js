@@ -56,6 +56,57 @@ const getKanban = async (req, res) => {
     }
 }
 
+const getKanbanByUser = async (req, res) => {
+    const { usuarioId } = req.params;
+    const { modo } = req.query;
+    try {
+        const statusQuery = await KanbanUtils.getKanbanByUser({ usuarioId, modo });
+
+        let allStatusIds = [];
+        let allStatusById = {};
+        let allTasksIds = [];
+        let allTasksById = {};
+
+        for (let index = 0; index < statusQuery.length; index++) {
+            const tempStatus = statusQuery[index];
+            allStatusIds.push(tempStatus.id);
+
+            const innerTasks = [];
+            for (let indexTasks = 0; indexTasks < tempStatus.tasks.length; indexTasks++) {
+                const tempTask = tempStatus.tasks[indexTasks];
+                innerTasks.push(tempTask.id);
+                allTasksIds.push(tempTask.id);
+
+                allTasksById[tempTask.id] = {
+                    id: tempTask.id,
+                    content: tempTask.content,
+                    priority: tempTask.priority,
+                    interesadoId: tempTask.interesadoId || null,
+                    deadline: tempTask.deadline || null,
+                    closed_at: tempTask.closed_at || null,
+                    projectName: tempStatus.Proyecto?.nombre
+                };
+            }
+
+            allStatusById[tempStatus.id] = {
+                id: tempStatus.id,
+                title: tempStatus.title,
+                projectName: tempStatus.Proyecto?.nombre, 
+                tasks: innerTasks
+            };
+        }
+
+        const status = { allIds: allStatusIds, byId: allStatusById };
+        const tasks = { allIds: allTasksIds, byId: allTasksById };
+
+        return res.status(200).json({ success: true, status, tasks });
+
+    } catch (e) {
+        console.error("Error en getKanbanByUser:", e); 
+        return res.status(500).json({ success: false, error: e.message });
+    }
+};
+
 module.exports = {
-    setKanban, getKanban
+    setKanban, getKanban, getKanbanByUser
 }

@@ -22,6 +22,27 @@ const getUndoneTareas = async (req, res) => {
     }
 };
 
+const getTareasDashboard = async (req, res) => {
+    try {
+        const { usuarioId } = req.params;
+        const { modo, done } = req.query;
+
+        let parsedDone = null;
+        if (done === "true") parsedDone = true;
+        else if (done === "false") parsedDone = false;
+
+        const tareas = await TareaUtils.getTareasByUser({
+            usuarioId,
+            modo,
+            isDone: parsedDone
+        });
+
+        return res.status(200).json({ success: true, data: tareas });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 const createTarea = async (req,res) => {
     try{
         const {task} = req.body
@@ -73,5 +94,6 @@ module.exports = {
     getUndoneTareas,
     createTarea,
     createTareaBatch,
-    markTaskAsDone
+    markTaskAsDone,
+    getTareasDashboard
 }

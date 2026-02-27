@@ -77,4 +77,10 @@ router.post('/proyecto/informe-avance', informeAvanceController.createInforme);
 router.put('/proyecto/informe-avance/:id', informeAvanceController.updateInforme);
 router.delete('/proyecto/informe-avance/:id', informeAvanceController.deleteInforme);
 
+// Rutas para Dashboard (Por Usuario y Modo)
+router.get('/proyecto/dashboard/gantt/usuario/:usuarioId', GanttController.getGanttByUser);
+router.get('/proyecto/dashboard/kanban/usuario/:usuarioId', KabanController.getKanbanByUser);
+router.get('/proyecto/dashboard/encuestas/usuario/:usuarioId', encuestaController.getEncuestasDashboard);
+router.get('/proyecto/dashboard/informes/usuario/:usuarioId', informeAvanceController.getInformesDashboard);
+
 module.exports = router;

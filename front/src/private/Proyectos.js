@@ -30,7 +30,7 @@ import Modal from "react-bootstrap/Modal";
 import DashboardModal from "../components/dashboard/dashboardModal";
 
 
-function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, dateFilterInput, filtersExpanded }) {
+function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, dateFilterInput, filtersExpanded, jwtToken }) {
 
   const MODO_CONFIG = {
     "/activities": { modo: "A", isDemoRestricted: false, newLabel: "Nuevo Proyecto Personal", title: "Proyectos Personales" },
@@ -700,8 +700,10 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
       <DashboardModal
         show={showDashboard}
         onHide={() => setShowDashboard(false)}
-        projectList={projectList}        // lista ya filtrada por modo desde el reducer
-        modo={getCurrentMode()}          // "P" | "A" | "PR"
+        projectList={projectList}
+        modo={getCurrentMode()}
+        apiBaseUrl={process.env.REACT_APP_API_URL}
+        jwtToken={jwtToken}            
       />
 
     </div>
@@ -715,7 +717,8 @@ const mapStateToProps = state => ({
   endDate: selectors.getEndDateFilter(state),
   startDate: selectors.getStartDateFilter(state),
   dateFilterInput: selectors.getDateFilterInput(state),
-  filtersExpanded: selectors.getFilterExpanded(state)
+  filtersExpanded: selectors.getFilterExpanded(state),
+  jwtToken: state.session.jwtToken,
 });
 
 export default connect(mapStateToProps)(Proyectos);

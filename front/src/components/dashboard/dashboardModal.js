@@ -5,6 +5,7 @@ import moment from "moment";
 import "moment/locale/es-mx";
 import { Doughnut, Line } from "react-chartjs-2";
 import "./DashboardModal.css";
+import TabDetalle from "./TapDetalle";
 
 // ─── Constantes ──────────────────────────────────────────────────────────────
 
@@ -391,7 +392,7 @@ function DashboardModal({ show, onHide, projectList = [], modo = "P" }) {
 
     const tabs = [
         { key: "general", label: "📌 Vista General" },
-        { key: "detalle", label: "🔍 Análisis Detallado", soon: true },
+        { key: "detalle", label: "🔍 Análisis Detallado" },
     ];
 
     return (
@@ -435,14 +436,7 @@ function DashboardModal({ show, onHide, projectList = [], modo = "P" }) {
                     )}
 
                     {activeTab === "detalle" && (
-                        <div className="db-wip">
-                            <div className="db-wip-icon">🚧</div>
-                            <h5>Análisis Detallado — en construcción</h5>
-                            <p>
-                                Próximamente: desempeño de ejecución, costos, encuestas de satisfacción,
-                                historial de estados, riesgo promedio, informes de avance y más.
-                            </p>
-                        </div>
+                        <TabDetalle projects={projectList} modo={modo}/>
                     )}
                 </div>
             </Modal.Body>

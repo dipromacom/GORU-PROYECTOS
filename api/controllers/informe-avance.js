@@ -99,10 +99,22 @@ const deleteInforme = async (req, res) => {
     }
 };
 
+const getInformesDashboard = async (req, res) => {
+    try {
+        const { usuarioId } = req.params;
+        const { modo } = req.query;
+        const data = await InformeAvanceUtils.getInformesByUser(usuarioId, modo);
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getAllInformesByProyecto,
     getInformeById,
     createInforme,
     updateInforme,
     deleteInforme,
+    getInformesDashboard
 };

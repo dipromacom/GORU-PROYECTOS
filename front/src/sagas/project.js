@@ -28,7 +28,8 @@ const sagas = [
     takeLatest(types.CREATE_RESPUESTA_ANALISIS_AMBIENTAL_REQUEST, handleCreateRespuestaAnalisisAmbiental),
     takeLatest(types.GET_RESPUESTA_ANALISIS_AMBIENTAL_REQUEST, handleGetRespuestaAnalisisAmbiental),
     takeLatest(types.UPDATE_RESPUESTA_ANALISIS_AMBIENTAL_REQUEST, handleUpdateRespuestaAnalisisAmbiental),
-    takeLatest(types.GET_TASKS_BY_ID_REQUEST, handleGetTasks)
+    takeLatest(types.GET_TASKS_BY_ID_REQUEST, handleGetTasks),
+    takeLatest(types.GET_TASKS_DASHBOARD_REQUEST, handleGetTasksDashboard)
 ]
 
 
@@ -408,6 +409,18 @@ function* handleGetTasks({ idProject, page, limit, done }) {
     }
     catch (e) {
         yield put({ type: types.GET_TASKS_BY_ID_ERROR })
+    }
+}
+function* handleGetTasksDashboard(action) {
+    try {
+        const response = yield call(Api.getTareasDashboard, action.usuarioId, action.modo, action.done);
+        const { success, data } = response.data;
+        if (success) {
+            yield put({ type: types.GET_TASKS_DASHBOARD_SUCCESS, payload: data.tareas || data });
+        }
+    } catch (e) {
+        yield put({ type: types.GET_TASKS_DASHBOARD_ERROR });
+        onError(e);
     }
 }
 

@@ -85,7 +85,11 @@ export const types = {
     DATE_FILTER_DATE_START_CHANGE: 'project/DATE_FILTER_DATE_START_CHANGE',
     DATE_FILTER_FOCUS_INPUT: 'project/DATE_FILTER_FOCUS_INPUT',
     DATE_FILTER_CLEAR: 'project/DATE_FILTER_CLEAR',
-    TOGGLE_FILTERS: 'project/TOGGLE_FILTERS'
+    TOGGLE_FILTERS: 'project/TOGGLE_FILTERS',
+
+    GET_TASKS_DASHBOARD_REQUEST: "project/GET_TASKS_DASHBOARD_REQUEST",
+    GET_TASKS_DASHBOARD_SUCCESS: "project/GET_TASKS_DASHBOARD_SUCCESS",
+    GET_TASKS_DASHBOARD_ERROR: "project/GET_TASKS_DASHBOARD_ERROR",
 }
 
 export const actions = {
@@ -206,7 +210,13 @@ export const actions = {
     getTasksById: ({ idProject, page = 1, limit = 10, done }) => ({
         type: types.GET_TASKS_BY_ID_REQUEST,
         idProject, page, limit, done
-    })
+    }),
+    getTasksDashboard: (usuarioId, modo, done) => ({
+        type: types.GET_TASKS_DASHBOARD_REQUEST,
+        usuarioId,
+        modo,
+        done
+    }),
 }
 
 const defaultState = {
@@ -670,6 +680,12 @@ const projectReducer = (state = defaultState, action = {}) => {
                 ...state,
                 isLoading: false
             }
+        case types.GET_TASKS_DASHBOARD_SUCCESS:
+            return {
+                ...state,
+                todo: action.payload, // Poblamos la lista de tareas pendientes del dashboard
+                isLoading: false
+            };
         default:
             return state
     }

@@ -20,6 +20,10 @@ export const types = {
     REJECT_SURVEY_ERROR: "survey/REJECT_SURVEY_ERROR",
 
     CLEAR_SURVEY_STATE: "survey/CLEAR_SURVEY_STATE",
+
+    GET_SURVEYS_DASHBOARD_REQUEST: "survey/GET_SURVEYS_DASHBOARD_REQUEST",
+    GET_SURVEYS_DASHBOARD_SUCCESS: "survey/GET_SURVEYS_DASHBOARD_SUCCESS",
+    GET_SURVEYS_DASHBOARD_ERROR: "survey/GET_SURVEYS_DASHBOARD_ERROR",
 };
 
 export const actions = {
@@ -45,6 +49,11 @@ export const actions = {
     }),
     clearSurveyState: () => ({
         type: types.CLEAR_SURVEY_STATE,
+    }),
+    getSurveysDashboard: (usuarioId, modo) => ({
+        type: types.GET_SURVEYS_DASHBOARD_REQUEST,
+        usuarioId,
+        modo
     }),
 };
 
@@ -125,6 +134,14 @@ const encuestaReducer = (state = defaultState, action = {}) => {
                 ...state,
                 isLoading: false,
                 error: action.error,
+            };
+        
+        case types.GET_SURVEYS_DASHBOARD_SUCCESS:
+            return {
+                ...state,
+                isLoading: false,
+                listaEncuestas: action.payload,
+                error: null,
             };
 
         default:

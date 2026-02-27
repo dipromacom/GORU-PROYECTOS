@@ -17,6 +17,10 @@ export const types = {
     SYNC_KANBAN_ERROR: "kanban/SYNC_KANBAN_ERROR",
     FETCH_KANBAN_REQUEST: "kanban/FETCH_KANBAN_REQUEST",
     CLEAN: "kanban/CLEAN",
+
+    FETCH_KANBAN_DASHBOARD_REQUEST: "kanban/FETCH_KANBAN_DASHBOARD_REQUEST",
+    FETCH_KANBAN_DASHBOARD_SUCCESS: "kanban/FETCH_KANBAN_DASHBOARD_SUCCESS",
+    FETCH_KANBAN_DASHBOARD_ERROR: "kanban/FETCH_KANBAN_DASHBOARD_ERROR",
 }
 
 
@@ -64,7 +68,13 @@ export const actions = {
     fetch: ({ projectId }) => ({
         type: types.FETCH_KANBAN_REQUEST,
         projectId
-    })
+    }),
+
+    fetchKanbanDashboard: (usuarioId, modo) => ({
+        type: types.FETCH_KANBAN_DASHBOARD_REQUEST,
+        usuarioId,
+        modo
+    }),
 }
 
 const defaultState = {
@@ -245,6 +255,31 @@ const kanbanReducer = (state = defaultState, action = {}) => {
                     ...tasks
                 }
             }
+        
+        case types.FETCH_KANBAN_DASHBOARD_REQUEST:
+            return {
+                ...state,
+                isLoading: true
+            };
+
+        case types.FETCH_KANBAN_DASHBOARD_SUCCESS:
+            // Aquí asumimos que el payload ya viene con la estructura { status, tasks } 
+            // procesada por el servidor para el modo dashboard
+            return {
+                ...state,
+                isLoading: false,
+                status: action.payload.status || state.status,
+                tasks: action.payload.tasks || state.tasks,
+                error: null
+            };
+
+        case types.FETCH_KANBAN_DASHBOARD_ERROR:
+            return {
+                ...state,
+                isLoading: false,
+                error: action.error
+            };
+            
         case types.CLEAN:
             return defaultState
         default:

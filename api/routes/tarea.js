@@ -8,5 +8,7 @@ router.post('/tarea/', TareaController.createTarea)
 router.post('/tarea/batch',TareaController.createTareaBatch)
 router.put('/tarea/:id/done', TareaController.markTaskAsDone)
 
+router.get('/tarea/usuario/:usuarioId', TareaController.getTareasDashboard);
+
 
 module.exports = router

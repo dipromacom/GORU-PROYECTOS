@@ -1,7 +1,7 @@
 const { Op } = require('sequelize');
 
 const {
-    Tarea
+    Tarea, Proyecto, Usuario
 } = require('../models/index')
 
 
@@ -39,6 +39,34 @@ async function getTareas(page = 1, limit = 100, { proyectoId, isDone = null, due
         };
     } catch (error) {
         console.error("Error fetching tareas:", error);
+        throw error;
+    }
+}
+
+async function getTareasByUser({ usuarioId, modo, isDone = null }) {
+    try {
+        const filter = {};
+        if (isDone !== null) filter.done = isDone;
+
+        return await Tarea.findAll({
+            where: filter,
+            include: [{
+                model: Proyecto,
+                as: 'Proyecto', // Asegúrate que el modelo Tarea tenga: Tarea.belongsTo(Proyecto)
+                where: { modo: modo },
+                required: true,
+                include: [{
+                    model: Usuario,
+                    as: 'Usuarios',
+                    where: { id: usuarioId },
+                    required: true,
+                    through: { attributes: [] }
+                }]
+            }],
+            order: [["duedate", "ASC"]]
+        });
+    } catch (error) {
+        console.error("Error en getTareasByUser:", error);
         throw error;
     }
 }
@@ -87,5 +115,6 @@ async function tareaDone(id, closeDate) {
 module.exports = {
     getTareas,
     createTarea,
-    tareaDone
+    tareaDone,
+    getTareasByUser
 }

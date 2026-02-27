@@ -20,6 +20,10 @@ export const types = {
     DELETE_INFORME_ERROR: "informeAvance/DELETE_INFORME_ERROR",
 
     CLEAR_INFORME_STATE: "informeAvance/CLEAR_INFORME_STATE",
+
+    GET_INFORMES_DASHBOARD_REQUEST: "informeAvance/GET_INFORMES_DASHBOARD_REQUEST",
+    GET_INFORMES_DASHBOARD_SUCCESS: "informeAvance/GET_INFORMES_DASHBOARD_SUCCESS",
+    GET_INFORMES_DASHBOARD_ERROR: "informeAvance/GET_INFORMES_DASHBOARD_ERROR",
 };
 
 export const actions = {
@@ -46,6 +50,11 @@ export const actions = {
     }),
     clearInformeState: () => ({
         type: types.CLEAR_INFORME_STATE,
+    }),
+    getInformesDashboard: (usuarioId, modo) => ({
+        type: types.GET_INFORMES_DASHBOARD_REQUEST,
+        usuarioId,
+        modo
     }),
 };
 
@@ -154,7 +163,14 @@ const informeAvanceReducer = (state = defaultState, action = {}) => {
                     message: action.error || 'Ocurrió un error',
                 },
             };
-
+        
+        case types.GET_INFORMES_DASHBOARD_SUCCESS:
+            return {
+                ...state,
+                isLoading: false,
+                listaInformes: action.payload, // Aquí guardamos los informes del dashboard
+                error: null,
+            };
         default:
             return state;
     }

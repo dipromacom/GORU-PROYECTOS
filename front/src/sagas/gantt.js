@@ -10,6 +10,7 @@ const sagas = [
     takeEvery(types.EDIT_TASK, handleEditTask),
     takeEvery(types.DELETE_TASK, handleDeleteTask),
     takeEvery(types.MOVE_TASK, handleMoveTask),
+    takeEvery(types.FETCH_GANTT_DASHBOARD_REQUEST, handleFetchGanttDashboard)
 ];
 
 export default sagas;
@@ -186,5 +187,18 @@ function* handleMoveTask({ id, newStart, newEnd, projectId }) {
 
     } catch (e) {
         onError(e);
+    }
+}
+
+function* handleFetchGanttDashboard({ usuarioId, modo }) {
+    try {
+        const response = yield call(Api.getGanttDashboard, usuarioId, modo);
+        const { success, tasks } = response.data;
+        if (success) {
+            yield put({ type: types.FETCH_GANTT_DASHBOARD_SUCCESS, payload: Object.values(tasks.byId) });
+        }
+    } catch (e) {
+        onError(e);
+        yield put({ type: types.FETCH_GANTT_DASHBOARD_ERROR });
     }
 }

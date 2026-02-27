@@ -8,7 +8,8 @@ const sagas = [
     takeEvery(types.MOVE_TASK, handleMoveTask),
     takeEvery(types.DELETE_TASK, handleDeleteTask),
     takeEvery(types.SYNC_KANBAN_REQUEST, handleSyncKanban),
-    takeEvery(types.FETCH_KANBAN_REQUEST, handleKanbanRequest)
+    takeEvery(types.FETCH_KANBAN_REQUEST, handleKanbanRequest),
+    takeEvery(types.FETCH_KANBAN_DASHBOARD_REQUEST, handleKanbanDashboardRequest)
 
 ]
 
@@ -105,6 +106,19 @@ function* handleKanbanRequest({projectId}){
         onError(e)
         yield put({type: types.SYNC_KANBAN_ERROR})
     }  
+}
+
+function* handleKanbanDashboardRequest({ usuarioId, modo }) {
+    try {
+        const response = yield call(Api.getKanbanDashboard, usuarioId, modo);
+        const { success, status, tasks } = response.data;
+        if (success) {
+            yield put({ type: types.FETCH_KANBAN_DASHBOARD_SUCCESS, payload: { status, tasks } });
+        }
+    } catch (e) {
+        onError(e);
+        yield put({ type: types.FETCH_KANBAN_DASHBOARD_ERROR, error: e.message });
+    }
 }
 
 export default sagas
