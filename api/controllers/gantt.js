@@ -73,7 +73,7 @@ const getGantt = async (req, res) => {
 
 const getGanttByUser = async (req, res) => {
     const { usuarioId } = req.params;
-    const { modo } = req.query; // Lo pasamos por query param: ?modo=PRO
+    const { modo } = req.query; 
     try {
         const tasks = await GanttUtils.getGanttByUser({ usuarioId, modo });
         let allIds = [];
@@ -83,13 +83,13 @@ const getGanttByUser = async (req, res) => {
             allIds.push(task.id);
             byId[task.id] = {
                 ...task.toJSON(),
-                projectName: task.Proyecto?.nombre // Útil para el dashboard
+                projectName: task.Proyecto && task.Proyecto.nombre
             };
         });
 
         return res.status(200).json({ success: true, tasks: { allIds, byId } });
     } catch (e) {
-        console.error(e); // Esto imprimirá el error en la terminal de tu VS Code / Nodo
+        console.error(e); 
         return res.status(500).json({ success: false, debug: e.message });
     }
 };

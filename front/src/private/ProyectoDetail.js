@@ -69,11 +69,14 @@ import { actions as informeActions, selectors as informeSelectors } from "../red
 import InformeAvanceModal from "../components/informeAvance/InformeAvanceModal";
 import InformeAvanceList from "../components/informeAvance/InformeAvanceList";
 
-import { pdf } from '@react-pdf/renderer';
+import { pdf, PDFDownloadLink } from '@react-pdf/renderer';
 import InformeAvancePdf from "../components/informeAvance/InformeAvancePdf";
+import { actions as changeActions, selectors as changeSelectors } from "../reducers/controlCambio";
+import ChangeControlModal from "../components/controlCambio/ChangeControlModal";
+import ChangeControlPdf from "../components/controlCambio/ChangeControlPdf";
 
 
-function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading }) {
+function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes }) {
     const routeParams = useParams();
     const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
@@ -344,6 +347,22 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
     const [isLoadingProject, setIsLoadingProject] = useState(true);
 
+    const [showChangeModal, setShowChangeModal] = useState(false);
+    const [selectedChange, setSelectedChange] = useState(null);
+
+    useEffect(() => {
+        if (numericId) {
+            dispatch(changeActions.getSolicitudes(numericId));
+        }
+    }, [numericId, dispatch]);
+
+    const stats = {
+        creado: listaSolicitudes.filter(s => s.estado === 'Creado').length,
+        revision: listaSolicitudes.filter(s => s.estado === 'En Revisión').length,
+        aprobado: listaSolicitudes.filter(s => s.estado === 'Aprobado').length,
+        noAprobado: listaSolicitudes.filter(s => s.estado === 'No Aprobado').length,
+    };
+
     useEffect(() => {
         if (planificado) {
             setActiveTabSummary("encuesta");
@@ -456,6 +475,25 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         } catch (error) {
             console.error('Error al generar PDF:', error);
             alert('Error al generar el PDF');
+        }
+    };
+
+    const handleDownloadChangeControlPDF = async (solicitud) => {
+        try {
+            // Generamos el blob manualmente solo al hacer click
+            const blob = await pdf(
+                <ChangeControlPdf data={solicitud} proyecto={projectDetail} directorProyecto={directorProyecto}/>
+            ).toBlob();
+
+            const url = URL.createObjectURL(blob);
+            const link = document.createElement('a');
+            link.href = url;
+            link.download = `Solicitud_Cambio_${solicitud.id}_${projectDetail?.nombre}.pdf`;
+            link.click();
+            URL.revokeObjectURL(url);
+        } catch (error) {
+            console.error('Error al generar PDF de Control de Cambio:', error);
+            alert('Hubo un error al generar el PDF. Asegúrese de que todos los campos obligatorios tengan texto.');
         }
     };
 
@@ -1082,6 +1120,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         </Nav.Link>
                                                     </Nav.Item>
                                                     <Nav.Item>
+                                                        <Nav.Link eventKey="controlCambio" className="px-4 py-2">
+                                                            <i className="bi bi-arrow-left-right mr-2"></i>Control de Cambios
+                                                        </Nav.Link>
+                                                    </Nav.Item>
+                                                    <Nav.Item>
                                                         <Nav.Link eventKey="informe" className="px-4 py-2">
                                                             <i className="bi bi-file-earmark-text me-2"></i>Informe de Avance
                                                         </Nav.Link>
@@ -1242,48 +1285,163 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         <ProjectStatusHistory logs={logs} />
                                                     </Tab.Pane>
 
-                                                        <Tab.Pane eventKey="informe">
-                                                            <div className="informe-container mt-4 p-4 border rounded bg-light">
-                                                                <div className="d-flex justify-content-between align-items-center mb-4">
-                                                                    <div>
-                                                                        <h4 className="mb-2">
-                                                                            <i className="bi bi-file-earmark-text me-2"></i>
-                                                                            Informes de Avance del Proyecto
-                                                                        </h4>
-                                                                        <p className="text-muted mb-0">
-                                                                            {listaInformes && listaInformes.length > 0
-                                                                                ? `${listaInformes.length} informe${listaInformes.length > 1 ? 's' : ''} registrado${listaInformes.length > 1 ? 's' : ''}`
-                                                                                : 'No se han generado informes aún'
-                                                                            }
-                                                                        </p>
-                                                                    </div>
-                                                                    <Button
-                                                                        variant="primary"
-                                                                        onClick={handleOpenInformeModal}
-                                                                        className="d-flex align-items-center"
-                                                                    >
-                                                                        <i className="bi bi-plus-circle me-2"></i>
-                                                                        Generar Nuevo Informe
-                                                                    </Button>
-                                                                </div>
-
-                                                                <InformeAvanceList
-                                                                    listaInformes={listaInformes || []}
-                                                                    onEdit={handleEditInforme}
-                                                                    onDelete={handleDeleteInforme}
-                                                                    onDownloadPDF={handleDownloadPDF}
-                                                                />
+                                                    <Tab.Pane eventKey="controlCambio">
+                                                        <div className="change-control-container mt-4 p-3 border rounded bg-light">
+                                                            <div className="d-flex justify-content-between align-items-center mb-3">
+                                                                <h4>Control de Cambios - {projectDetail?.nombre}</h4>
+                                                                <Button
+                                                                    variant="outline-primary"
+                                                                    onClick={() => { setSelectedChange(null); setShowChangeModal(true); }}
+                                                                >
+                                                                    <i className="bi bi-plus-circle me-2"></i>Nueva Solicitud
+                                                                </Button>
                                                             </div>
-                                                        </Tab.Pane>
+
+                                                            {/* Resumen de Estados */}
+                                                            <div className="row mb-4">
+                                                                {[
+                                                                    { label: 'Creados', count: stats.creado, color: 'secondary' },
+                                                                    { label: 'En Revisión', count: stats.revision, color: 'info' },
+                                                                    { label: 'Aprobados', count: stats.aprobado, color: 'success' },
+                                                                    { label: 'No Aprobados', count: stats.noAprobado, color: 'danger' }
+                                                                ].map((item, idx) => (
+                                                                    <div className="col-md-3" key={idx}>
+                                                                        <div className="card text-center border-0 shadow-sm">
+                                                                            <div className="card-body">
+                                                                                <h6 className="text-muted">{item.label}</h6>
+                                                                                <h2 className={`text-${item.color}`}>{item.count}</h2>
+                                                                            </div>
+                                                                        </div>
+                                                                    </div>
+                                                                ))}
+                                                            </div>
+
+                                                            <h5>Historial de Solicitudes</h5>
+                                                            <div className="table-responsive">
+                                                                <table className="table table-hover align-middle">
+                                                                    <thead className="table-light">
+                                                                        <tr>
+                                                                            <th>Nombre</th>
+                                                                            <th>Solicitante</th>
+                                                                            <th>Fecha</th>
+                                                                            <th>Impacto</th>
+                                                                            <th>Estado</th>
+                                                                            <th className="text-center">Acciones</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        {listaSolicitudes.map(sol => (
+                                                                            <tr key={sol.id}>
+                                                                                <td>
+                                                                                    {sol.nombre_cambio}
+                                                                                </td>
+                                                                                <td>{sol.nombre_solicitante}</td>
+                                                                                <td>{moment(sol.fecha_solicitud).format('DD/MM/YYYY')}</td>
+                                                                                <td>
+                                                                                    <label bg={sol.impacto_proyecto === 'Alto' ? 'danger' : sol.impacto_proyecto === 'Mediano' ? 'warning' : 'info'}>
+                                                                                        {sol.impacto_proyecto || 'N/A'}
+                                                                                    </label>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <label pill bg={sol.estado === 'Aprobado' ? 'success' : sol.estado === 'No Aprobado' ? 'danger' : 'primary'}>
+                                                                                        {sol.estado}
+                                                                                    </label>
+                                                                                </td>
+                                                                                <td className="text-center">
+                                                                                    <div className="d-flex gap-2 justify-content-center">
+                                                                                        {/* Visualizar / Editar */}
+                                                                                        <Button variant="outline-info" size="sm" onClick={() => { setSelectedChange(sol); setShowChangeModal(true); }}>
+                                                                                            <i className="bi bi-eye"></i>
+                                                                                        </Button>
+
+                                                                                    
+                                                                                        
+                                                                                        <DropdownButton
+                                                                                            size="sm"
+                                                                                            variant="outline-secondary"
+                                                                                            title={<i className="bi bi-arrow-left-right"></i>}
+                                                                                            onSelect={(nuevoEstado) => {
+                                                                                                dispatch(changeActions.updateStatus(sol.id, { ...sol, estado: nuevoEstado }, numericId));
+                                                                                            }}
+                                                                                        >
+                                                                                            <Dropdown.Item eventKey="Creado">Creado</Dropdown.Item>
+                                                                                            <Dropdown.Item eventKey="En Revisión">En Revisión</Dropdown.Item>
+                                                                                            <Dropdown.Item eventKey="Aprobado">Aprobado</Dropdown.Item>
+                                                                                            <Dropdown.Item eventKey="No Aprobado">No Aprobado</Dropdown.Item>
+                                                                                        </DropdownButton>
+                                                                                        
+
+                                                                                        <Button
+                                                                                            variant="outline-danger"
+                                                                                            size="sm"
+                                                                                            onClick={() => handleDownloadChangeControlPDF(sol)}
+                                                                                        >
+                                                                                            <i className="bi bi-file-earmark-pdf"></i>
+                                                                                        </Button>
+                                                                                    </div>
+                                                                                </td>
+                                                                            </tr>
+                                                                        ))}
+                                                                    </tbody>
+                                                                </table>
+                                                            </div>
+                                                        </div>
+                                                    </Tab.Pane>
+
+                                                    <Tab.Pane eventKey="informe">
+                                                        <div className="informe-container mt-4 p-4 border rounded bg-light">
+                                                            <div className="d-flex justify-content-between align-items-center mb-4">
+                                                                <div>
+                                                                    <h4 className="mb-2">
+                                                                        <i className="bi bi-file-earmark-text me-2"></i>
+                                                                        Informes de Avance del Proyecto
+                                                                    </h4>
+                                                                    <p className="text-muted mb-0">
+                                                                        {listaInformes && listaInformes.length > 0
+                                                                            ? `${listaInformes.length} informe${listaInformes.length > 1 ? 's' : ''} registrado${listaInformes.length > 1 ? 's' : ''}`
+                                                                            : 'No se han generado informes aún'
+                                                                        }
+                                                                    </p>
+                                                                </div>
+                                                                <Button
+                                                                    variant="primary"
+                                                                    onClick={handleOpenInformeModal}
+                                                                    className="d-flex align-items-center"
+                                                                >
+                                                                    <i className="bi bi-plus-circle me-2"></i>
+                                                                    Generar Nuevo Informe
+                                                                </Button>
+                                                            </div>
+
+                                                            <InformeAvanceList
+                                                                listaInformes={listaInformes || []}
+                                                                onEdit={handleEditInforme}
+                                                                onDelete={handleDeleteInforme}
+                                                                onDownloadPDF={handleDownloadPDF}
+                                                            />
+                                                        </div>
+                                                    </Tab.Pane>
+
+                                                    <ChangeControlModal
+                                                        show={showChangeModal}
+                                                        onHide={() => setShowChangeModal(false)}
+                                                        proyectoId={numericId}
+                                                        data={selectedChange}
+                                                        usuario={usuario}
+                                                        projectDetail={projectDetail}
+                                                        directorProyecto={directorProyecto}
+                                                        //isAdmin={usuario?.rol === 'admin'}
+                                                        isAdmin="admin"
+                                                    />
 
                                                     <SurveyModal
                                                         show={showVoluntarySurvey}
                                                         onHide={() => {
                                                             setShowVoluntarySurvey(false);
-                                                            setModoEdicion(false); // ← AGREGAR: resetear al cerrar
+                                                            setModoEdicion(false); 
                                                         }}
                                                         proyectoId={numericId}
-                                                        encuestaPrevia={modoEdicion ? encuestaActual : null} // ← MODIFICAR ESTA LÍNEA
+                                                        encuestaPrevia={modoEdicion ? encuestaActual : null} 
                                                         nombreProyecto={nombreProyecto}
                                                         tipoProyecto="proyecto"
                                                     />
@@ -2069,6 +2227,9 @@ const mapStateToProps = state => ({
     informeAvance: informeSelectors.getInformeActual(state),
     listaInformes: informeSelectors.getListaInformes(state),
     informeLoading: informeSelectors.getIsLoading(state),
+
+    // --- CONTROL DE CAMBIOS ---
+    listaSolicitudes: changeSelectors.getSolicitudes(state),
 });
 
 export default connect(mapStateToProps)(ProyectoDetail);

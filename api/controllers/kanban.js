@@ -84,14 +84,14 @@ const getKanbanByUser = async (req, res) => {
                     interesadoId: tempTask.interesadoId || null,
                     deadline: tempTask.deadline || null,
                     closed_at: tempTask.closed_at || null,
-                    projectName: tempStatus.Proyecto?.nombre
+                    projectName: tempStatus.Proyecto && tempStatus.Proyecto.nombre
                 };
             }
 
             allStatusById[tempStatus.id] = {
                 id: tempStatus.id,
                 title: tempStatus.title,
-                projectName: tempStatus.Proyecto?.nombre, 
+                projectName: tempStatus.Proyecto && tempStatus.Proyecto.nombre, 
                 tasks: innerTasks
             };
         }

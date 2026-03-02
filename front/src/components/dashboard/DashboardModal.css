@@ -7,9 +7,9 @@
 
 /* ── Variables ────────────────────────────────────────────────── */
 :root {
-    --navy: #1a3c5e;
-    --navy-deep: #112840;
-    --navy-mid: #22507d;
+    --navy: #44a80d;
+    --navy-deep: #2b6b09;
+    --navy-mid: #2d6e09;
     --navy-light: #2e6699;
     --navy-pale: #e8f0f8;
 
@@ -290,7 +290,7 @@
 
 .db-donut-chart-wrap {
     position: relative;
-    height: 200px;
+    height: 160px;
 }
 
 .db-donut-center {

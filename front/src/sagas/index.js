@@ -19,6 +19,7 @@ import rolProyecto from "./rolProyecto"
 import encuesta from "./encuesta-satisfaccion"
 import projectLogSagas from "./projectLogSagas";
 import informeAvance from "./informe-avance";
+import controlCambio from "./controlCambio";
 
 
 
@@ -43,7 +44,8 @@ const sagas = [
   ...rolProyecto,
   ...encuesta,
   ...projectLogSagas,
-  ...informeAvance
+  ...informeAvance,
+  ...controlCambio
 ];
 
 export default function* rootSaga() {

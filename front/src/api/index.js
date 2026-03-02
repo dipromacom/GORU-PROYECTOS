@@ -320,3 +320,9 @@ export const getGanttDashboard = (usuarioId, modo) =>
 
 export const getKanbanDashboard = (usuarioId, modo) =>
   apiWithToken.get(`/proyecto/dashboard/kanban/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);
+
+// --- CONTROL DE CAMBIOS ---
+export const getSolicitudesProyecto = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/control-cambio`);
+export const createSolicitudCambio = (payload) => apiWithToken.post('/proyecto/control-cambio', payload);
+export const updateEstadoSolicitudCambio = (id, payload) => apiWithToken.put(`/proyecto/control-cambio/${id}/estado`, payload);
+export const getSolicitudesDashboard = (usuarioId, modo) => apiWithToken.get(`/proyecto/dashboard/control-cambio/usuario/${usuarioId}?modo=${modo}`);

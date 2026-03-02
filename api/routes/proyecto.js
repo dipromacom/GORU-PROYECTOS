@@ -8,6 +8,7 @@ const RolProyectoController = require('../controllers/rol-proyecto');
 const logController = require('../controllers/log-controller');
 const informeAvanceController = require('../controllers/informe-avance');
 const permisoMiddleware = require('../utils/permiso-middleware');
+const solicitudCambioController = require('../controllers/solicitud-cambio');
 
 const router = express.Router();
 
@@ -82,5 +83,11 @@ router.get('/proyecto/dashboard/gantt/usuario/:usuarioId', GanttController.getGa
 router.get('/proyecto/dashboard/kanban/usuario/:usuarioId', KabanController.getKanbanByUser);
 router.get('/proyecto/dashboard/encuestas/usuario/:usuarioId', encuestaController.getEncuestasDashboard);
 router.get('/proyecto/dashboard/informes/usuario/:usuarioId', informeAvanceController.getInformesDashboard);
+
+// RUTAS CONTROL DE CAMBIOS
+router.post('/proyecto/control-cambio', solicitudCambioController.createSolicitud);
+router.put('/proyecto/control-cambio/:id/estado', solicitudCambioController.changeStatus);
+router.get('/proyecto/:proyectoId/control-cambio', solicitudCambioController.getSolicitudesProyecto);
+router.get('/proyecto/:proyectoId/estados', logController.getHistorialEstados);
 
 module.exports = router;
