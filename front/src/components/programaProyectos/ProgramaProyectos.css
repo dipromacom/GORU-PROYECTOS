@@ -1,0 +1,488 @@
+/* ── Contenedor principal ── */
+.pp-container {
+    padding: 8px 0 40px 0;
+}
+
+/* ── Cabecera ── */
+.pp-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 16px;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.pp-header-left {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+/* Reutiliza el mismo estilo de h4 que usa InputAlcanceList */
+.pp-title {
+    margin: 0;
+    font-size: 1rem;
+    font-weight: bold;
+    color: #212529;
+    display: flex;
+    align-items: center;
+}
+
+.pp-count-badge {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    background: #122544;
+    color: #fff;
+    border-radius: 20px;
+    font-size: 11px;
+    font-weight: 700;
+    min-width: 22px;
+    height: 22px;
+    padding: 0 7px;
+}
+
+/* ── Botón agregar — mismo estilo btn-primary del proyecto ── */
+.pp-btn-agregar {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    background-color: #122544;
+    color: #fff;
+    border: 1px solid #122544;
+    border-radius: 4px;
+    padding: 6px 14px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition: background-color 0.15s ease-in-out, border-color 0.15s;
+    line-height: 1.5;
+}
+
+.pp-btn-agregar:hover {
+    background-color: #0d1c35;
+    border-color: #0d1c35;
+}
+
+/* ── KPI strip — idéntico al Row de ProgressBars de alcance ── */
+.pp-resumen-strip {
+    display: flex;
+    gap: 12px;
+    margin-bottom: 20px;
+    flex-wrap: wrap;
+}
+
+.pp-kpi {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: #fff;
+    border: 1px solid #dee2e6;
+    border-left: 3px solid var(--kpi-accent, #122544);
+    border-radius: 4px;
+    padding: 10px 14px;
+    min-width: 120px;
+    flex: 1;
+}
+
+.pp-kpi-icon {
+    font-size: 18px;
+    color: var(--kpi-accent, #122544);
+    opacity: 0.8;
+}
+
+.pp-kpi-body {
+    display: flex;
+    flex-direction: column;
+}
+
+.pp-kpi-value {
+    font-size: 20px;
+    font-weight: 700;
+    color: #122544;
+    line-height: 1;
+}
+
+.pp-kpi-label {
+    font-size: 0.7rem;
+    color: #6c757d;
+    font-weight: 600;
+    margin-top: 2px;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+}
+
+/* ── Filtros — mismo look que form-control del proyecto ── */
+.pp-filtros {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 14px;
+    flex-wrap: wrap;
+}
+
+.pp-filtro-input,
+.pp-filtro-select {
+    font-size: 0.875rem !important;
+    border: 1px solid #ced4da !important;
+    border-radius: 4px !important;
+    color: #495057 !important;
+    background-color: #fff !important;
+    padding: 0.25rem 0.5rem;
+    line-height: 1.5;
+}
+
+.pp-filtro-input {
+    flex: 2;
+    min-width: 160px;
+}
+
+.pp-filtro-select {
+    flex: 1;
+    min-width: 140px;
+}
+
+.pp-filtro-input:focus,
+.pp-filtro-select:focus {
+    border-color: #80bdff !important;
+    outline: 0;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25);
+}
+
+/* ── Tabla — estilo table-hover de Bootstrap del proyecto ── */
+.pp-table-wrap {
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.pp-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    background: #fff;
+    margin-bottom: 0;
+}
+
+.pp-table thead tr {
+    background-color: #f8f9fa;
+}
+
+.pp-table thead th {
+    padding: 10px 12px;
+    font-weight: 700;
+    font-size: 0.75rem;
+    color: #495057;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    border-bottom: 2px solid #dee2e6;
+    white-space: nowrap;
+}
+
+.pp-fila {
+    transition: background-color 0.1s;
+}
+
+.pp-fila:hover {
+    background-color: #f8f9fa;
+}
+
+.pp-fila td {
+    padding: 9px 12px;
+    border-bottom: 1px solid #dee2e6;
+    vertical-align: middle;
+    color: #212529;
+}
+
+.pp-fila:last-child td {
+    border-bottom: none;
+}
+
+.pp-col-nombre {
+    min-width: 180px;
+}
+
+.pp-col-director,
+.pp-col-empresa {
+    white-space: nowrap;
+    color: #495057;
+}
+
+.pp-col-fecha {
+    white-space: nowrap;
+    font-family: monospace;
+    font-size: 0.8rem;
+}
+
+.pp-col-acciones {
+    text-align: center;
+    white-space: nowrap;
+}
+
+.pp-nombre {
+    font-weight: 600;
+    color: #122544;
+}
+
+/* Badge "Sin director" — mismo tono que badge-warning de Bootstrap */
+.pp-badge-warn {
+    display: inline-flex;
+    align-items: center;
+    gap: 3px;
+    font-size: 0.7rem;
+    color: #856404;
+    background: #fff3cd;
+    border: 1px solid #ffc107;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-weight: 600;
+}
+
+/* ── Pill de estado — misma paleta que el proyecto ── */
+.pp-estado-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border: 1px solid;
+    border-radius: 3px;
+    padding: 2px 8px;
+    white-space: nowrap;
+}
+
+.pp-pill-icon {
+    font-size: 0.65rem;
+}
+
+/* ── Botones de acción de fila ── */
+.pp-btn-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 28px;
+    height: 28px;
+    border: 1px solid;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 13px;
+    transition: opacity 0.15s;
+    margin: 0 2px;
+    background: transparent;
+}
+
+.pp-btn-icon:hover {
+    opacity: 0.75;
+}
+
+.pp-btn-icon:active {
+    opacity: 0.6;
+}
+
+.pp-btn-go {
+    border-color: #007bff;
+    color: #007bff;
+}
+
+.pp-btn-go:hover {
+    background-color: #e8f0fe;
+}
+
+.pp-btn-remove {
+    border-color: #dc3545;
+    color: #dc3545;
+}
+
+.pp-btn-remove:hover {
+    background-color: #fdecea;
+}
+
+/* ── Empty states ── */
+.pp-empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 24px 16px;
+    color: #6c757d;
+    text-align: center;
+    gap: 8px;
+}
+
+.pp-empty-main {
+    border: 2px dashed #dee2e6;
+    border-radius: 4px;
+    background: #f8f9fa;
+    padding: 48px 32px;
+    margin-top: 8px;
+}
+
+.pp-empty-icon {
+    font-size: 36px;
+    opacity: 0.35;
+}
+
+.pp-empty-title {
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: #495057;
+    margin: 0;
+}
+
+.pp-empty-sub {
+    font-size: 0.825rem;
+    color: #6c757d;
+    margin: 0;
+}
+
+/* ── Loading ── */
+.pp-loading {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 28px 8px;
+    color: #6c757d;
+    font-size: 0.875rem;
+}
+
+.pp-spinner {
+    width: 18px;
+    height: 18px;
+    border: 2px solid #dee2e6;
+    border-top-color: #122544;
+    border-radius: 50%;
+    animation: pp-spin 0.7s linear infinite;
+    flex-shrink: 0;
+}
+
+@keyframes pp-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
+/* ── Modal — coherente con los otros modales del proyecto ── */
+.pp-modal-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.pp-modal-header .modal-title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: #122544;
+    display: flex;
+    align-items: center;
+}
+
+.pp-modal-body {
+    padding: 16px 20px;
+    max-height: 430px;
+    overflow-y: auto;
+}
+
+.pp-search {
+    font-size: 0.875rem !important;
+    border-color: #ced4da !important;
+}
+
+.pp-search:focus {
+    border-color: #80bdff !important;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, .25) !important;
+}
+
+/* ── Lista de proyectos disponibles ── */
+.pp-disponibles-list {
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.pp-disponible-item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    padding: 9px 12px;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: background-color 0.12s, border-color 0.12s;
+    background: #fff;
+}
+
+.pp-disponible-item:hover {
+    background-color: #f8f9fa;
+    border-color: #adb5bd;
+}
+
+.pp-disponible-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    overflow: hidden;
+}
+
+.pp-disponible-nombre {
+    font-weight: 600;
+    font-size: 0.875rem;
+    color: #122544;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.pp-disponible-meta {
+    font-size: 0.75rem;
+    color: #6c757d;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    flex-wrap: wrap;
+}
+
+.pp-dot {
+    color: #ced4da;
+}
+
+.pp-disponible-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-shrink: 0;
+}
+
+.pp-add-icon {
+    font-size: 16px;
+    color: #007bff;
+    opacity: 0.6;
+    transition: opacity 0.15s;
+}
+
+.pp-disponible-item:hover .pp-add-icon {
+    opacity: 1;
+}
+
+/* ── Responsive ── */
+@media (max-width: 600px) {
+    .pp-resumen-strip {
+        gap: 8px;
+    }
+
+    .pp-kpi {
+        min-width: 100px;
+        padding: 8px 10px;
+    }
+
+    .pp-kpi-value {
+        font-size: 17px;
+    }
+
+    .pp-table {
+        font-size: 0.8rem;
+    }
+
+    .pp-col-empresa {
+        display: none;
+    }
+}

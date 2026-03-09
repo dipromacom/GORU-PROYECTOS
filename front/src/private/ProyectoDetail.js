@@ -74,6 +74,7 @@ import InformeAvancePdf from "../components/informeAvance/InformeAvancePdf";
 import { actions as changeActions, selectors as changeSelectors } from "../reducers/controlCambio";
 import ChangeControlModal from "../components/controlCambio/ChangeControlModal";
 import ChangeControlPdf from "../components/controlCambio/ChangeControlPdf";
+import ProgramaProyectos from "../components/programaProyectos/ProgramaProyectos";
 
 
 function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes }) {
@@ -842,6 +843,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         hitos: 0,
         costos: 0,
         todo: 0,
+        beneficios: 0,
         // Aquí puedes añadir más indicadores a futuro (ej. calidadDesempeno: 0)
     });
 
@@ -997,6 +999,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             <Nav.Item><Nav.Link eventKey="gantt">{esPrograma? "Roadmap" : "Gantt"}</Nav.Link></Nav.Item>
                                             <Nav.Item><Nav.Link eventKey="to-do" >To Do</Nav.Link></Nav.Item>
                                             <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
+                                            {esPrograma && (
+                                                <Nav.Item><Nav.Link eventKey="proyectos-programa">Proyectos</Nav.Link></Nav.Item>
+                                            )}
+
                                             {(!esActividad && !esPrograma) && (
                                                 <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
                                             )} 
@@ -1093,7 +1099,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             <hr className="mb-4" />
                                             <Tab.Container activeKey={activeTabSummary} onSelect={(k) => setActiveTabSummary(k)}>
                                                 <Nav variant="tabs" className="justify-content-start mb-4 custom-tabs-style">
-                                                    {(ejecutado || cerrado) && (
+                                                    {!esActividad && (ejecutado || cerrado) && (
                                                         <>
                                                             <Nav.Item>
                                                                 <Nav.Link eventKey="ejecucion" className="px-4 py-2">
@@ -1133,7 +1139,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 </Nav>
 
                                                 <Tab.Content>
-                                                    {(ejecutado || cerrado) && (
+                                                    {!esActividad && (ejecutado || cerrado) && (
                                                         <>
                                                             <Tab.Pane eventKey="ejecucion">
                                                                 {/* PESTAÑA 1: RESUMEN DE EJECUCIÓN */}
@@ -1963,6 +1969,16 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     }
 
                                 </Tab.Pane>
+                                
+                                {/* --- programa --- */}
+                                {esPrograma && (
+                                    <Tab.Pane eventKey="proyectos-programa">
+                                        <ProgramaProyectos
+                                            programaId={projectId}
+                                            cerrado={cerrado}
+                                        />
+                                    </Tab.Pane>
+                                )}
 
                                 {/* --- Alcance --- */}
                                 <Tab.Pane eventKey="alcance">
@@ -2163,7 +2179,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         editMode={editMode}
                                         ejecutado={ejecutado}
                                         cerrado={cerrado}
-                                        onSummaryChange={setPorcentajeCompletado} // o la función que maneje el resumen
+                                        interesados={interesado}
+                                        onSummaryChange={setPorcentajeCompletado}
+                                        onPerformanceChange={setDesempenoValue}
                                     />
                                     {/* Boton Guardar*/}
                                     <div className="mt-5 pb-5">

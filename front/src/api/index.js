@@ -326,3 +326,9 @@ export const getSolicitudesProyecto = (proyectoId) => apiWithToken.get(`/proyect
 export const createSolicitudCambio = (payload) => apiWithToken.post('/proyecto/control-cambio', payload);
 export const updateEstadoSolicitudCambio = (id, payload) => apiWithToken.put(`/proyecto/control-cambio/${id}/estado`, payload);
 export const getSolicitudesDashboard = (usuarioId, modo) => apiWithToken.get(`/proyecto/dashboard/control-cambio/usuario/${usuarioId}?modo=${modo}`);
+
+//--- PROGRAMA ---
+export const getProyectosDelPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/proyectos`);
+export const getProyectosDisponiblesParaPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/disponibles`);
+export const asignarProyectoAPrograma = (programaId, proyectoId) => apiWithToken.post(`/proyecto/${programaId}/programa/asignar`, { proyectoId });
+export const desasignarProyectoDePrograma = (proyectoId) => apiWithToken.delete(`/proyecto/${proyectoId}/programa`);

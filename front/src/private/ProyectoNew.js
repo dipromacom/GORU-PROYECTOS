@@ -548,11 +548,11 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                             <Nav.Item>
                                 <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
                             </Nav.Item>
-                            {!esActividad && (
+                            {/*{!esActividad && (
                                 <Nav.Item>
                                     <Nav.Link eventKey="alcance">Alcance</Nav.Link>
                                 </Nav.Item>
-                            )}
+                            )}*/}
                             {/* <Nav.Item>
                                 <Nav.Link eventKey="to-do" >To Do</Nav.Link>
                             </Nav.Item>
@@ -1115,7 +1115,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                         </Tab.Pane>
 
                         {/* --- Alcance --- */}
-                        <Tab.Pane eventKey="alcance">
+                        {/*<Tab.Pane eventKey="alcance">
                             <InputAlcanceList
                                 alcanceEntregables={alcanceEntregables}
                                 setAlcanceEntregables={setAlcanceEntregables}
@@ -1133,7 +1133,7 @@ function ProyectoNew({ dispatch, isLoading, usuario, tipoProyectoList }) {
                                         </LoaderButton>
                                 }
                             </div>
-                        </Tab.Pane>
+                        </Tab.Pane>*/}
 
                         {/* Analisis Ambiental */}
                         <Tab.Pane eventKey="analisis-Ambiental">

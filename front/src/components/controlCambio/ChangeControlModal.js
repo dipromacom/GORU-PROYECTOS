@@ -3,13 +3,13 @@ import { Modal, Button, Form, Row, Col } from 'react-bootstrap';
 import { useDispatch } from 'react-redux';
 import { actions } from '../../reducers/controlCambio';
 
-const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, directorProyecto, projectDetail }) => {
+const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, directorProyecto, projectDetail, onSuccess }) => {
     const dispatch = useDispatch();
     const [formData, setFormData] = useState({});
 
     useEffect(() => {
         if (data) {
-            // Sincronizamos los datos que vienen de la DB
+          
             setFormData(data);
         } else {
             // Estado inicial para nueva solicitud
@@ -19,10 +19,10 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
                 nombre_solicitante: usuario?.nombre || '',
                 impacto_proyecto: 'Bajo',
                 estado: 'Creado',
-                recomendacion: '', // Corregido a singular según tu JSON
+                recomendacion: '', 
                 analisis_impacto: '',
                 resolucion: '',
-                revision_director: '', // Corregido según tu JSON (es el aprobado_por)
+                revision_director: '', 
                 fecha_solicitud: new Date().toISOString().split('T')[0]
             });
         }
@@ -30,7 +30,7 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
 
     const handleSubmit = (e) => {
         e.preventDefault();
-        // Aseguramos que el payload lleve los nombres correctos de las columnas
+
         const payload = {
             ...formData,
             proyecto_id: proyectoId,
@@ -41,6 +41,9 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
             dispatch(actions.updateStatus(data.id, payload, proyectoId));
         } else {
             dispatch(actions.saveSolicitud(payload));
+        }
+        if (onSuccess) {
+            onSuccess(); 
         }
         onHide();
     };

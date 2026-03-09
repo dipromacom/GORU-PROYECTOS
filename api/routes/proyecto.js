@@ -9,6 +9,7 @@ const logController = require('../controllers/log-controller');
 const informeAvanceController = require('../controllers/informe-avance');
 const permisoMiddleware = require('../utils/permiso-middleware');
 const solicitudCambioController = require('../controllers/solicitud-cambio');
+const ProgramaController = require('../controllers/programa');
 
 const router = express.Router();
 
@@ -89,5 +90,11 @@ router.post('/proyecto/control-cambio', solicitudCambioController.createSolicitu
 router.put('/proyecto/control-cambio/:id/estado', solicitudCambioController.changeStatus);
 router.get('/proyecto/:proyectoId/control-cambio', solicitudCambioController.getSolicitudesProyecto);
 router.get('/proyecto/:proyectoId/estados', logController.getHistorialEstados);
+
+// RUTAS PROGRAMA
+router.get('/proyecto/:id/programa/proyectos', ProgramaController.getProyectosDelPrograma);
+router.get('/proyecto/:id/programa/disponibles', ProgramaController.getProyectosDisponibles);
+router.post('/proyecto/:id/programa/asignar', ProgramaController.asignarProyecto);
+router.delete('/proyecto/:proyectoId/programa', ProgramaController.desasignarProyecto);
 
 module.exports = router;

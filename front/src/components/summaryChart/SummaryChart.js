@@ -45,6 +45,10 @@ const PerformancePolarChart = ({ dataValues }) => {
             value: dataValues.cronograma || 0,
             baseColor: { r: 255, g: 99, b: 132 }  // Rosa/Rojo
         },
+        ...(dataValues.beneficios !== undefined
+            ? [{ label: '🏆 Beneficios', value: dataValues.beneficios || 0, baseColor: { r: 255, g: 215, b: 0 } }]
+            : []
+        ),
     ];
 
     // Función para ajustar el color según el desempeño

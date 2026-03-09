@@ -20,6 +20,7 @@ import encuesta from "./encuesta-satisfaccion"
 import projectLogSagas from "./projectLogSagas";
 import informeAvance from "./informe-avance";
 import controlCambio from "./controlCambio";
+import programa from "./programa";
 
 
 
@@ -45,7 +46,8 @@ const sagas = [
   ...encuesta,
   ...projectLogSagas,
   ...informeAvance,
-  ...controlCambio
+  ...controlCambio,
+  ...programa,
 ];
 
 export default function* rootSaga() {

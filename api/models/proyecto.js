@@ -50,6 +50,7 @@ module.exports = (db, Sequelize) => {
     modo: { type: Sequelize.STRING },
     lecciones_aprendidas: { type: Sequelize.JSONB },
     beneficios: { type: Sequelize.JSONB },
+    programa_id: { type: Sequelize.INTEGER, allowNull: true },
   }, {
     freezeTableName: true,
     tableName: 'proyecto',
@@ -121,6 +122,16 @@ module.exports = (db, Sequelize) => {
     Proyecto.KanbanStatuses = Proyecto.hasMany(KanbanStatus, {
       as: 'KanbanStatuses',
       foreignKey: 'project_id'
+    });
+
+    Proyecto.Programa = Proyecto.belongsTo(Proyecto, {
+      as: 'Programa',
+      foreignKey: 'programa_id',
+    });
+
+    Proyecto.Proyectos = Proyecto.hasMany(Proyecto, {
+      as: 'Proyectos',
+      foreignKey: 'programa_id',
     });
 
 

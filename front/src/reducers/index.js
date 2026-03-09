@@ -22,6 +22,7 @@ import encuesta from "./encuesta-satisfaccion";
 import projectLog from "./projectLog";
 import informeAvance from "./informe-avance";
 import controlCambio from "./controlCambio";
+import programa from "./programa";
 
 const createRootReducer = (history) => combineReducers({
   router: connectRouter(history),
@@ -45,7 +46,8 @@ const createRootReducer = (history) => combineReducers({
   encuesta,
   projectLog,
   informeAvance,
-  controlCambio
+  controlCambio,
+  programa
 
 });
 
