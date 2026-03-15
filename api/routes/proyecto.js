@@ -92,6 +92,7 @@ router.get('/proyecto/:proyectoId/control-cambio', solicitudCambioController.get
 router.get('/proyecto/:proyectoId/estados', logController.getHistorialEstados);
 
 // RUTAS PROGRAMA
+router.get('/proyecto/programas/lista', ProgramaController.getProgramasByUsuario);
 router.get('/proyecto/:id/programa/proyectos', ProgramaController.getProyectosDelPrograma);
 router.get('/proyecto/:id/programa/disponibles', ProgramaController.getProyectosDisponibles);
 router.post('/proyecto/:id/programa/asignar', ProgramaController.asignarProyecto);

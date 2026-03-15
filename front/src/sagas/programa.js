@@ -9,6 +9,7 @@ const sagas = [
     takeLatest(types.GET_PROYECTOS_DISPONIBLES_REQUEST, handleGetProyectosDisponibles),
     takeLatest(types.ASIGNAR_PROYECTO_REQUEST, handleAsignarProyecto),
     takeLatest(types.DESASIGNAR_PROYECTO_REQUEST, handleDesasignarProyecto),
+    takeLatest(types.GET_PROGRAMAS_LISTA_REQUEST, handleGetProgramasLista),
 ];
 
 function* handleGetProyectosPrograma({ programaId }) {
@@ -67,6 +68,21 @@ function* handleDesasignarProyecto({ proyectoId, programaId }) {
         }
     } catch (e) {
         yield put({ type: types.DESASIGNAR_PROYECTO_ERROR, error: e.message });
+        onError(e);
+    }
+}
+
+function* handleGetProgramasLista() {
+    try {
+        const response = yield call(Api.getProgramasLista);
+        const { success, data } = response.data;
+        if (success) {
+            yield put({ type: types.GET_PROGRAMAS_LISTA_SUCCESS, programasLista: data });
+        } else {
+            yield put({ type: types.GET_PROGRAMAS_LISTA_ERROR });
+        }
+    } catch (e) {
+        yield put({ type: types.GET_PROGRAMAS_LISTA_ERROR });
         onError(e);
     }
 }

@@ -332,3 +332,4 @@ export const getProyectosDelPrograma = (programaId) => apiWithToken.get(`/proyec
 export const getProyectosDisponiblesParaPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/disponibles`);
 export const asignarProyectoAPrograma = (programaId, proyectoId) => apiWithToken.post(`/proyecto/${programaId}/programa/asignar`, { proyectoId });
 export const desasignarProyectoDePrograma = (proyectoId) => apiWithToken.delete(`/proyecto/${proyectoId}/programa`);
+export const getProgramasLista = () => apiWithToken.get('/proyecto/programas/lista');

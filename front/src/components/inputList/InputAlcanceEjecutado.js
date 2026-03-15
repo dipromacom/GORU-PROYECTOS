@@ -51,7 +51,7 @@ const InputAlcanceEjecutado = ({ alcanceEntregables, setAlcanceEntregables, edit
 
     return (
         <div className="input-text-list">
-            {editMode && (
+            {(editMode && !ejecutado) &&  (
                 <InputGroup className="mb-3">
                     <Form.Control
                         type="text"

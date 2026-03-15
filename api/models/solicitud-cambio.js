@@ -36,7 +36,7 @@ module.exports = (db, Sequelize) => {
             type: Sequelize.TEXT
         },
         analisis_impacto: {
-            type: Sequelize.TEXT
+            type: Sequelize.JSONB
         },
         recomendacion: {
             type: Sequelize.TEXT

@@ -92,7 +92,7 @@ function FilaProyecto({ proyecto, onIr, onEliminar, cerrado }) {
                 )}
             </td>
             <td className="pp-col-director">{director}</td>
-            <td className="pp-col-empresa">{empresa}</td>
+            {/*<td className="pp-col-empresa">{empresa}</td>*/}
             <td className="pp-col-fecha" style={{ fontFamily: "monospace", fontSize: 12 }}>{fechaInicio}</td>
             <td className="pp-col-estado">
                 <EstadoPill estado={proyecto.estado} />
@@ -378,7 +378,7 @@ function ProgramaProyectos({
                             <tr>
                                 <th>Nombre del proyecto</th>
                                 <th>Director</th>
-                                <th>Empresa</th>
+                                {/*<th>Empresa</th>*/}
                                 <th>Inicio</th>
                                 <th>Estado</th>
                                 <th style={{ textAlign: "center" }}>Acciones</th>

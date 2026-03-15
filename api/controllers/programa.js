@@ -84,9 +84,27 @@ const desasignarProyecto = async (req, res) => {
     }
 };
 
+/**
+ * GET /proyecto/programas/lista
+ * Retorna todos los programas (PR) accesibles por el usuario autenticado.
+ * Para poblar el combobox "Programa" en el acta de constitución.
+ */
+const getProgramasByUsuario = async (req, res) => {
+    try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+
+        const programas = await ProgramaUtils.getProgramasByUsuario(usuarioId);
+        return res.status(200).json({ success: true, data: programas });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getProyectosDelPrograma,
     getProyectosDisponibles,
     asignarProyecto,
     desasignarProyecto,
+    getProgramasByUsuario,
 };

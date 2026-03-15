@@ -76,8 +76,10 @@ import ChangeControlModal from "../components/controlCambio/ChangeControlModal";
 import ChangeControlPdf from "../components/controlCambio/ChangeControlPdf";
 import ProgramaProyectos from "../components/programaProyectos/ProgramaProyectos";
 
+import { actions as programaActions, selectors as programaSelectors } from "../reducers/programa";
 
-function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes }) {
+
+function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, }) {
     const routeParams = useParams();
     const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
@@ -165,6 +167,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
         // Campos de texto simples
         setPrograma("");
+        setProgramaId(null); 
         setJustificacion("");
         setDescripcion("");
         setAnalisisViabilidad("");
@@ -218,6 +221,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setEnunciadoTrabajo(projectDetail?.enunciado)
         setPortafolio(projectDetail?.portafolio)
         setPrograma(projectDetail?.programa)
+        setProgramaId(projectDetail?.programa_id ?? null);
         setJustificacion(projectDetail?.justificacion)
         setDescripcion(projectDetail?.descripcion)
         setAnalisisViabilidad(projectDetail?.analisis_viabilidad)
@@ -283,6 +287,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [enunciadoTrabajo, setEnunciadoTrabajo] = useState('');
     const [portafolio, setPortafolio] = useState("");
     const [programa, setPrograma] = useState("");
+    const [programaId, setProgramaId] = useState(null);
     const [justificacion, setJustificacion] = useState("");
     const [descripcion, setDescripcion] = useState("");
     const [analisisViabilidad, setAnalisisViabilidad] = useState("");
@@ -431,6 +436,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     }, [listaInformes]);
     */
 
+    useEffect(() => {
+        // Solo para proyectos equipo (P) y personales (A), no para programas
+        if (!esPrograma) {
+            dispatch(programaActions.getProgramasLista());
+        }
+    }, [numericId, dispatch, esPrograma]);
+
     const handleOpenInformeModal = () => {
         setInformeEditar(null); 
         setShowInformeModal(true);
@@ -464,6 +476,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                     logs={logs}
                     riesgosList={riesgos}
                     leccionesAprendidas={leccionesAprendidas}
+
+                    listaSolicitudes={listaSolicitudes || []}
+                    listaEncuestas={listaEncuestas || []}
+                    alcanceEntregables={alcanceEntregables || []}
+                    tiempoFechasCriticas={tiempoFechasCriticas || []}
+                    costoEntregable={costoEntregable || []}
+                    calidadMetricas={calidadMetricas || []}
+                    todo={todo || []}
                 />
             ).toBlob();
 
@@ -702,7 +722,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             contrato,
             casoNegocio,
             enunciadoTrabajo,
-            ...(portafolio && { portafolio }),
+            portafolio: portafolio ?? null,
+            programa_id: programaId,
             ...(programa && { programa }),
             ...(justificacion && { justificacion }),
             ...(descripcion && { descripcion }),
@@ -1473,6 +1494,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         leccionesAprendidas={leccionesAprendidas}
                                                         usuario={usuario}
 
+                                                        listaSolicitudes={listaSolicitudes || []}
+                                                        listaEncuestas={listaEncuestas || []}
+                                                        alcanceEntregables={alcanceEntregables || []}
+                                                        tiempoFechasCriticas={tiempoFechasCriticas || []}
+                                                        costoEntregable={costoEntregable || []}
+                                                        calidadMetricas={calidadMetricas || []}
+                                                        todo={todo || []}
                                                     />
                                                     {/* Modal de Invitación a la Encuesta */}
                                                     <Modal show={showInvitation} onHide={() => setShowInvitation(false)} centered>
@@ -1578,17 +1606,58 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             onChange={e => setPortafolio(e.target.value)}
                                         />
                                     </Form.Group>*/}
-                                    <Form.Group controlId="programa">
-                                        <Form.Label>{esPrograma ? "Portafolio" : "Programa"}</Form.Label>
-                                        <Form.Control
-                                            disabled={!editMode}
-                                            autoFocus
-                                            autoComplete="off"
-                                            type="text"
-                                            value={programa}
-                                            onChange={e => setPrograma(e.target.value)}
-                                        />
-                                    </Form.Group>
+                                        {esPrograma ? (
+                                            // Para programas: campo texto libre "Portafolio" (sin cambios)
+                                            <Form.Group controlId="portafolio-programa">
+                                                <Form.Label>Portafolio</Form.Label>
+                                                <Form.Control
+                                                    disabled={!editMode}
+                                                    autoComplete="off"
+                                                    type="text"                       // este campo queda como texto libre
+                                                    value={portafolio ?? ''}
+                                                    onChange={e => setPortafolio(e.target.value)}
+                                                />
+                                            </Form.Group>
+                                        ) : (
+                                            // Para proyectos P y A: combobox de programas
+                                            <Form.Group controlId="programa">
+                                                <Form.Label>Programa</Form.Label>
+                                                <Form.Control
+                                                    as="select"
+                                                    disabled={!editMode}
+                                                    value={programaId ?? ''}
+                                                    onChange={e => {
+                                                        const id = e.target.value ? Number(e.target.value) : null;
+                                                        setProgramaId(id);
+                                                        const nombrePrograma = id
+                                                            ? (programasLista || []).find(p => p.id === id)?.nombre ?? ''
+                                                            : '';
+                                                        setPrograma(nombrePrograma);
+                                                    }}
+                                                >
+                                                    <option value="">— Sin programa —</option>
+                                                    {(programasLista || []).map(p => (
+                                                        <option key={p.id} value={p.id}>
+                                                            {p.nombre}
+                                                            {p.Empresa?.nombre ? ` (${p.Empresa.nombre})` : ''}
+                                                        </option>
+                                                    ))}
+                                                </Form.Control>
+                                                {/* Indicador visual del programa actual si ya tiene uno asignado */}
+                                                {!editMode && programaId && (
+                                                    <Form.Text className="text-muted">
+                                                        <i className="bi bi-diagram-3 me-1" />
+                                                        Este proyecto forma parte de un programa.
+                                                    </Form.Text>
+                                                )}
+                                                {editMode && programaId && (
+                                                    <Form.Text className="text-muted">
+                                                        Al guardar, el proyecto quedará asignado al programa seleccionado.
+                                                        Para desvincularlo seleccioná "— Sin programa —".
+                                                    </Form.Text>
+                                                )}
+                                            </Form.Group>
+                                        )}
                                     <h2
                                         onClick={() => setOpenPrimeraParte(!openPrimeraParte)}
                                         aria-controls="primera-parte-expand"
@@ -2248,6 +2317,7 @@ const mapStateToProps = state => ({
 
     // --- CONTROL DE CAMBIOS ---
     listaSolicitudes: changeSelectors.getSolicitudes(state),
+    programasLista: programaSelectors.getProgramasLista(state),
 });
 
 export default connect(mapStateToProps)(ProyectoDetail);

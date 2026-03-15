@@ -467,7 +467,8 @@ const createRequestProjectCreation = ({
     plazoPeriodo,
     maxDesviacionPeriodo,
     leccionesAprendidas,
-    beneficios
+    beneficios,
+    programa_id,
 }) => {
     return {
         nombre: nombreProyecto,
@@ -512,7 +513,8 @@ const createRequestProjectCreation = ({
         plazo_periodo: plazoPeriodo,
         max_desviacion_periodo: maxDesviacionPeriodo,
         lecciones_aprendidas: leccionesAprendidas,
-        beneficios: beneficios
+        beneficios: beneficios,
+        programa_id: programa_id ?? null,
     }
 }
 

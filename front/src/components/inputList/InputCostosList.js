@@ -217,9 +217,9 @@ const InputCostosList = ({
 
             <hr />
 
-            <Row className="bg-dark text-white p-3 rounded mx-0">
+            <Row className="bg-success text-white p-3 rounded mx-0">
                 <Col xs={(ejecutado || cerrado) ? 6 : 12}>
-                    <div className="small opacity-75">TOTAL ESTIMADO (Línea Base)</div>
+                    <div className="small opacity-75">TOTAL ESTIMADO (Presupuesto)</div>
                     <div className="h5 mb-0">${formatToEcuador(presupuestoEstimadoTotal.toFixed(2))}</div>
                 </Col>
                 {(ejecutado || cerrado) && (

@@ -421,6 +421,25 @@ const updateProyecto = async (data, id, usuarioId) => {
     changes['tipo_proyecto'] = { old: proyecto.tipo_proyecto, new: data.tipo_proyecto };
   }
 
+  if (data.programa_id !== undefined) {
+    if (data.programa_id === null) {
+      // Desasignar: OK, no necesita validación
+    } else {
+      const programa = await Proyecto.findOne({
+        where: { id: data.programa_id, modo: 'PR' }
+      });
+      if (!programa) {
+        throw new Error(`El ID ${data.programa_id} no corresponde a un programa válido.`);
+      }
+      // Verificar que no esté ya asignado a otro programa diferente
+      if (proyecto.programa_id && proyecto.programa_id !== parseInt(data.programa_id)) {
+        throw new Error(
+          `El proyecto ya pertenece al programa ID ${proyecto.programa_id}. Desasignelo primero.`
+        );
+      }
+    }
+  }
+
   await proyecto.update(data)
 
   // GUARDAR LOG SOLO SI HUBO CAMBIOS REALES

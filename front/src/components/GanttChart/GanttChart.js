@@ -1253,12 +1253,18 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                 type="number"
                                 min={0}
                                 max={100}
-                                value={form.progress}
+                                value={form.progress === 0 ? "" : form.progress}
+                                placeholder="0"
                                 onChange={(e) => {
-                                    // 🔹 NUEVO: Limitar el valor entre 0 y 100
-                                    const value = Number(e.target.value);
-                                    const limitedValue = Math.min(Math.max(value, 0), 100);
-                                    setForm({ ...form, progress: limitedValue });
+                                    const val = e.target.value;
+                                    if (val === "") {
+                                        setForm({ ...form, progress: 0 });
+                                        return;
+                                    }
+                                    const num = Number(val);
+                                    if (num >= 0 && num <= 100) {
+                                        setForm({ ...form, progress: num });
+                                    }
                                 }}
                                 disabled={form.type === "group"}
                             />

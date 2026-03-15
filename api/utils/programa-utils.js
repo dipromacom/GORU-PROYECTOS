@@ -167,9 +167,37 @@ const desasignarProyectoDePrograma = async (proyectoId, usuarioId) => {
     return proyecto;
 };
 
+const getProgramasByUsuario = async (usuarioId) => {
+    const programas = await Proyecto.findAll({
+        where: {
+            modo: 'PR',
+            [Op.or]: [
+                { usuario_creador: usuarioId },
+                { '$Usuarios.id$': usuarioId },
+            ],
+        },
+        include: [
+            {
+                model: Usuario,
+                as: 'Usuarios',
+                required: false,
+                through: { attributes: [] },
+                attributes: ['id'],
+            },
+            { model: Empresa, as: 'Empresa' },
+        ],
+        attributes: ['id', 'nombre', 'estado', 'empresa'],  // solo lo necesario para el combo
+        order: [['nombre', 'ASC']],
+    });
+
+    return programas;
+};
+
+
 module.exports = {
     getProyectosByPrograma,
     getProyectosDisponiblesParaPrograma,
     asignarProyectoAPrograma,
     desasignarProyectoDePrograma,
+    getProgramasByUsuario,
 };

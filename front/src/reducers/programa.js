@@ -24,6 +24,10 @@ export const types = {
 
     // Limpiar estado al desmontar
     CLEAR_PROGRAMA_STATE: 'programa/CLEAR_PROGRAMA_STATE',
+
+    GET_PROGRAMAS_LISTA_REQUEST: 'programa/GET_PROGRAMAS_LISTA_REQUEST',
+    GET_PROGRAMAS_LISTA_SUCCESS: 'programa/GET_PROGRAMAS_LISTA_SUCCESS',
+    GET_PROGRAMAS_LISTA_ERROR: 'programa/GET_PROGRAMAS_LISTA_ERROR',
 };
 
 export const actions = {
@@ -48,12 +52,16 @@ export const actions = {
     clearProgramaState: () => ({
         type: types.CLEAR_PROGRAMA_STATE,
     }),
+    getProgramasLista: () => ({
+        type: types.GET_PROGRAMAS_LISTA_REQUEST,
+    }),
 };
 
 const defaultState = {
     isLoading: false,
     proyectosPrograma: [],    // Los que ya están en el programa
     proyectosDisponibles: [], // Los que el usuario puede añadir
+    programasLista: [],
     error: null,
 };
 
@@ -62,6 +70,7 @@ export const selectors = {
     getProyectosPrograma: ({ programa }) => programa.proyectosPrograma,
     getProyectosDisponibles: ({ programa }) => programa.proyectosDisponibles,
     getError: ({ programa }) => programa.error,
+    getProgramasLista: ({ programa }) => programa.programasLista,
 };
 
 const programaReducer = (state = defaultState, action = {}) => {
@@ -117,7 +126,13 @@ const programaReducer = (state = defaultState, action = {}) => {
         // --- CLEAR ---
         case types.CLEAR_PROGRAMA_STATE:
             return defaultState;
-
+         
+        case types.GET_PROGRAMAS_LISTA_REQUEST:
+            return { ...state, isLoading: true };
+        case types.GET_PROGRAMAS_LISTA_SUCCESS:
+            return { ...state, isLoading: false, programasLista: action.programasLista };
+        case types.GET_PROGRAMAS_LISTA_ERROR:
+            return { ...state, isLoading: false, programasLista: [] };    
         default:
             return state;
     }

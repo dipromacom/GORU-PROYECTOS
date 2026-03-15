@@ -127,11 +127,13 @@ module.exports = (db, Sequelize) => {
     Proyecto.Programa = Proyecto.belongsTo(Proyecto, {
       as: 'Programa',
       foreignKey: 'programa_id',
+      constraints: false,   
     });
 
     Proyecto.Proyectos = Proyecto.hasMany(Proyecto, {
       as: 'Proyectos',
       foreignKey: 'programa_id',
+      constraints: false,
     });
 
 

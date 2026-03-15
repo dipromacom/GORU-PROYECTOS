@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Modal, Button, Form, Row, Col, Alert } from 'react-bootstrap';
+import { Modal, Button, Form, Row, Col, Alert, Badge, Table } from 'react-bootstrap';
 import { useDispatch } from 'react-redux';
 import { actions as informeActions } from "../../reducers/informe-avance";
 import RiskHeatmapMatrix from '../summaryChart/RiskHeatmapMatrix';
@@ -16,7 +16,14 @@ const InformeAvanceModal = ({
     estadisticas,
     logs,
     riesgosList = [],
-    leccionesAprendidas 
+    leccionesAprendidas,
+    listaSolicitudes = [],
+    listaEncuestas = [],
+    alcanceEntregables = [],
+    tiempoFechasCriticas = [],
+    costoEntregable = [],
+    calidadMetricas,
+    todo = [],
 }) => {
     const dispatch = useDispatch();
     const [formData, setFormData] = useState({
@@ -47,7 +54,6 @@ const InformeAvanceModal = ({
         }
     }, [informeEditar, show]);
 
-
     const handleChange = (field, value) => {
         setFormData({ ...formData, [field]: value });
         if (errors[field]) {
@@ -58,7 +64,7 @@ const InformeAvanceModal = ({
     const validateForm = () => {
         const newErrors = {};
         if (!formData.nombrePersona || formData.nombrePersona.trim() === '') {
-            newErrors.nombrePersona = 'El nombre de la persona es obligatorio'; // ← AGREGAR
+            newErrors.nombrePersona = 'El nombre de la persona es obligatorio';
         }
         if (!formData.conclusiones || formData.conclusiones.trim() === '') {
             newErrors.conclusiones = 'Las conclusiones son obligatorias';
@@ -71,12 +77,10 @@ const InformeAvanceModal = ({
     };
 
     const handleSubmit = () => {
-        if (!validateForm()) {
-            return;
-        }
+        if (!validateForm()) return;
 
         const payload = {
-            proyectoId: proyectoId,
+            proyectoId,
             usuarioId: usuario?.id,
             nombrePersona: formData.nombrePersona.trim(),
             fechaInforme: formData.fechaInforme,
@@ -89,13 +93,78 @@ const InformeAvanceModal = ({
         } else {
             dispatch(informeActions.createInforme(payload));
         }
-
         onHide();
     };
 
     const esActividad = projectDetail?.modo === "A";
     const esPrograma = projectDetail?.modo === "PR";
-    const esProyecto = projectDetail?.modo === "P";
+
+    // --- Helpers para elementos retrasados ---
+    // Estructura real de BD confirmada:
+    // alcanceEntregables: { nombre, deadline, completado, fecha_entregable }
+    // tiempoFechasCriticas:{ description, date, completado, fecha_hito }
+    // costoEntregable:     { entregable, costo, deadline, completado, fecha_cerrado, costoReal }
+    // calidadMetricas:     { entregable, metrica, completado }  ← sin deadline, no aplica "retrasado"
+    // todo:                { dueDate, done, task/name/descripcion }
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const alcanceRetrasado = (alcanceEntregables || []).filter(ent => {
+        const deadline = ent.deadline ? new Date(ent.deadline) : null;
+        return deadline && deadline < hoy && !ent.completado;
+    });
+
+    const hitosRetrasados = (tiempoFechasCriticas || []).filter(h => {
+        const fecha = h.date ? new Date(h.date) : null;
+        return fecha && fecha < hoy && !h.completado;
+    });
+
+    const costosRetrasados = (costoEntregable || []).filter(c => {
+        const deadline = c.deadline ? new Date(c.deadline) : null;
+        return deadline && deadline < hoy && !c.completado;
+    });
+
+    // Calidad: no tiene deadline → mostramos los no completados como "pendientes"
+    const calidadPendiente = (calidadMetricas || []).filter(c => !c.completado);
+
+    // Tareas: done === true significa completada
+    const tareasAtrasadas = (todo || []).filter(t => {
+        const fecha = t.dueDate ? new Date(t.dueDate) : null;
+        return fecha && fecha < hoy && !t.done;
+    });
+
+    const hayRetrasos = alcanceRetrasado.length > 0 || hitosRetrasados.length > 0 ||
+        costosRetrasados.length > 0 || tareasAtrasadas.length > 0;
+    const hayCualquierAlerta = hayRetrasos || calidadPendiente.length > 0;
+
+    // --- Helper promedio encuesta ---
+    const calcularPromedioEncuesta = (encuesta) => {
+        const campos = [
+            'comunicacion', 'rapidez_respuesta', 'manejo_reuniones',
+            'cumplimiento_plazos', 'cumplimiento_alcance', 'calidad_entregado',
+            'nivel_capacitaciones', 'gestion_documentacion', 'experiencia_director',
+            'satisfaccion_general'
+        ];
+        const suma = campos.reduce((acc, campo) => acc + (encuesta[campo] || 0), 0);
+        return (suma / campos.length).toFixed(1);
+    };
+
+    const getBadgeEstadoCambio = (estado) => {
+        switch (estado) {
+            case 'Aprobado': return 'success';
+            case 'No Aprobado': return 'danger';
+            case 'En Revisión': return 'warning';
+            default: return 'secondary';
+        }
+    };
+
+    const getBadgeImpacto = (impacto) => {
+        switch (impacto) {
+            case 'Alto': return 'danger';
+            case 'Mediano': return 'warning';
+            default: return 'success';
+        }
+    };
 
     return (
         <Modal show={show} onHide={onHide} size="xl" backdrop="static" centered>
@@ -104,14 +173,14 @@ const InformeAvanceModal = ({
                     {informeEditar ? 'Editar Informe de Avance' : 'Nuevo Informe de Avance'}
                 </Modal.Title>
             </Modal.Header>
-            <Modal.Body style={{ maxHeight: '70vh', overflowY: 'auto' }}>
+            <Modal.Body style={{ maxHeight: '75vh', overflowY: 'auto' }}>
                 {Object.keys(errors).length > 0 && (
                     <Alert variant="danger" className="mb-3">
                         Por favor, complete todos los campos obligatorios.
                     </Alert>
                 )}
 
-                {/* Nombre de la Persona */}
+                {/* Nombre */}
                 <Form.Group className="mb-4">
                     <Form.Label className="fw-bold">
                         Nombre de la Persona <span className="text-danger">*</span>
@@ -123,12 +192,10 @@ const InformeAvanceModal = ({
                         onChange={(e) => handleChange('nombrePersona', e.target.value)}
                         isInvalid={!!errors.nombrePersona}
                     />
-                    <Form.Control.Feedback type="invalid">
-                        {errors.nombrePersona}
-                    </Form.Control.Feedback>
+                    <Form.Control.Feedback type="invalid">{errors.nombrePersona}</Form.Control.Feedback>
                 </Form.Group>
 
-                {/* Fecha del Informe */}
+                {/* Fecha */}
                 <Form.Group className="mb-4">
                     <Form.Label className="fw-bold">Fecha del Informe</Form.Label>
                     <Form.Control
@@ -140,12 +207,11 @@ const InformeAvanceModal = ({
 
                 <hr className="my-4" />
 
-                {/* Información del Proyecto (Solo lectura) */}
+                {/* Info del proyecto */}
                 <h5 className="mb-3 text-primary">
                     <i className="bi bi-info-circle me-2"></i>
                     Información del {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto"}
                 </h5>
-
                 <Row className="mb-4">
                     <Col md={6}>
                         <div className="p-3 bg-light rounded">
@@ -165,15 +231,14 @@ const InformeAvanceModal = ({
                         </div>
                     </Col>
                 </Row>
-
                 <Row className="mb-4">
                     <Col md={6}>
                         <div className="p-3 bg-light rounded">
                             <strong>Director:</strong>
                             <p className="mb-0">
-                                {projectDetail?.DirectorProyecto?.Persona ?
-                                    `${projectDetail.DirectorProyecto.Persona.nombre} ${projectDetail.DirectorProyecto.Persona.apellido}` :
-                                    'No asignado'}
+                                {projectDetail?.DirectorProyecto?.Persona
+                                    ? `${projectDetail.DirectorProyecto.Persona.nombre} ${projectDetail.DirectorProyecto.Persona.apellido}`
+                                    : 'No asignado'}
                             </p>
                         </div>
                     </Col>
@@ -181,28 +246,24 @@ const InformeAvanceModal = ({
                         <div className="p-3 bg-light rounded">
                             <strong>Patrocinador:</strong>
                             <p className="mb-0">
-                                {projectDetail?.Patrocinador?.Persona ?
-                                    `${projectDetail.Patrocinador.Persona.nombre} ${projectDetail.Patrocinador.Persona.apellido}` :
-                                    'No asignado'}
+                                {projectDetail?.Patrocinador?.Persona
+                                    ? `${projectDetail.Patrocinador.Persona.nombre} ${projectDetail.Patrocinador.Persona.apellido}`
+                                    : 'No asignado'}
                             </p>
                         </div>
                     </Col>
                 </Row>
-
                 <Row className="mb-4">
                     <Col md={6}>
                         <div className="p-3 bg-light rounded">
                             <strong>Departamento:</strong>
-                            <p className="mb-0">
-                                {projectDetail?.Departamento?.nombre}</p>
+                            <p className="mb-0">{projectDetail?.Departamento?.nombre}</p>
                         </div>
                     </Col>
                     <Col md={6}>
                         <div className="p-3 bg-light rounded">
                             <strong>Información breve:</strong>
-                            <p className="mb-0">
-                                {projectDetail?.informacion}
-                            </p>
+                            <p className="mb-0">{projectDetail?.informacion}</p>
                         </div>
                     </Col>
                 </Row>
@@ -215,7 +276,6 @@ const InformeAvanceModal = ({
                                     {projectDetail?.tipo_proyecto === 1 && 'Ágil'}
                                     {projectDetail?.tipo_proyecto === 2 && 'Predictivo'}
                                     {projectDetail?.tipo_proyecto === 3 && 'Híbrido'}
-                                  
                                 </p>
                             </div>
                         </Col>
@@ -223,28 +283,297 @@ const InformeAvanceModal = ({
                 )}
 
                 <hr className="my-4" />
+
+                {/* ── RESUMEN SATISFACCIÓN Y CONTROL DE CAMBIOS ── */}
                 <h5 className="mb-3 text-primary">
                     <i className="bi bi-graph-up-arrow me-2"></i>
-                    Resumen de Satisfacción y Control de cambios
+                    Resumen de Satisfacción y Control de Cambios
                 </h5>
                 <Row className="mb-4">
                     <Col md={6}>
                         <div className="p-3 bg-light rounded text-center">
-                            <strong>Promedio Encuestas de satisfacción:</strong>                         
-                            <h4 className="text-success mb-0">
-                                {estadisticas?.satisfaccionGeneral} / 5</h4>
+                            <strong>Promedio Encuestas de Satisfacción:</strong>
+                            <h4 className="text-success mb-0">{estadisticas?.satisfaccionGeneral} / 5</h4>
+                            <small className="text-muted">Basado en {estadisticas?.totalEncuestas || 0} encuesta(s)</small>
                         </div>
                     </Col>
                     <Col md={6}>
                         <div className="p-3 bg-light rounded text-center">
-                            <strong>Total cambios de estados:</strong>
-                            <h4 className="text-success mb-0">
-                                {logs.length}</h4>
+                            <strong>Total Cambios de Estados:</strong>
+                            <h4 className="text-success mb-0">{logs?.length || 0}</h4>
                         </div>
                     </Col>
                 </Row>
 
-                {/* Resumen de Ejecución */}
+                {/* ── DETALLE ENCUESTAS DE SATISFACCIÓN ── */}
+                {listaEncuestas && listaEncuestas.length > 0 && (
+                    <>
+                        <hr className="my-4" />
+                        <h5 className="mb-3 text-primary">
+                            <i className="bi bi-journal-check me-2"></i>
+                            Detalle de Encuestas de Satisfacción
+                        </h5>
+                        <div className="table-responsive mb-3">
+                            <Table striped bordered hover size="sm">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th>Nombre</th>
+                                        <th>Fecha</th>
+                                        <th className="text-center">Comunicación</th>
+                                        <th className="text-center">Plazos</th>
+                                        <th className="text-center">Alcance</th>
+                                        <th className="text-center">Calidad</th>
+                                        <th className="text-center">Promedio</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {listaEncuestas.map(enc => {
+                                        const promedio = parseFloat(calcularPromedioEncuesta(enc));
+                                        return (
+                                            <tr key={enc.id}>
+                                                <td><strong>{enc.nombre}</strong></td>
+                                                <td>{new Date(enc.createdAt).toLocaleDateString('es-ES')}</td>
+                                                <td className="text-center">{enc.comunicacion || '-'}</td>
+                                                <td className="text-center">{enc.cumplimiento_plazos || '-'}</td>
+                                                <td className="text-center">{enc.cumplimiento_alcance || '-'}</td>
+                                                <td className="text-center">{enc.calidad_entregado || '-'}</td>
+                                                <td className="text-center">
+                                                    <Badge bg={promedio >= 4 ? 'success' : promedio >= 3 ? 'warning' : 'danger'}>
+                                                        {promedio} / 5
+                                                    </Badge>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                            </Table>
+                        </div>
+                    </>
+                )}
+
+                {/* ── DETALLE CONTROLES DE CAMBIO ── */}
+                {listaSolicitudes && listaSolicitudes.length > 0 && (
+                    <>
+                        <hr className="my-4" />
+                        <h5 className="mb-3 text-primary">
+                            <i className="bi bi-arrow-left-right me-2"></i>
+                            Detalle de Solicitudes de Control de Cambios
+                        </h5>
+                        <div className="table-responsive mb-3">
+                            <Table striped bordered hover size="sm">
+                                <thead className="table-light">
+                                    <tr>
+                                        <th>#</th>
+                                        <th>Nombre del Cambio</th>
+                                        <th>Solicitante</th>
+                                        <th className="text-center">Impacto</th>
+                                        <th className="text-center">Estado</th>
+                                        <th>Resolución</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {listaSolicitudes.map(sol => (
+                                        <tr key={sol.id}>
+                                            <td>{sol.id}</td>
+                                            <td><strong>{sol.nombre_cambio}</strong></td>
+                                            <td>{sol.nombre_solicitante}</td>
+                                            <td className="text-center">
+                                                <Badge bg={getBadgeImpacto(sol.impacto_proyecto)}>
+                                                    {sol.impacto_proyecto}
+                                                </Badge>
+                                            </td>
+                                            <td className="text-center">
+                                                <Badge bg={getBadgeEstadoCambio(sol.estado)}>
+                                                    {sol.estado}
+                                                </Badge>
+                                            </td>
+                                            <td style={{ maxWidth: '200px', fontSize: '0.8rem' }}>
+                                                {sol.resolucion || <span className="text-muted">Sin resolución</span>}
+                                            </td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </Table>
+                        </div>
+                    </>
+                )}
+
+                {/* ── ELEMENTOS RETRASADOS / PENDIENTES ──
+                    Retrasado = tiene deadline pasado Y completado !== true
+                    Calidad: no tiene deadline, se muestran solo las no completadas aparte
+                */}
+                {hayCualquierAlerta && (
+                    <>
+                        <hr className="my-4" />
+                        <h5 className="mb-3 text-danger">
+                            <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                            Elementos Retrasados / Pendientes
+                        </h5>
+
+                        {/* Alcance: { nombre, deadline, completado } */}
+                        {alcanceRetrasado.length > 0 && (
+                            <div className="mb-4">
+                                <h6 className="fw-bold text-secondary">
+                                    <i className="bi bi-diagram-3 me-2"></i>
+                                    Alcance retrasado ({alcanceRetrasado.length})
+                                </h6>
+                                <div className="table-responsive">
+                                    <Table bordered size="sm">
+                                        <thead className="table-danger">
+                                            <tr>
+                                                <th>Entregable</th>
+                                                <th className="text-center">Fecha Límite</th>
+                                                <th className="text-center">Fecha Entregable Real</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {alcanceRetrasado.map((ent, i) => (
+                                                <tr key={i}>
+                                                    <td>{ent.nombre}</td>
+                                                    <td className="text-center text-danger fw-bold">
+                                                        {ent.deadline ? new Date(ent.deadline).toLocaleDateString('es-ES') : '-'}
+                                                    </td>
+                                                    <td className="text-center text-muted">
+                                                        {ent.fecha_entregable ? new Date(ent.fecha_entregable).toLocaleDateString('es-ES') : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Hitos: { description, date, completado, fecha_hito } */}
+                        {hitosRetrasados.length > 0 && (
+                            <div className="mb-4">
+                                <h6 className="fw-bold text-secondary">
+                                    <i className="bi bi-flag me-2"></i>
+                                    Hitos retrasados ({hitosRetrasados.length})
+                                </h6>
+                                <div className="table-responsive">
+                                    <Table bordered size="sm">
+                                        <thead className="table-danger">
+                                            <tr>
+                                                <th>Hito</th>
+                                                <th className="text-center">Fecha Planificada</th>
+                                                <th className="text-center">Fecha Real del Hito</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {hitosRetrasados.map((h, i) => (
+                                                <tr key={i}>
+                                                    <td>{h.description}</td>
+                                                    <td className="text-center text-danger fw-bold">
+                                                        {h.date ? new Date(h.date).toLocaleDateString('es-ES') : '-'}
+                                                    </td>
+                                                    <td className="text-center text-muted">
+                                                        {h.fecha_hito ? new Date(h.fecha_hito).toLocaleDateString('es-ES') : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Costos: { entregable, costo, costoReal, deadline, completado, fecha_cerrado } */}
+                        {costosRetrasados.length > 0 && (
+                            <div className="mb-4">
+                                <h6 className="fw-bold text-secondary">
+                                    <i className="bi bi-currency-dollar me-2"></i>
+                                    Costos retrasados ({costosRetrasados.length})
+                                </h6>
+                                <div className="table-responsive">
+                                    <Table bordered size="sm">
+                                        <thead className="table-danger">
+                                            <tr>
+                                                <th>Entregable</th>
+                                                <th className="text-center">Costo Planificado ($)</th>
+                                                <th className="text-center">Costo Real ($)</th>
+                                                <th className="text-center">Fecha Límite</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {costosRetrasados.map((c, i) => (
+                                                <tr key={i}>
+                                                    <td>{c.entregable}</td>
+                                                    <td className="text-center">{c.costo ?? '-'}</td>
+                                                    <td className="text-center">{c.costoReal ?? '-'}</td>
+                                                    <td className="text-center text-danger fw-bold">
+                                                        {c.deadline ? new Date(c.deadline).toLocaleDateString('es-ES') : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Calidad: { entregable, metrica, completado } — sin deadline, se muestran pendientes */}
+                        {calidadPendiente.length > 0 && (
+                            <div className="mb-4">
+                                <h6 className="fw-bold text-secondary">
+                                    <i className="bi bi-patch-check me-2"></i>
+                                    Calidad pendiente ({calidadPendiente.length})
+                                    <small className="fw-normal text-muted ms-2">(sin fecha de cierre registrada)</small>
+                                </h6>
+                                <div className="table-responsive">
+                                    <Table bordered size="sm">
+                                        <thead className="table-warning">
+                                            <tr>
+                                                <th>Entregable</th>
+                                                <th>Métrica</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {calidadPendiente.map((c, i) => (
+                                                <tr key={i}>
+                                                    <td>{c.entregable}</td>
+                                                    <td>{c.metrica || <span className="text-muted">Sin métrica definida</span>}</td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                </div>
+                            </div>
+                        )}
+
+                        {/* Tareas: { task, dueDate, done } */}
+                        {tareasAtrasadas.length > 0 && (
+                            <div className="mb-4">
+                                <h6 className="fw-bold text-secondary">
+                                    <i className="bi bi-check2-square me-2"></i>
+                                    Tareas retrasadas ({tareasAtrasadas.length})
+                                </h6>
+                                <div className="table-responsive">
+                                    <Table bordered size="sm">
+                                        <thead className="table-danger">
+                                            <tr>
+                                                <th>Tarea</th>
+                                                <th className="text-center">Fecha Límite</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {tareasAtrasadas.map((t, i) => (
+                                                <tr key={i}>
+                                                    <td>{t.task || t.name || t.descripcion}</td>
+                                                    <td className="text-center text-danger fw-bold">
+                                                        {t.dueDate ? new Date(t.dueDate).toLocaleDateString('es-ES') : '-'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </Table>
+                                </div>
+                            </div>
+                        )}
+                    </>
+                )}
+
+                {/* ── RESUMEN DE EJECUCIÓN ── */}
                 {(projectDetail?.estado === 'X' || projectDetail?.estado === 'E') && resumenEjecucion && (
                     <>
                         <hr className="my-4" />
@@ -287,12 +616,8 @@ const InformeAvanceModal = ({
                                     </Col>
                                     <Col md={4} className="mb-3">
                                         <div className="p-3 bg-light rounded text-center">
-                                            <strong className="d-block mb-2">
-                                                {esPrograma ? 'Nivel de Riesgo' : 'Nivel de Riesgo'}
-                                            </strong>
-                                            <h4 className="text-success mb-0">
-                                                {esPrograma ? resumenEjecucion.riesgoPromedio : resumenEjecucion.riesgoPromedio}%
-                                            </h4>
+                                            <strong className="d-block mb-2">Nivel de Riesgo</strong>
+                                            <h4 className="text-success mb-0">{resumenEjecucion.riesgoPromedio}%</h4>
                                         </div>
                                     </Col>
                                     {resumenEjecucion.gantt > 0 && (
@@ -309,7 +634,7 @@ const InformeAvanceModal = ({
                     </>
                 )}
 
-                {/* Resumen de Desempeño */}
+                {/* ── RESUMEN DE DESEMPEÑO ── */}
                 {(projectDetail?.estado === 'X' || projectDetail?.estado === 'E') && resumenDesempeno && (
                     <>
                         <hr className="my-4" />
@@ -318,74 +643,40 @@ const InformeAvanceModal = ({
                             Resumen de Desempeño
                         </h5>
                         <Row className="mb-4">
-                            <Col md={4} className="mb-3">
-                                <div className="p-3 bg-light rounded text-center">
-                                    <strong className="d-block mb-2">Alcance</strong>
-                                    <h4 className={resumenDesempeno.alcance >= 1 ? 'text-success' : 'text-danger'} mb-0>
-                                        {resumenDesempeno.alcance.toFixed(2)}
-                                    </h4>
-                                </div>
-                            </Col>
-                            <Col md={4} className="mb-3">
-                                <div className="p-3 bg-light rounded text-center">
-                                    <strong className="d-block mb-2">Hitos</strong>
-                                    <h4 className={resumenDesempeno.hitos >= 1 ? 'text-success' : 'text-danger'} mb-0>
-                                        {resumenDesempeno.hitos.toFixed(2)}
-                                    </h4>
-                                </div>
-                            </Col>
-                            <Col md={4} className="mb-3">
-                                <div className="p-3 bg-light rounded text-center">
-                                    <strong className="d-block mb-2">Costos</strong>
-                                    <h4 className={resumenDesempeno.costos >= 1 ? 'text-success' : 'text-danger'} mb-0>
-                                        {resumenDesempeno.costos.toFixed(2)}
-                                    </h4>
-                                </div>
-                            </Col>
-                            <Col md={4} className="mb-3">
-                                <div className="p-3 bg-light rounded text-center">
-                                    <strong className="d-block mb-2">Todo</strong>
-                                    <h4 className={resumenDesempeno.todo >= 1 ? 'text-success' : 'text-danger'} mb-0>
-                                        {resumenDesempeno.todo.toFixed(2)}
-                                    </h4>
-                                </div>
-                            </Col>
-                            <Col md={4} className="mb-3">
-                                <div className="p-3 bg-light rounded text-center">
-                                    <strong className="d-block mb-2">Kanban</strong>
-                                    <h4 className={resumenDesempeno.eficiencia >= 1 ? 'text-success' : 'text-danger'} mb-0>
-                                        {resumenDesempeno.eficiencia.toFixed(2)}
-                                    </h4>
-                                </div>
-                            </Col>
-                            <Col md={4} className="mb-3">
-                                <div className="p-3 bg-light rounded text-center">
-                                    <strong className="d-block mb-2">Cronograma</strong>
-                                    <h4 className={resumenDesempeno.cronograma >= 1 ? 'text-success' : 'text-danger'} mb-0>
-                                        {resumenDesempeno.cronograma.toFixed(2)}
-                                    </h4>
-                                </div>
-                            </Col>
+                            {[
+                                { label: 'Alcance', key: 'alcance' },
+                                { label: 'Hitos', key: 'hitos' },
+                                { label: 'Costos', key: 'costos' },
+                                { label: 'Todo', key: 'todo' },
+                                { label: 'Kanban', key: 'eficiencia' },
+                                { label: 'Cronograma', key: 'cronograma' },
+                            ].map(({ label, key }) => (
+                                <Col md={4} className="mb-3" key={key}>
+                                    <div className="p-3 bg-light rounded text-center">
+                                        <strong className="d-block mb-2">{label}</strong>
+                                        <h4 className={resumenDesempeno[key] >= 1 ? 'text-success mb-0' : 'text-danger mb-0'}>
+                                            {resumenDesempeno[key]?.toFixed(2)}
+                                        </h4>
+                                    </div>
+                                </Col>
+                            ))}
                         </Row>
+
                         {/* Matriz de Riesgos */}
-                        {riesgosList && riesgosList.length > 0 && (projectDetail?.estado === 'X' || projectDetail?.estado === 'E') && (
+                        {riesgosList && riesgosList.length > 0 && (
                             <>
                                 <hr className="my-4" />
                                 <h5 className="mb-3 text-primary">
                                     <i className="bi bi-exclamation-triangle me-2"></i>
                                     Matriz de Calor de Riesgos
                                 </h5>
-
-                                {/* Matriz Inicial */}
                                 <div className="mb-4">
                                     <h6 className="text-muted mb-3">Riesgos Iniciales</h6>
                                     <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={false} />
                                 </div>
-
-                                {/* Matriz Residual - Solo si hay planes cerrados */}
                                 {riesgosList.some(r => r.completado) && (
                                     <div className="mb-4">
-                                        <h6 className="text-muted mb-3">Riesgos Residuales (Después de Planes de Respuesta)</h6>
+                                        <h6 className="text-muted mb-3">Riesgos Residuales</h6>
                                         <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={true} />
                                         <div className="alert alert-info mt-3">
                                             <i className="bi bi-info-circle me-2"></i>
@@ -398,6 +689,7 @@ const InformeAvanceModal = ({
                     </>
                 )}
 
+                {/* ── LECCIONES APRENDIDAS ── */}
                 {projectDetail?.estado === 'E' && (
                     <>
                         <hr className="my-4" />
@@ -406,23 +698,21 @@ const InformeAvanceModal = ({
                             Lecciones Aprendidas
                         </h5>
                         <div className="p-3 bg-light rounded">
-                            {leccionesAprendidas ? (
-                                <p style={{ whiteSpace: 'pre-wrap' }}>{leccionesAprendidas}</p>
-                            ) : (
-                                <p className="text-muted mb-0">No disponible por el momento</p>
-                            )}
+                            {leccionesAprendidas
+                                ? <p style={{ whiteSpace: 'pre-wrap' }}>{leccionesAprendidas}</p>
+                                : <p className="text-muted mb-0">No disponible por el momento</p>
+                            }
                         </div>
                     </>
                 )}
 
                 <hr className="my-4" />
 
-                {/* Campos Editables */}
+                {/* ── ANÁLISIS Y PRÓXIMOS PASOS ── */}
                 <h5 className="mb-3 text-primary">
                     <i className="bi bi-pencil-square me-2"></i>
                     Análisis y Próximos Pasos
                 </h5>
-
                 <Form.Group className="mb-4">
                     <Form.Label className="fw-bold">
                         Conclusiones del Informe <span className="text-danger">*</span>
@@ -435,11 +725,8 @@ const InformeAvanceModal = ({
                         onChange={(e) => handleChange('conclusiones', e.target.value)}
                         isInvalid={!!errors.conclusiones}
                     />
-                    <Form.Control.Feedback type="invalid">
-                        {errors.conclusiones}
-                    </Form.Control.Feedback>
+                    <Form.Control.Feedback type="invalid">{errors.conclusiones}</Form.Control.Feedback>
                 </Form.Group>
-
                 <Form.Group className="mb-4">
                     <Form.Label className="fw-bold">
                         Próximos Pasos <span className="text-danger">*</span>
@@ -452,15 +739,11 @@ const InformeAvanceModal = ({
                         onChange={(e) => handleChange('proximosPasos', e.target.value)}
                         isInvalid={!!errors.proximosPasos}
                     />
-                    <Form.Control.Feedback type="invalid">
-                        {errors.proximosPasos}
-                    </Form.Control.Feedback>
+                    <Form.Control.Feedback type="invalid">{errors.proximosPasos}</Form.Control.Feedback>
                 </Form.Group>
             </Modal.Body>
             <Modal.Footer>
-                <Button variant="secondary" onClick={onHide}>
-                    Cancelar
-                </Button>
+                <Button variant="secondary" onClick={onHide}>Cancelar</Button>
                 <Button variant="success" onClick={handleSubmit}>
                     {informeEditar ? 'Actualizar Informe' : 'Guardar Informe'}
                 </Button>
