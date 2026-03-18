@@ -10,7 +10,7 @@ import { actions as ganttActions, selectors as ganttSelectors } from "../../redu
 import "./GanttChart.css";
 import { duration } from "moment";
 
-const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, esPrograma, onSummaryChange = () => { }, onPerformanceChange = () => { } }) => {
+const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, esPrograma, onSummaryChange = () => { }, onPerformanceChange = () => { }, onGanttSummary = () => { } }) => {
     let type = "actividad"
     if (esPrograma) type = "componente"
     let types = "actividades"
@@ -699,12 +699,17 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         if ((ejecutado || cerrado) && projectSummary) {
             onSummaryChange('gantt', projectSummary.avgProgress);
             onPerformanceChange('cronograma', projectSummary.avgPerformance);
-        }
-        else {
+            onGanttSummary({
+                start: projectSummary.start,
+                end: projectSummary.end,
+                totalDays: projectSummary.totalDays,
+            });
+        } else {
             onSummaryChange('gantt', 0);
             onPerformanceChange('cronograma', 0);
+            onGanttSummary(null);
         }
-    }, [projectSummary, ejecutado, cerrado, onSummaryChange, onPerformanceChange]);
+    }, [projectSummary, ejecutado, cerrado, onSummaryChange, onPerformanceChange, onGanttSummary]);
 
     // --- Lista lateral ---
     const renderLeftList = () => {

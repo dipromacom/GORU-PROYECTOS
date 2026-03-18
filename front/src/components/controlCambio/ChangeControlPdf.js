@@ -71,7 +71,33 @@ const ChangeControlPdf = ({ data, proyecto, directorProyecto }) => {
 
                 <Text style={{ fontWeight: 'bold', marginTop: 10 }}>Análisis de Impacto:</Text>
                 <View style={styles.contentBox}>
-                    <Text>{clean(data.analisis_impacto) || 'Pendiente de revisión'}</Text>
+                    {(() => {
+                        const ai = typeof data.analisis_impacto === 'string'
+                            ? (() => { try { return JSON.parse(data.analisis_impacto); } catch { return { descripcion: data.analisis_impacto }; } })()
+                            : (data.analisis_impacto || {});
+                        return (
+                            <>
+                                {ai.descripcion
+                                    ? <Text>{ai.descripcion}</Text>
+                                    : <Text style={{ color: '#999' }}>Pendiente de revisión</Text>
+                                }
+                                {(ai.tiempo || ai.dolares) && (
+                                    <View style={{ flexDirection: 'row', marginTop: 6, gap: 20 }}>
+                                        {ai.tiempo ? (
+                                            <Text style={{ fontWeight: 'bold' }}>
+                                                Tiempo: {ai.tiempo} días
+                                            </Text>
+                                        ) : null}
+                                        {ai.dolares ? (
+                                            <Text style={{ fontWeight: 'bold', marginLeft: 16 }}>
+                                                Económico: ${Number(ai.dolares).toLocaleString('en-US', { minimumFractionDigits: 2 })}
+                                            </Text>
+                                        ) : null}
+                                    </View>
+                                )}
+                            </>
+                        );
+                    })()}
                 </View>
 
                 {/* Recomendación corregida (singular) */}

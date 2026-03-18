@@ -22,8 +22,11 @@ const InformeAvanceModal = ({
     alcanceEntregables = [],
     tiempoFechasCriticas = [],
     costoEntregable = [],
-    calidadMetricas,
+    calidadMetricas = [],
     todo = [],
+    totalesAprobados = { tiempo: 0, dolares: 0, cantidad: 0 },
+    presupuesto = 0,
+    ganttSummary = null,
 }) => {
     const dispatch = useDispatch();
     const [formData, setFormData] = useState({
@@ -99,6 +102,11 @@ const InformeAvanceModal = ({
     const esActividad = projectDetail?.modo === "A";
     const esPrograma = projectDetail?.modo === "PR";
 
+    const formatCurrency = (val) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+
+    const formatDate = (d) => d ? new Date(d).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' }) : 'No definida';
+
     // --- Helpers para elementos retrasados ---
     // Estructura real de BD confirmada:
     // alcanceEntregables: { nombre, deadline, completado, fecha_entregable }
@@ -136,6 +144,25 @@ const InformeAvanceModal = ({
     const hayRetrasos = alcanceRetrasado.length > 0 || hitosRetrasados.length > 0 ||
         costosRetrasados.length > 0 || tareasAtrasadas.length > 0;
     const hayCualquierAlerta = hayRetrasos || calidadPendiente.length > 0;
+
+    // --- Impacto acumulado de cambios Aprobados ---
+    const getAnalisisImpacto = (s) =>
+        typeof s.analisis_impacto === 'string' ? {} : (s.analisis_impacto || {});
+
+    const solicitudesAprobadas = (listaSolicitudes || []).filter(s => s.estado === 'Aprobado');
+
+    const impactoDolares = solicitudesAprobadas.reduce((acc, s) => {
+        const val = parseFloat(getAnalisisImpacto(s).dolares);
+        return acc + (isNaN(val) ? 0 : val);
+    }, 0);
+
+    const totalImpactoTiempo = solicitudesAprobadas
+        .reduce((acc, s) => {
+            const ai = typeof s.analisis_impacto === 'string'
+                ? (() => { try { return JSON.parse(s.analisis_impacto); } catch { return {}; } })()
+                : (s.analisis_impacto || {});
+            return acc + Number(ai.tiempo || 0);
+        }, 0);
 
     // --- Helper promedio encuesta ---
     const calcularPromedioEncuesta = (encuesta) => {
@@ -282,6 +309,50 @@ const InformeAvanceModal = ({
                     </Row>
                 )}
 
+                {/* Datos financieros y temporales para análisis */}
+                <Row className="mb-4">
+                    <Col md={4}>
+                        <div className="p-3 bg-light rounded text-center">
+                            <strong className="d-block mb-1">Presupuesto Planificado</strong>
+                            <h5 className="text-primary mb-0">{formatCurrency(presupuesto)}</h5>
+                        </div>
+                    </Col>
+                    <Col md={4}>
+                        <div className="p-3 bg-light rounded text-center">
+                            <strong className="d-block mb-1">Fecha de Inicio</strong>
+                            <p className="mb-0">{formatDate(projectDetail?.fecha_inicio)}</p>
+                        </div>
+                    </Col>
+                    <Col md={4}>
+                        <div className="p-3 bg-light rounded text-center">
+                            <strong className="d-block mb-1">Fecha de Cierre</strong>
+                            <p className="mb-0">{formatDate(projectDetail?.fecha_cierre)}</p>
+                        </div>
+                    </Col>
+                </Row>
+                {ganttSummary && (
+                    <Row className="mb-4">
+                        <Col md={4}>
+                            <div className="p-3 bg-light rounded text-center">
+                                <strong className="d-block mb-1">Inicio (Gantt)</strong>
+                                <p className="mb-0">{ganttSummary.start}</p>
+                            </div>
+                        </Col>
+                        <Col md={4}>
+                            <div className="p-3 bg-light rounded text-center">
+                                <strong className="d-block mb-1">Fin (Gantt)</strong>
+                                <p className="mb-0">{ganttSummary.end}</p>
+                            </div>
+                        </Col>
+                        <Col md={4}>
+                            <div className="p-3 bg-light rounded text-center">
+                                <strong className="d-block mb-1">Total Días (Gantt)</strong>
+                                <h5 className="text-info mb-0">{ganttSummary.totalDays} días</h5>
+                            </div>
+                        </Col>
+                    </Row>
+                )}
+
                 <hr className="my-4" />
 
                 {/* ── RESUMEN SATISFACCIÓN Y CONTROL DE CAMBIOS ── */}
@@ -289,21 +360,52 @@ const InformeAvanceModal = ({
                     <i className="bi bi-graph-up-arrow me-2"></i>
                     Resumen de Satisfacción y Control de Cambios
                 </h5>
-                <Row className="mb-4">
-                    <Col md={6}>
+                <Row className="mb-3">
+                    <Col md={4}>
                         <div className="p-3 bg-light rounded text-center">
                             <strong>Promedio Encuestas de Satisfacción:</strong>
                             <h4 className="text-success mb-0">{estadisticas?.satisfaccionGeneral} / 5</h4>
                             <small className="text-muted">Basado en {estadisticas?.totalEncuestas || 0} encuesta(s)</small>
                         </div>
                     </Col>
-                    <Col md={6}>
+                    <Col md={4}>
                         <div className="p-3 bg-light rounded text-center">
                             <strong>Total Cambios de Estados:</strong>
                             <h4 className="text-success mb-0">{logs?.length || 0}</h4>
                         </div>
                     </Col>
+                    <Col md={4}>
+                        <div className="p-3 bg-light rounded text-center">
+                            <strong>Solicitudes Aprobadas:</strong>
+                            <h4 className="text-primary mb-0">{totalesAprobados.cantidad}</h4>
+                            <small className="text-muted">de {listaSolicitudes.length} solicitudes</small>
+                        </div>
+                    </Col>
                 </Row>
+
+                {/* Desvío acumulado aprobado */}
+                {totalesAprobados.cantidad > 0 && (
+                    <div className="p-3 border border-warning rounded bg-white mb-4 d-flex align-items-center shadow-sm">
+                        <i className="bi bi-exclamation-triangle-fill text-warning fs-4 me-3"></i>
+                        <div className="flex-grow-1">
+                            <small className="text-muted fw-bold text-uppercase d-block" style={{ fontSize: '0.7rem' }}>
+                                Total Desvío Acumulado (Aprobado)
+                            </small>
+                            <div className="d-flex gap-4 mt-1">
+                                <div>
+                                    <span className="text-dark h5 mb-0">{totalesAprobados.tiempo}</span>
+                                    <span className="text-muted ms-1 small">días laborables</span>
+                                </div>
+                                <div className="border-start ps-4">
+                                    <span className="text-success h5 mb-0 font-monospace">
+                                        {formatCurrency(totalesAprobados.dolares)}
+                                    </span>
+                                    <span className="text-muted ms-1 small">USD adicionales</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                )}
 
                 {/* ── DETALLE ENCUESTAS DE SATISFACCIÓN ── */}
                 {listaEncuestas && listaEncuestas.length > 0 && (
@@ -395,6 +497,48 @@ const InformeAvanceModal = ({
                                 </tbody>
                             </Table>
                         </div>
+
+                        {/* Impacto acumulado de aprobados */}
+                        {solicitudesAprobadas.length > 0 && (
+                            <>
+                                <small className="text-muted fw-bold text-uppercase d-block mb-2">
+                                    <i className="bi bi-check-circle-fill text-success me-1"></i>
+                                    Impacto acumulado de cambios aprobados ({solicitudesAprobadas.length})
+                                </small>
+                                <Row>
+                                    <Col md={6}>
+                                        <div className="p-3 rounded text-center border border-success border-opacity-50">
+                                            <strong className="d-block mb-1 text-muted">
+                                                <i className="bi bi-currency-dollar me-1"></i>
+                                                Impacto Económico Total
+                                            </strong>
+                                            <h4 className="text-success mb-0">
+                                                ${impactoDolares.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </h4>
+                                            <small className="text-muted">
+                                                suma de {solicitudesAprobadas.length} solicitud{solicitudesAprobadas.length !== 1 ? 'es' : ''} aprobada{solicitudesAprobadas.length !== 1 ? 's' : ''}
+                                            </small>
+                                        </div>
+                                    </Col>
+                                    <Col md={6}>
+                                        <div className="p-3 rounded text-center border border-success border-opacity-50">
+                                            <strong className="d-block mb-1 text-muted">
+                                                <i className="bi bi-clock me-1"></i>
+                                                Impacto en Tiempo
+                                            </strong>
+                                            {totalImpactoTiempo > 0 ? (
+                                                <>
+                                                    <h4 className="text-success fw-bold mb-0">{totalImpactoTiempo}</h4>
+                                                    <small className="text-muted">días laborables acumulados</small>
+                                                </>
+                                            ) : (
+                                                <p className="text-muted mb-0 mt-2 small">Sin impacto en tiempo registrado</p>
+                                            )}
+                                        </div>
+                                    </Col>
+                                </Row>
+                            </>
+                        )}
                     </>
                 )}
 

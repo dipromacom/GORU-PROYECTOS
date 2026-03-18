@@ -260,6 +260,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     useEffect(() => {
         if (routeParams.id) {
             clearConstitutionFields(); // limpia primero
+            setActiveKey('general');
             dispatch(projectActions.getProjectDetailRequest(routeParams.id)); // luego pide los nuevos
         }
     }, [routeParams.id, dispatch]);
@@ -464,6 +465,33 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
     };
 
+    const totalesAprobados = React.useMemo(() => {
+        if (!listaSolicitudes || listaSolicitudes.length === 0) return { tiempo: 0, dolares: 0, cantidad: 0 };
+
+        const aprobadas = listaSolicitudes.filter(sol => sol.estado === 'Aprobado');
+        return aprobadas
+            .reduce((acc, sol) => {
+                let impacto = { tiempo: 0, dolares: 0 };
+
+                try {
+                    // Manejar si viene como string o como objeto
+                    impacto = typeof sol.analisis_impacto === 'string'
+                        ? JSON.parse(sol.analisis_impacto)
+                        : (sol.analisis_impacto || impacto);
+                } catch (e) {
+                    console.error("Error parseando impacto", e);
+                }
+
+                return {
+                    tiempo: acc.tiempo + Number(impacto.tiempo || 0),
+                    dolares: acc.dolares + Number(impacto.dolares || 0),
+                    cantidad: aprobadas.length 
+                };
+            }, { tiempo: 0, dolares: 0 });
+    }, [listaSolicitudes]);
+
+    const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value);
+
     const handleDownloadPDF = async (informe) => {
         try {
             const blob = await pdf(
@@ -484,6 +512,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                     costoEntregable={costoEntregable || []}
                     calidadMetricas={calidadMetricas || []}
                     todo={todo || []}
+
+                    totalesAprobados={totalesAprobados}
+                    presupuesto={presupuesto}
+                    ganttSummary={ganttSummary}
                 />
             ).toBlob();
 
@@ -871,6 +903,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     // Callback para actualizar el desempeño
     const setDesempenoValue = useCallback((key, percentage) => {
         setResumenDesempeno(prev => ({ ...prev, [key]: percentage }));
+    }, []);
+
+    const [ganttSummary, setGanttSummary] = useState(null);
+    const handleGanttSummary = useCallback((summary) => {
+        setGanttSummary(summary);
     }, []);
 
     // Handler para abrir modal
@@ -1324,6 +1361,38 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                                 </Button>
                                                             </div>
 
+                                                                <Row className="mb-4">
+                                                                    <Col md={12}>
+                                                                        <div className="p-3 border rounded bg-light d-flex align-items-center shadow-sm">
+                                                                            <div className="me-4">
+                                                                                <i className="bi bi-exclamation-triangle-fill text-warning fs-3"></i>
+                                                                            </div>
+                                                                            <div className="flex-grow-1">
+                                                                                <small className="text-muted fw-bold text-uppercase d-block" style={{ fontSize: '0.7rem' }}>
+                                                                                    Total Desvío Acumulado (Aprobado)
+                                                                                </small>
+                                                                                <div className="d-flex gap-4">
+                                                                                    <div>
+                                                                                        <span className="text-dark h5 mb-0">{totalesAprobados.tiempo}</span>
+                                                                                        <span className="text-muted ms-1">días laborables</span>
+                                                                                    </div>
+                                                                                    <div className="border-start ps-4">
+                                                                                        <span className="text-success h5 mb-0 font-monospace">
+                                                                                            {formatCurrency(totalesAprobados.dolares)}
+                                                                                        </span>
+                                                                                        <span className="text-muted ms-1 small">USD adicionales</span>
+                                                                                    </div>
+                                                                                </div>
+                                                                            </div>
+                                                                            <div className="text-end">
+                                                                                <Badge bg="info" className="p-2">
+                                                                                    {listaSolicitudes.filter(s => s.estado === 'Aprobado').length} Solicitudes Aprobadas
+                                                                                </Badge>
+                                                                            </div>
+                                                                        </div>
+                                                                    </Col>
+                                                                </Row>
+
                                                             {/* Resumen de Estados */}
                                                             <div className="row mb-4">
                                                                 {[
@@ -1501,6 +1570,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         costoEntregable={costoEntregable || []}
                                                         calidadMetricas={calidadMetricas || []}
                                                         todo={todo || []}
+
+                                                        totalesAprobados={totalesAprobados}
+                                                        presupuesto={presupuesto}
+                                                        ganttSummary={ganttSummary}
                                                     />
                                                     {/* Modal de Invitación a la Encuesta */}
                                                     <Modal show={showInvitation} onHide={() => setShowInvitation(false)} centered>
@@ -2227,6 +2300,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             onSummaryChange={setPorcentajeCompletado}
                                             onPerformanceChange={setDesempenoValue}
                                             esPrograma={esPrograma}
+                                            onGanttSummary={handleGanttSummary}
                                         />
                                         : <p>El tipo de proyecto no es apto para usar el Gantt</p>
                                     }

@@ -6,15 +6,13 @@ import { actions } from '../../reducers/controlCambio';
 const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, directorProyecto, projectDetail, onSuccess }) => {
     const dispatch = useDispatch();
     const [formData, setFormData] = useState({});
-    // Estado local para el check de aprobación (no se guarda en base a tu instrucción)
     const [estaAprobado, setEstaAprobado] = useState(false);
 
     useEffect(() => {
         if (data) {
-            // Intentar parsear el análisis de impacto si viene como string, o inicializarlo si no existe
             const analisisPrevio = typeof data.analisis_impacto === 'string'
-                ? { descripcion: data.analisis_impacto, tiempo: '', dolares: '' }
-                : (data.analisis_impacto || { descripcion: '', tiempo: '', dolares: '' });
+                ? { descripcion: data.analisis_impacto, tiempo: 0, dolares: 0 }
+                : (data.analisis_impacto || { descripcion: '', tiempo: 0, dolares: 0 });
 
             setFormData({ ...data, analisis_impacto: analisisPrevio });
             setEstaAprobado(!!data.revision_director);
@@ -26,11 +24,10 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
                 impacto_proyecto: 'Bajo',
                 estado: 'Creado',
                 recomendacion: '',
-                // Estructura de objeto para análisis de impacto
                 analisis_impacto: {
                     descripcion: '',
-                    tiempo: '',
-                    dolares: ''
+                    tiempo: 0, // Inicializado como número
+                    dolares: 0  // Inicializado como número
                 },
                 resolucion: '',
                 revision_director: '',
@@ -48,7 +45,12 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
             ...formData,
             proyecto_id: proyectoId,
             usuario_id: usuario?.id,
-            // Si no está el check, limpiamos el campo de revisión antes de enviar
+            // Aseguramos que los valores de impacto viajen como números
+            analisis_impacto: {
+                ...formData.analisis_impacto,
+                tiempo: Number(formData.analisis_impacto?.tiempo || 0),
+                dolares: Number(formData.analisis_impacto?.dolares || 0)
+            },
             revision_director: estaAprobado ? formData.revision_director : ''
         };
 
@@ -61,7 +63,6 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
         onHide();
     };
 
-    // Helper para actualizar campos dentro del objeto analisis_impacto
     const handleImpactChange = (field, value) => {
         setFormData({
             ...formData,
@@ -71,6 +72,9 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
             }
         });
     };
+
+    // Helper para formatear moneda
+    const formatCurrency = (value) => new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(value || 0);
 
     return (
         <Modal show={show} onHide={onHide} size="lg" centered scrollable>
@@ -82,9 +86,25 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
             </Modal.Header>
             <Form style={{ overflowY: 'scroll' }} onSubmit={handleSubmit}>
                 <Modal.Body className="bg-light">
+                    {/* RESUMEN CON TOTALIDAD DEL DESVÍO */}
                     <div className="mb-3 p-3 bg-white border-start border-4 border-info shadow-sm">
-                        <small className="text-muted d-block fw-bold">PROYECTO: {projectDetail?.nombre}</small>
-                        <small className="text-muted d-block">Director: {directorProyecto || 'No asignado'}</small>
+                        <Row>
+                            <Col md={7}>
+                                <small className="text-muted d-block fw-bold">PROYECTO: {projectDetail?.nombre}</small>
+                                <small className="text-muted d-block">Director: {directorProyecto || 'No asignado'}</small>
+                            </Col>
+                            <Col md={5} className="border-start">
+                                <small className="text-primary d-block fw-bold text-uppercase">Total Desvío Aprobado</small>
+                                <div className="d-flex justify-content-between">
+                                    <small className="fw-bold">Tiempo:</small>
+                                    <small>{formData.analisis_impacto?.tiempo || 0} días</small>
+                                </div>
+                                <div className="d-flex justify-content-between">
+                                    <small className="fw-bold">Presupuesto:</small>
+                                    <small className="text-success fw-bold">{formatCurrency(formData.analisis_impacto?.dolares)}</small>
+                                </div>
+                            </Col>
+                        </Row>
                     </div>
 
                     <h6 className="fw-bold mb-3"><i className="bi bi-info-circle me-2"></i>Información General</h6>
@@ -111,13 +131,11 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
                         <Form.Control as="textarea" rows={3} required disabled={!!data} value={formData.descripcion_cambio || ''} onChange={e => setFormData({ ...formData, descripcion_cambio: e.target.value })} />
                     </Form.Group>
 
-                    {/* SECCIÓN ADMINISTRATIVA */}
                     <div className="p-3 border rounded bg-white shadow-sm">
                         <h6 className="text-primary fw-bold border-bottom pb-2 mb-3">
                             <i className="bi bi-shield-lock me-2"></i>Gestión de Revisión
                         </h6>
 
-                        {/* 1. Asignado a (Debería ser select de personas del proyecto) */}
                         <Row className="mb-3">
                             <Col md={12}>
                                 <Form.Group>
@@ -126,13 +144,11 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
                                         disabled={!isAdmin}
                                         value={formData.asignado_a || ''}
                                         onChange={e => setFormData({ ...formData, asignado_a: e.target.value })}
-                                    >
-                                    </Form.Control>
+                                    />
                                 </Form.Group>
                             </Col>
                         </Row>
 
-                        {/* 2. Análisis de Impacto (Ahora con campos de Tiempo y Dólares) */}
                         <Form.Group className="mb-3">
                             <Form.Label className="fw-bold small text-uppercase">Análisis de Impacto (Descripción)</Form.Label>
                             <Form.Control
@@ -147,9 +163,10 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
                         <Row className="mb-3">
                             <Col md={6}>
                                 <Form.Group>
-                                    <Form.Label className="fw-bold small text-uppercase">Impacto en Tiempo</Form.Label>
+                                    <Form.Label className="fw-bold small text-uppercase">Impacto en Tiempo (Días)</Form.Label>
                                     <Form.Control
-                                        placeholder="Ej: 5 días"
+                                        type="number"
+                                        placeholder="Ej: 5"
                                         disabled={!isAdmin}
                                         value={formData.analisis_impacto?.tiempo || ''}
                                         onChange={e => handleImpactChange('tiempo', e.target.value)}
@@ -161,6 +178,7 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
                                     <Form.Label className="fw-bold small text-uppercase">Impacto en Dólares ($)</Form.Label>
                                     <Form.Control
                                         type="number"
+                                        step="0.01"
                                         placeholder="0.00"
                                         disabled={!isAdmin}
                                         value={formData.analisis_impacto?.dolares || ''}
@@ -170,7 +188,6 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
                             </Col>
                         </Row>
 
-                        {/* 3. Nivel de Impacto */}
                         <Row className="mb-3">
                             <Col md={12}>
                                 <Form.Group>
@@ -184,19 +201,16 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
                             </Col>
                         </Row>
 
-                        {/* 4. Recomendación */}
                         <Form.Group className="mb-3">
                             <Form.Label className="fw-bold small text-uppercase">Recomendación</Form.Label>
                             <Form.Control as="textarea" rows={2} disabled={!isAdmin} value={formData.recomendacion || ''} onChange={e => setFormData({ ...formData, recomendacion: e.target.value })} />
                         </Form.Group>
 
-                        {/* 5. Resolución */}
                         <Form.Group className="mb-3">
                             <Form.Label className="fw-bold small text-uppercase">Resolución</Form.Label>
                             <Form.Control as="textarea" rows={2} disabled={!isAdmin} value={formData.resolucion || ''} onChange={e => setFormData({ ...formData, resolucion: e.target.value })} />
                         </Form.Group>
 
-                        {/* 6. Aprobación con Checkbox y campo bloqueable */}
                         <Row>
                             <Col md={12}>
                                 <Form.Group className="mb-2">
@@ -218,11 +232,6 @@ const ChangeControlModal = ({ show, onHide, proyectoId, data, isAdmin, usuario, 
                                         value={formData.revision_director || ''}
                                         onChange={e => setFormData({ ...formData, revision_director: e.target.value })}
                                     />
-                                    {estaAprobado && (
-                                        <Form.Text className="text-muted">
-                                            Se guardará con fecha: {new Date().toLocaleDateString()}
-                                        </Form.Text>
-                                    )}
                                 </Form.Group>
                             </Col>
                         </Row>

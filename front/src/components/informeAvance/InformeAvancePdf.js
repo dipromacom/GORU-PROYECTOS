@@ -293,6 +293,9 @@ const calcularPromedioEncuesta = (enc) => {
     return (suma / campos.length).toFixed(1);
 };
 
+const getAnalisisImpacto = (s) =>
+    typeof s.analisis_impacto === 'string' ? {} : (s.analisis_impacto || {});
+
 const InformeAvancePdf = ({
     informe,
     projectDetail,
@@ -309,12 +312,21 @@ const InformeAvancePdf = ({
     costoEntregable = [],
     calidadMetricas = [],
     todo = [],
+    totalesAprobados = { tiempo: 0, dolares: 0, cantidad: 0 },
+    presupuesto = 0,
+    ganttSummary = null,
 }) => {
     const esActividad = projectDetail?.modo === "A";
     const esPrograma = projectDetail?.modo === "PR";
     const cerrado = projectDetail?.estado === "E";
     const ejecutado = projectDetail?.estado === "X";
     const tipoEntidad = esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto";
+
+    const formatCurrency = (val) =>
+        new Intl.NumberFormat('en-US', { style: 'currency', currency: 'USD' }).format(val || 0);
+    const formatDate = (d) => d
+        ? new Date(d).toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })
+        : 'No definida';
 
     // ── Elementos retrasados ──
     // Estructura real confirmada de BD:
@@ -347,6 +359,20 @@ const InformeAvancePdf = ({
     const hayRetrasos = alcanceRetrasado.length > 0 || hitosRetrasados.length > 0 ||
         costosRetrasados.length > 0 || tareasAtrasadas.length > 0;
     const hayCualquierAlerta = hayRetrasos || calidadPendiente.length > 0;
+
+    // ── Impacto acumulado de cambios Aprobados ──
+    const solicitudesAprobadas = (listaSolicitudes || []).filter(s => s.estado === 'Aprobado');
+    const impactoDolares = solicitudesAprobadas.reduce((acc, s) => {
+        const val = parseFloat(getAnalisisImpacto(s).dolares);
+        return acc + (isNaN(val) ? 0 : val);
+    }, 0);
+    const totalImpactoTiempo = solicitudesAprobadas
+        .reduce((acc, s) => {
+            const ai = typeof s.analisis_impacto === 'string'
+                ? (() => { try { return JSON.parse(s.analisis_impacto); } catch { return {}; } })()
+                : (s.analisis_impacto || {});
+            return acc + Number(ai.tiempo || 0);
+        }, 0);
 
     // ── Matriz de riesgos ──
     const generateRiskMatrix = (showResidual = false) => {
@@ -454,13 +480,42 @@ const InformeAvancePdf = ({
                             </Text>
                         </View>
                     )}
+                    {/* ── Datos financieros y temporales para análisis ── */}
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Presupuesto Planificado:</Text>
+                        <Text style={[styles.value, { color: '#0066cc', fontWeight: 'bold' }]}>{formatCurrency(presupuesto)}</Text>
+                    </View>
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Fecha de Inicio:</Text>
+                        <Text style={styles.value}>{formatDate(projectDetail?.fecha_inicio)}</Text>
+                    </View>
+                    <View style={styles.row}>
+                        <Text style={styles.label}>Fecha de Cierre:</Text>
+                        <Text style={styles.value}>{formatDate(projectDetail?.fecha_cierre)}</Text>
+                    </View>
+                    {ganttSummary && (
+                        <>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>Inicio del Proyecto (Gantt):</Text>
+                                <Text style={styles.value}>{ganttSummary.start}</Text>
+                            </View>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>Fin del Proyecto (Gantt):</Text>
+                                <Text style={styles.value}>{ganttSummary.end}</Text>
+                            </View>
+                            <View style={styles.row}>
+                                <Text style={styles.label}>Total Días del Proyecto:</Text>
+                                <Text style={[styles.value, { fontWeight: 'bold' }]}>{ganttSummary.totalDays} días</Text>
+                            </View>
+                        </>
+                    )}
                 </View>
 
-                {/* Resumen satisfacción y cambios */}
+                {/* Resumen satisfacción, cambios y desvío aprobado */}
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Resumen de Satisfacción y Control de Cambios</Text>
                     <View style={styles.gridContainer}>
-                        <View style={styles.gridItemFull}>
+                        <View style={{ width: '33%', padding: 4, marginBottom: 8 }}>
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>Promedio Encuestas de Satisfacción</Text>
                                 <Text style={[styles.cardValue, styles.cardValueSuccess]}>
@@ -471,13 +526,50 @@ const InformeAvancePdf = ({
                                 </Text>
                             </View>
                         </View>
-                        <View style={styles.gridItemFull}>
+                        <View style={{ width: '33%', padding: 4, marginBottom: 8 }}>
                             <View style={styles.card}>
                                 <Text style={styles.cardTitle}>Total Cambios de Estado</Text>
                                 <Text style={[styles.cardValue, styles.cardValueSuccess]}>{logs?.length || 0}</Text>
                             </View>
                         </View>
+                        <View style={{ width: '33%', padding: 4, marginBottom: 8 }}>
+                            <View style={styles.card}>
+                                <Text style={styles.cardTitle}>Solicitudes Aprobadas</Text>
+                                <Text style={[styles.cardValue, { color: '#0066cc' }]}>{totalesAprobados.cantidad}</Text>
+                                <Text style={{ fontSize: 7, color: '#666', marginTop: 2 }}>
+                                    de {listaSolicitudes.length} solicitudes
+                                </Text>
+                            </View>
+                        </View>
                     </View>
+
+                    {/* Bloque desvío acumulado aprobado */}
+                    {totalesAprobados.cantidad > 0 && (
+                        <View style={{
+                            marginTop: 8,
+                            padding: 8,
+                            backgroundColor: '#fff3cd',
+                            borderWidth: 1,
+                            borderColor: '#ffc107',
+                            borderRadius: 3,
+                            flexDirection: 'row',
+                            alignItems: 'center'
+                        }}>
+                            <View style={{ flex: 1 }}>
+                                <Text style={{ fontSize: 7, fontWeight: 'bold', color: '#856404', marginBottom: 4 }}>
+                                    TOTAL DESVÍO ACUMULADO (APROBADO)
+                                </Text>
+                                <View style={{ flexDirection: 'row', gap: 16 }}>
+                                    <Text style={{ fontSize: 10, fontWeight: 'bold' }}>
+                                        {totalesAprobados.tiempo} días laborables
+                                    </Text>
+                                    <Text style={{ fontSize: 10, fontWeight: 'bold', color: '#28a745', marginLeft: 16 }}>
+                                        {formatCurrency(totalesAprobados.dolares)} USD adicionales
+                                    </Text>
+                                </View>
+                            </View>
+                        </View>
+                    )}
                 </View>
 
                 {/* Resumen Ejecución (solo si aplica) */}
@@ -608,6 +700,47 @@ const InformeAvancePdf = ({
                                         })}
                                 </>
                             )}
+
+                        {/* Impacto acumulado de cambios Aprobados */}
+                        {solicitudesAprobadas.length > 0 && (
+                            <View style={{ marginTop: 14 }}>
+                                <Text style={[styles.subSectionTitle, { color: '#28a745' }]}>
+                                    Impacto Acumulado de Cambios Aprobados ({solicitudesAprobadas.length})
+                                </Text>
+                                <View style={[styles.gridContainer, { marginTop: 6 }]}>
+                                    <View style={styles.gridItemFull}>
+                                        <View style={[styles.card, { borderWidth: 1, borderColor: '#28a745' }]}>
+                                            <Text style={styles.cardTitle}>Impacto Económico Total</Text>
+                                            <Text style={[styles.cardValue, styles.cardValueSuccess]}>
+                                                ${impactoDolares.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                            </Text>
+                                            <Text style={{ fontSize: 7, color: '#666', marginTop: 2 }}>
+                                                suma de {solicitudesAprobadas.length} solicitud{solicitudesAprobadas.length !== 1 ? 'es' : ''} aprobada{solicitudesAprobadas.length !== 1 ? 's' : ''}
+                                            </Text>
+                                        </View>
+                                    </View>
+                                    <View style={styles.gridItemFull}>
+                                        <View style={[styles.card, { borderWidth: 1, borderColor: '#28a745' }]}>
+                                            <Text style={styles.cardTitle}>Impacto en Tiempo</Text>
+                                            {totalImpactoTiempo > 0 ? (
+                                                <>
+                                                    <Text style={[styles.cardValue, styles.cardValueSuccess]}>
+                                                        {totalImpactoTiempo}
+                                                    </Text>
+                                                    <Text style={{ fontSize: 7, color: '#666', marginTop: 2 }}>
+                                                        días laborables acumulados
+                                                    </Text>
+                                                </>
+                                            ) : (
+                                                <Text style={{ fontSize: 8, color: '#999', marginTop: 4 }}>
+                                                    Sin impacto en tiempo registrado
+                                                </Text>
+                                            )}
+                                        </View>
+                                    </View>
+                                </View>
+                            </View>
+                        )}
                     </View>
                     <Text style={styles.pageNumber} render={({ pageNumber }) => `Página ${pageNumber}`} fixed />
                 </Page>

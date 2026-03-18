@@ -67,6 +67,7 @@ const getProyectosDisponiblesParaPrograma = async (programaId, usuarioId) => {
         where: {
             modo: { [Op.in]: ['P', 'A'] }, // Solo proyectos y actividades, no programas
             programa_id: null,             // Que no estén ya en un programa
+            estado: { [Op.ne]: 'E' },
             [Op.or]: [
                 { usuario_creador: usuarioId },
                 { '$Usuarios.id$': usuarioId },
@@ -171,6 +172,7 @@ const getProgramasByUsuario = async (usuarioId) => {
     const programas = await Proyecto.findAll({
         where: {
             modo: 'PR',
+            estado: { [Op.ne]: 'E' },
             [Op.or]: [
                 { usuario_creador: usuarioId },
                 { '$Usuarios.id$': usuarioId },
@@ -186,7 +188,7 @@ const getProgramasByUsuario = async (usuarioId) => {
             },
             { model: Empresa, as: 'Empresa' },
         ],
-        attributes: ['id', 'nombre', 'estado', 'empresa'],  // solo lo necesario para el combo
+        attributes: ['id', 'nombre', 'estado', 'empresa'],
         order: [['nombre', 'ASC']],
     });
 
