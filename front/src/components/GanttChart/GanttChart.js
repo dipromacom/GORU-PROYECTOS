@@ -50,7 +50,11 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     // --- Carga inicial ---
     useEffect(() => {
         if (!safeProjectId) return;
+        dispatch(ganttActions.clean());
         dispatch(ganttActions.fetch({ projectId: safeProjectId }));
+        return () => {
+            dispatch(ganttActions.clean()); // 🔹 limpiar al salir
+        };
     }, [dispatch, safeProjectId]);
 
     // --- Normalización de datos ---
@@ -103,28 +107,39 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     const findCriticalPath = (tasks) => {
         const taskMap = Object.fromEntries(tasks.map((t) => [t.id, t]));
         const memo = {};
+        const visiting = new Set(); // 🔹 NUEVO: detectar ciclos
 
         const getUTCMidnight = (dateStr) => {
             if (!dateStr) return new Date();
             return new Date(`${dateStr.slice(0, 10)}T00:00:00Z`);
-        }
+        };
 
         const dfs = (taskId) => {
-            if (memo[taskId]) return memo[taskId];
+            if (memo[taskId] !== undefined) return memo[taskId];
+            if (visiting.has(taskId)) return 0; // 🔹 NUEVO: ciclo detectado, cortar
+
+            visiting.add(taskId); // 🔹 NUEVO: marcar como en proceso
+
             const task = taskMap[taskId];
-            if (!task) return 0;
+            if (!task) {
+                visiting.delete(taskId);
+                return 0;
+            }
 
             const startDate = getUTCMidnight(task.start_date);
             const endDate = getUTCMidnight(task.end_date);
 
             if (!task.dependencies || task.dependencies.length === 0) {
                 memo[taskId] = (endDate - startDate) / (1000 * 3600 * 24);
+                visiting.delete(taskId); // 🔹 NUEVO
                 return memo[taskId];
             }
 
             const maxDep = Math.max(...task.dependencies.map(dfs));
             const duration = (endDate - startDate) / (1000 * 3600 * 24);
             memo[taskId] = maxDep + duration;
+
+            visiting.delete(taskId); // 🔹 NUEVO
             return memo[taskId];
         };
 
@@ -497,7 +512,26 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             is_critical: false,
         };
 
-        console.log(payload);
+        const wouldCreateCycle = (taskId, newDeps, tasks) => {
+            const taskMap = Object.fromEntries(tasks.map(t => [t.id, t]));
+
+            const visited = new Set();
+            const dfs = (currentId) => {
+                if (currentId === taskId) return true; // ciclo!
+                if (visited.has(currentId)) return false;
+                visited.add(currentId);
+                const task = taskMap[currentId];
+                if (!task) return false;
+                return (task.dependencies || []).some(dfs);
+            };
+
+            return newDeps.some(depId => dfs(depId));
+        };
+
+        // Dentro de saveForm(), antes del dispatch:
+        if (wouldCreateCycle(form.id, form.dependencies, tasks)) {
+            return alert("No se puede crear esta dependencia porque genera un ciclo circular.");
+        }
 
         if (modalMode === "create") {
             dispatch(ganttActions.createTask(payload));

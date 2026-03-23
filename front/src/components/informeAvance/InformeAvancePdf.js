@@ -543,7 +543,7 @@ const InformeAvancePdf = ({
                         </View>
                     </View>
 
-                    {/* Bloque desvío acumulado aprobado */}
+                    {/* Bloque desvío acumulado aprobado 
                     {totalesAprobados.cantidad > 0 && (
                         <View style={{
                             marginTop: 8,
@@ -569,7 +569,7 @@ const InformeAvancePdf = ({
                                 </View>
                             </View>
                         </View>
-                    )}
+                    )}*/}
                 </View>
 
                 {/* Resumen Ejecución (solo si aplica) */}

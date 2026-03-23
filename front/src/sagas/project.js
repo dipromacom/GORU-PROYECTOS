@@ -229,7 +229,8 @@ function* handleInsertInteresado({ payload }) {
         const response = yield call(Api.createInteresadosBatch, payload);
         const { success, data } = response.data;
         if (success) {
-            const currentInteresados = yield select(state => state.interesados);
+            //const currentInteresados = yield select(state => state.interesados);
+            const currentInteresados = yield select(state => state.project.interesados);
             const updatedInteresados = [...(currentInteresados || []), ...data];
             yield put({ type: types.CREATE_INTERESADO_SUCCESS, interesados: updatedInteresados });
             yield put({ type: types.GET_LIST_INTERESADOS_SUCCESS, interesados: updatedInteresados });
@@ -250,8 +251,8 @@ function* handleUpdateInteresado({ payload }) {
 
         if (success) {
             // 🔹 Obtener la lista actual desde el store
-            const currentInteresados = yield select(state => state.interesados);
-
+            //const currentInteresados = yield select(state => state.interesados);
+            const currentInteresados = yield select(state => state.project.interesados);
             // 🔹 Reemplazar el interesado actualizado dentro de la lista
             const updatedInteresados = (currentInteresados || []).map(item =>
                 item.id === data.id ? data : item

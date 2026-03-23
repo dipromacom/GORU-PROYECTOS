@@ -383,7 +383,7 @@ const InformeAvanceModal = ({
                     </Col>
                 </Row>
 
-                {/* Desvío acumulado aprobado */}
+                {/* Desvío acumulado aprobado 
                 {totalesAprobados.cantidad > 0 && (
                     <div className="p-3 border border-warning rounded bg-white mb-4 d-flex align-items-center shadow-sm">
                         <i className="bi bi-exclamation-triangle-fill text-warning fs-4 me-3"></i>
@@ -405,7 +405,7 @@ const InformeAvanceModal = ({
                             </div>
                         </div>
                     </div>
-                )}
+                )}*/}
 
                 {/* ── DETALLE ENCUESTAS DE SATISFACCIÓN ── */}
                 {listaEncuestas && listaEncuestas.length > 0 && (

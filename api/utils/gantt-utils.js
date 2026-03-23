@@ -4,9 +4,10 @@ const { GanttTask, Proyecto, Usuario } = require('../models/index');
 const path = require('path');
 const file = path.basename(__filename);
 const logger = require('../logger/logger');
+
 /**
  * 🔹 Recalcula ruta crítica de un proyecto
- * Marca como `is_critical = true` las tareas que forman parte del camino más largo.
+ * FIX: Agregado memo + visiting para proteger contra ciclos circulares
  */
 const calculateCriticalPath = async (projectId) => {
     try {
@@ -16,7 +17,6 @@ const calculateCriticalPath = async (projectId) => {
 
         if (!tasks || tasks.length === 0) return;
 
-        // Resetear todas las tareas
         await GanttTask.update({ is_critical: false }, { where: { project_id: projectId } });
 
         const byId = {};
@@ -24,20 +24,32 @@ const calculateCriticalPath = async (projectId) => {
             byId[t.id] = t.toJSON();
         });
 
-        // Función recursiva para calcular la duración acumulada (camino)
-        const getDuration = (taskId, visited = new Set()) => {
+        // FIX: memo evita recalcular, visiting detecta ciclos
+        const memo = {};
+        const visiting = new Set();
+
+        const getDuration = (taskId) => {
+            if (memo[taskId] !== undefined) return memo[taskId];
+            if (visiting.has(taskId)) return 0; // ciclo detectado — cortar
+
+            visiting.add(taskId);
+
             const task = byId[taskId];
-            if (!task || visited.has(taskId)) return 0;
-            visited.add(taskId);
+            if (!task) {
+                visiting.delete(taskId);
+                return 0;
+            }
 
             const deps = Array.isArray(task.dependencies) ? task.dependencies : [];
-            if (deps.length === 0) return task.duration || 0;
+            const maxDep = deps.length > 0
+                ? Math.max(...deps.map(dep => getDuration(dep)))
+                : 0;
 
-            const maxDep = Math.max(...deps.map(dep => getDuration(dep, visited)));
-            return (task.duration || 0) + maxDep;
+            memo[taskId] = (task.duration || 0) + maxDep;
+            visiting.delete(taskId);
+            return memo[taskId];
         };
 
-        // Buscar el camino crítico (más largo)
         let criticalTaskId = null;
         let maxDuration = 0;
 
@@ -49,7 +61,6 @@ const calculateCriticalPath = async (projectId) => {
             }
         }
 
-        // Marcar tareas en el camino crítico
         if (criticalTaskId) {
             const markCriticalChain = async (taskId) => {
                 const task = byId[taskId];
@@ -59,8 +70,7 @@ const calculateCriticalPath = async (projectId) => {
                 const deps = Array.isArray(task.dependencies) ? task.dependencies : [];
                 if (deps.length > 0) {
                     const maxDep = deps.reduce((max, dep) => {
-                        const d = getDuration(dep);
-                        return d > getDuration(max) ? dep : max;
+                        return (memo[dep] || 0) > (memo[max] || 0) ? dep : max;
                     }, deps[0]);
                     await markCriticalChain(maxDep);
                 }
@@ -95,8 +105,7 @@ const updateParentDates = async (parentId, transaction) => {
         const maxEnd = new Date(maxEndMs);
 
         const totalDurationMs = maxEndMs - minStartMs;
-        const totalDurationDays = totalDurationMs / (1000 * 60 * 60 * 24);
-        const totalDuration = Math.ceil(totalDurationDays);
+        const totalDuration = Math.ceil(totalDurationMs / (1000 * 60 * 60 * 24));
 
         await GanttTask.update({
             start_date: minStart,
@@ -110,34 +119,32 @@ const updateParentDates = async (parentId, transaction) => {
 };
 
 /**
- * 🔹 Inserta o actualiza una tarea del Gantt
+ * Normaliza una fecha a medianoche UTC
+ */
+const normalizeDateToUTCMidnight = (dateString) => {
+    const date = new Date(dateString);
+    return new Date(Date.UTC(
+        date.getFullYear(),
+        date.getMonth(),
+        date.getDate()
+    ));
+};
+
+/**
+ * 🔹 Inserta o actualiza UNA sola tarea del Gantt
+ * Usado para crear/editar una tarea individual
  */
 const setGantt = async ({ task, projectId }) => {
     const transaction = await db.transaction();
     try {
-
-        const normalizeDateToUTCMidnight = (dateString) => {
-            const date = new Date(dateString);
-            // Crea una nueva fecha en UTC con solo el año, mes y día de la fecha de entrada
-            // Esto garantiza que siempre se guarde como 'YYYY-MM-DDT00:00:00.000Z'
-            return new Date(Date.UTC(
-                date.getFullYear(),
-                date.getMonth(),
-                date.getDate()
-            ));
-        };
-
         const startDate = normalizeDateToUTCMidnight(task.start_date);
         const endDate = normalizeDateToUTCMidnight(task.end_date);
 
-        // Validación de fechas
         if (endDate < startDate) {
             throw new Error(`end_date no puede ser anterior a start_date (${task.name})`);
         }
 
-        const durationMs = endDate.getTime() - startDate.getTime();
-        const durationDays = durationMs / (1000 * 60 * 60 * 24);
-        const duration = Math.ceil(durationDays);
+        const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
 
         await GanttTask.upsert({
             id: task.id,
@@ -157,14 +164,13 @@ const setGantt = async ({ task, projectId }) => {
             updated_at: new Date()
         }, { transaction });
 
-        // Si pertenece a un grupo (tiene parent_id), recalcular fechas del grupo
         if (task.parent_id) {
             await updateParentDates(task.parent_id, transaction);
         }
 
         await transaction.commit();
 
-        // 🔹 Calcular ruta crítica fuera de la transacción (no bloquea escritura)
+        // Recalcular ruta crítica (una sola vez, fuera de la transacción)
         await calculateCriticalPath(projectId);
 
         return true;
@@ -174,6 +180,68 @@ const setGantt = async ({ task, projectId }) => {
             source: file,
             method: "setGantt()",
             params: { task, projectId }
+        });
+        await transaction.rollback();
+        throw e;
+    }
+};
+
+/**
+ * 🔹 NUEVO: Sync masivo de todas las tareas en UNA sola transacción
+ * FIX: Antes se hacía una transacción y un recálculo por cada tarea → saturaba la BD
+ * Ahora: una sola transacción para todas las tareas + un solo recálculo al final
+ */
+const syncGantt = async ({ tasks, projectId }) => {
+    const transaction = await db.transaction();
+    try {
+        for (const task of tasks) {
+            if (!task.id) {
+                console.warn(`[syncGantt] task sin id detectada, se omite:`, task);
+                continue;
+            }
+
+            const startDate = normalizeDateToUTCMidnight(task.start_date);
+            const endDate = normalizeDateToUTCMidnight(task.end_date);
+
+            // Si las fechas son inválidas, omitir esta tarea pero no fallar todo el sync
+            if (endDate < startDate) {
+                console.warn(`[syncGantt] Fechas inválidas en tarea ${task.id} (${task.name}), se omite`);
+                continue;
+            }
+
+            const duration = Math.ceil((endDate - startDate) / (1000 * 60 * 60 * 24));
+
+            await GanttTask.upsert({
+                id: task.id,
+                project_id: parseInt(projectId),
+                parent_id: task.parent_id || null,
+                type: task.type || 'task',
+                name: task.name,
+                description: task.description || null,
+                start_date: startDate,
+                end_date: endDate,
+                duration,
+                progress: task.progress || 0,
+                dependencies: task.dependencies || [],
+                interesados_id: task.interesados_id || [],
+                status: task.status || 'pending',
+                is_critical: task.is_critical || false,
+                updated_at: new Date()
+            }, { transaction });
+        }
+
+        await transaction.commit();
+
+        // Un solo recálculo de ruta crítica al final para todo el lote
+        await calculateCriticalPath(projectId);
+
+        return true;
+    } catch (e) {
+        logger.error({
+            message: e.message,
+            source: file,
+            method: "syncGantt()",
+            params: { projectId, taskCount: tasks?.length }
         });
         await transaction.rollback();
         throw e;
@@ -216,8 +284,8 @@ const getGanttByUser = async ({ usuarioId, modo }) => {
                 required: true,
                 include: [{
                     model: Usuario,
-                    as: 'Usuarios', 
-                    where: { id: parseInt(usuarioId) }, 
+                    as: 'Usuarios',
+                    where: { id: parseInt(usuarioId) },
                     required: true,
                     through: { attributes: [] }
                 }]
@@ -226,7 +294,6 @@ const getGanttByUser = async ({ usuarioId, modo }) => {
         });
         return tasks;
     } catch (e) {
-
         console.error("Falla en GanttUtils.getGanttByUser:", e.message);
         throw e;
     }
@@ -256,7 +323,6 @@ const deleteGantt = async ({ projectId, taskId }) => {
 
         await transaction.commit();
 
-        // Recalcular ruta crítica después de eliminar
         await calculateCriticalPath(projectId);
 
         return result > 0;
@@ -274,6 +340,7 @@ const deleteGantt = async ({ projectId, taskId }) => {
 
 module.exports = {
     setGantt,
+    syncGantt,  // 🔹 NUEVO: exportar syncGantt
     getGantt,
     deleteGantt,
     getGanttByUser

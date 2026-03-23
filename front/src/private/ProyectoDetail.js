@@ -1,7 +1,7 @@
 /* eslint-disable jsx-a11y/role-supports-aria-props */
 /* eslint-disable no-unused-vars */
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect, useState, useRef, useCallback } from "react";
+import React, { useEffect, useState, useRef, useMemo, useCallback } from "react";
 import { connect } from "react-redux";
 import LoaderButton from "../components/loaderButton/LoaderButton";
 import { Form, Col, Row, InputGroup, Button, DropdownButton, Dropdown, Badge, Modal } from "react-bootstrap";
@@ -118,26 +118,17 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         };
     }, [numericId, dispatch]);
 
-    useEffect(() => {
-        if (numericId) {
-            dispatch(projectActions.getAnalisisAmbientalRequest(numericId));
-        }
-    }, [numericId, dispatch]);
 
     useEffect(() => {
         if (numericId) {
             dispatch(projectActions.getRespuestaAnalisisAmbientalRequest(numericId))
             // respuestaAnalisisAmbiental[];
-            dispatch(projectActions.getProjectDetailRequest(numericId));
             dispatch(logActions.getProjectLogs(numericId));
+            dispatch(projectActions.getInteresadoList(numericId));
+            dispatch(projectActions.getAnalisisAmbientalRequest(numericId));
         }
     }, [numericId, dispatch]); 
 
-    useEffect(() => {
-        if (numericId) {
-            dispatch(projectActions.getInteresadoList(numericId));
-        }
-    }, [numericId], dispatch);
 
     useEffect(() => {
         if (usuario && usuario.id && numericId) {
@@ -363,12 +354,12 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
     }, [numericId, dispatch]);
 
-    const stats = {
+    const stats = useMemo(() => ({
         creado: listaSolicitudes.filter(s => s.estado === 'Creado').length,
         revision: listaSolicitudes.filter(s => s.estado === 'En Revisión').length,
         aprobado: listaSolicitudes.filter(s => s.estado === 'Aprobado').length,
         noAprobado: listaSolicitudes.filter(s => s.estado === 'No Aprobado').length,
-    };
+    }), [listaSolicitudes]);
 
     useEffect(() => {
         if (planificado) {

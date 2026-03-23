@@ -19,6 +19,8 @@ export const types = {
     FETCH_GANTT_DASHBOARD_SUCCESS: "gantt/FETCH_GANTT_DASHBOARD_SUCCESS",
     FETCH_GANTT_DASHBOARD_ERROR: "gantt/FETCH_GANTT_DASHBOARD_ERROR",
 
+    CLEAR_TASKS: "gantt/CLEAR_TASKS",
+
     CLEAN: "gantt/CLEAN",
 };
 
@@ -271,6 +273,12 @@ const ganttReducer = (state = defaultState, action = {}) => {
 
         case types.CLEAN:
             return defaultState;
+        
+        case types.CLEAR_TASKS:
+            return {
+                ...state,
+                tasks: [],
+            };
 
         default:
             return state;
