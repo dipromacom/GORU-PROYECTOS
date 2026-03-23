@@ -73,17 +73,17 @@ function Membership({ dispatch, isLoading, user, persona }) {
 
     <div className="membership-options center">
       <MembershipOption
-        text="Gestión de Actividades"
+        text="Proyectos Personales"
         value="Demo"
         onClick={handleOptionClick}
       />
       <MembershipOption
-        text="Gestión de Proyectos"
+        text="Proyectos de Equipo"
         value="Profesional"
         onClick={handleOptionClick}
       />
       <MembershipOption
-        text="Gestión Corporativa"
+        text="Programas Corporativos"
         value="Corporativo"
         onClick={handleOptionClick}
       />

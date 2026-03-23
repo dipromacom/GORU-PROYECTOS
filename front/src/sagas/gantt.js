@@ -1,15 +1,16 @@
-import { call, put, takeEvery, select } from "redux-saga/effects";
+import { call, put, takeEvery, takeLatest, select, delay } from "redux-saga/effects";
 import { types, selectors } from "../reducers/gantt";
 import * as Api from "../api";
 import { onError } from "../libs/errorLib";
 
 const sagas = [
     takeEvery(types.FETCH_GANTT_REQUEST, handleFetchGantt),
-    takeEvery(types.SYNC_GANTT_REQUEST, handleSyncGantt),
+    takeLatest(types.SYNC_GANTT_REQUEST, handleSyncGantt),
     takeEvery(types.CREATE_TASK, handleCreateTask),
     takeEvery(types.EDIT_TASK, handleEditTask),
     takeEvery(types.DELETE_TASK, handleDeleteTask),
     takeEvery(types.MOVE_TASK, handleMoveTask),
+    takeEvery(types.FETCH_GANTT_DASHBOARD_REQUEST, handleFetchGanttDashboard)
 ];
 
 export default sagas;
@@ -19,6 +20,7 @@ export default sagas;
 ================================================================ */
 function* handleFetchGantt({ projectId }) {
     try {
+        yield put({ type: types.CLEAR_TASKS }); 
         const response = yield call(Api.fetchGantt, { projectId });
         const { success, tasks } = response.data;
         if (success) {
@@ -37,7 +39,7 @@ function* handleFetchGantt({ projectId }) {
    🔄 SYNC GANTT
 ================================================================ */
 function* handleSyncGantt({ projectId }) {
-    console.log("entra a sync: " + projectId)
+    yield delay(500);
     try {
         const { tasks } = yield select(selectors.getState);
         if (!Array.isArray(tasks)) return;
@@ -186,5 +188,18 @@ function* handleMoveTask({ id, newStart, newEnd, projectId }) {
 
     } catch (e) {
         onError(e);
+    }
+}
+
+function* handleFetchGanttDashboard({ usuarioId, modo }) {
+    try {
+        const response = yield call(Api.getGanttDashboard, usuarioId, modo);
+        const { success, tasks } = response.data;
+        if (success) {
+            yield put({ type: types.FETCH_GANTT_DASHBOARD_SUCCESS, payload: Object.values(tasks.byId) });
+        }
+    } catch (e) {
+        onError(e);
+        yield put({ type: types.FETCH_GANTT_DASHBOARD_ERROR });
     }
 }

@@ -1,0 +1,581 @@
+/* ================================================================
+   DashboardModal.css  –  Goru Corporate Dashboard
+   Paleta: Corporate Blue #1a3c5e / refinado y pulcro
+   ================================================================ */
+
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=IBM+Plex+Mono:wght@400;500&display=swap');
+
+/* ── Variables ────────────────────────────────────────────────── */
+:root {
+    --navy: #44a80d;
+    --navy-deep: #2b6b09;
+    --navy-mid: #2d6e09;
+    --navy-light: #2e6699;
+    --navy-pale: #e8f0f8;
+
+    --bg: #f0f4f8;
+    --surface: #ffffff;
+    --surface-alt: #f7f9fc;
+    --border: #dce4ed;
+    --border-light: #eaf0f6;
+
+    --text-primary: #1a2e42;
+    --text-muted: #6b7f94;
+    --text-light: #9badbf;
+
+    --shadow-xs: 0 1px 3px rgba(26, 60, 94, .06);
+    --shadow-sm: 0 2px 8px rgba(26, 60, 94, .09);
+    --shadow-md: 0 4px 18px rgba(26, 60, 94, .12);
+    --shadow-lg: 0 8px 32px rgba(26, 60, 94, .15);
+
+    --radius-sm: 6px;
+    --radius-md: 10px;
+    --radius-lg: 14px;
+    --radius-xl: 18px;
+
+    --font: 'Inter', sans-serif;
+    --font-mono: 'IBM Plex Mono', monospace;
+    --transition: .18s cubic-bezier(.4, 0, .2, 1);
+}
+
+/* ── Modal shell ──────────────────────────────────────────────── */
+.db-modal .modal-content {
+    border: none;
+    border-radius: var(--radius-xl);
+    overflow: hidden;
+    font-family: var(--font);
+    box-shadow: var(--shadow-lg);
+}
+
+.db-modal .modal-header {
+    background: linear-gradient(130deg, var(--navy-deep) 0%, var(--navy) 55%, var(--navy-mid) 100%);
+    color: #fff;
+    border-bottom: none;
+    padding: 16px 22px;
+}
+
+.db-modal .modal-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: -.2px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.db-modal .modal-body {
+    background: var(--bg);
+    padding: 0;
+}
+
+.db-modal .modal-footer {
+    background: var(--surface);
+    border-top: 1px solid var(--border-light);
+    padding: 10px 22px;
+    display: flex;
+    align-items: center;
+    font-size: 11px;
+    color: var(--text-light);
+    font-family: var(--font-mono);
+    letter-spacing: .2px;
+}
+
+.db-header-badge {
+    background: rgba(255, 255, 255, .14);
+    border: 1px solid rgba(255, 255, 255, .22);
+    color: rgba(255, 255, 255, .93);
+    border-radius: 20px;
+    padding: 3px 12px;
+    font-size: 12px;
+    font-weight: 600;
+}
+
+/* ── Tab bar ──────────────────────────────────────────────────── */
+.db-tabs-bar {
+    background: var(--surface);
+    border-bottom: 1px solid var(--border);
+    padding: 0 22px;
+    display: flex;
+}
+
+.db-tab-link {
+    background: none;
+    border: none;
+    border-bottom: 3px solid transparent;
+    outline: none;
+    cursor: pointer;
+    font-family: var(--font);
+    font-size: 13px;
+    font-weight: 600;
+    color: var(--text-muted);
+    padding: 12px 16px 9px;
+    display: flex;
+    align-items: center;
+    gap: 7px;
+    transition: color var(--transition), border-color var(--transition);
+}
+
+.db-tab-link:hover {
+    color: var(--navy);
+}
+
+.db-tab-link.active {
+    color: var(--navy);
+    border-bottom-color: var(--navy);
+}
+
+.db-badge-soon {
+    background: #17a2b8;
+    color: #fff;
+    border-radius: 4px;
+    padding: 1px 6px;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: .4px;
+    text-transform: uppercase;
+}
+
+/* ── Scroll area ──────────────────────────────────────────────── */
+.db-scroll {
+    padding: 20px 22px;
+    max-height: 74vh;
+    overflow-y: auto;
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.db-scroll::-webkit-scrollbar {
+    width: 5px;
+}
+
+.db-scroll::-webkit-scrollbar-thumb {
+    background: var(--border);
+    border-radius: 10px;
+}
+
+/* ── Layout ───────────────────────────────────────────────────── */
+.db-flex-col {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
+
+.db-row {
+    display: flex;
+    gap: 14px;
+    flex-wrap: wrap;
+}
+
+/* ── Card base ────────────────────────────────────────────────── */
+.db-card {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    padding: 18px 20px;
+    box-shadow: var(--shadow-xs);
+    border: 1px solid var(--border-light);
+}
+
+/* ── Section title ────────────────────────────────────────────── */
+.db-section-title {
+    font-size: 11px;
+    font-weight: 700;
+    color: var(--navy);
+    text-transform: uppercase;
+    letter-spacing: .9px;
+    margin-bottom: 14px;
+    padding-bottom: 8px;
+    border-bottom: 2px solid var(--navy-pale);
+    display: flex;
+    align-items: center;
+    gap: 7px;
+}
+
+/* ── KPI strip ────────────────────────────────────────────────── */
+.db-kpi-strip-row {
+    display: flex;
+    gap: 16px;
+    flex-wrap: wrap;
+}
+
+.db-kpi {
+    background: var(--surface);
+    border-radius: var(--radius-md);
+    padding: 20px;
+    border: 1px solid var(--border-light);
+    box-shadow: var(--shadow-xs);
+    flex: 1;
+    min-width: 250px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    position: relative;
+    overflow: hidden;
+    transition: all var(--transition);
+}
+
+.db-kpi:hover {
+    transform: translateY(-4px);
+    box-shadow: var(--shadow-md);
+    border-color: var(--kpi-color);
+}
+
+.db-kpi::before {
+    content: '';
+    position: absolute;
+    left: 0;
+    top: 0;
+    bottom: 0;
+    width: 4px;
+    background: var(--kpi-color, var(--navy));
+}
+
+.db-kpi-content {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.db-kpi-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.8px;
+}
+
+.db-kpi-value {
+    font-size: 28px;
+    font-weight: 800;
+    line-height: 1.1;
+    color: var(--text-primary);
+    font-family: var(--font-mono);
+}
+
+.db-kpi-sub {
+    font-size: 11px;
+    color: var(--text-light);
+    font-weight: 500;
+}
+
+.db-kpi-icon-wrapper {
+    width: 48px;
+    height: 48px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 24px;
+    border-radius: 12px;
+    color: var(--kpi-color);
+    background: color-mix(in srgb, var(--kpi-color) 12%, transparent);
+    transition: transform var(--transition);
+}
+
+.db-kpi:hover .db-kpi-icon-wrapper {
+    transform: scale(1.1) rotate(-5deg);
+}
+
+/* ── Donuts —─────────────────────────────────── */
+.db-donut-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 14px;
+}
+
+@media (max-width: 640px) {
+    .db-donut-row {
+        grid-template-columns: 1fr;
+    }
+}
+
+
+.db-donut-chart-wrap {
+    position: relative;
+    height: 160px;
+}
+
+.db-donut-center {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+    pointer-events: none;
+}
+
+.db-donut-center-num {
+    font-size: 26px;
+    font-weight: 800;
+    color: var(--navy);
+    line-height: 1;
+    font-family: var(--font-mono);
+}
+
+.db-donut-center-lbl {
+    font-size: 9px;
+    color: var(--text-light);
+    text-transform: uppercase;
+    letter-spacing: 1px;
+    margin-top: 2px;
+}
+
+/* Leyenda con porcentajes */
+.db-donut-legend {
+    margin-top: 14px;
+    display: flex;
+    flex-direction: column;
+    gap: 7px;
+}
+
+.db-donut-legend-item {
+    display: grid;
+    grid-template-columns: 10px 1fr auto auto;
+    align-items: center;
+    gap: 7px;
+    font-size: 11.5px;
+}
+
+.db-legend-dot {
+    width: 9px;
+    height: 9px;
+    border-radius: 50%;
+}
+
+.db-legend-name {
+    color: var(--text-muted);
+    font-size: 11px;
+}
+
+.db-legend-val {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    font-weight: 600;
+    color: var(--text-primary);
+    text-align: right;
+    min-width: 18px;
+}
+
+.db-legend-pct {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    color: var(--text-light);
+    text-align: right;
+    min-width: 38px;
+}
+
+/* ── Line chart ───────────────────────────────────────────────── */
+.db-line-wrap {
+    height: 165px;
+}
+
+/* ── Director bars ────────────────────────────────────────────── */
+.db-bar-row {
+    margin-bottom: 9px;
+}
+
+.db-bar-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    margin-bottom: 3px;
+}
+
+.db-bar-name {
+    font-size: 12px;
+    color: var(--text-primary);
+    font-weight: 500;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    max-width: 155px;
+}
+
+.db-bar-count {
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--text-muted);
+    flex-shrink: 0;
+}
+
+.db-bar-track {
+    height: 6px;
+    background: var(--navy-pale);
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.db-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--navy) 0%, var(--navy-light) 100%);
+    border-radius: 10px;
+    transition: width .5s ease;
+}
+
+/* ── Department chips ─────────────────────────────────────────── */
+.db-chip-wrap {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 7px;
+}
+
+.db-chip {
+    background: var(--navy-pale);
+    border: 1px solid #c4d8ec;
+    color: var(--navy);
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 11px;
+    font-weight: 500;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.db-chip-count {
+    background: var(--navy);
+    color: #fff;
+    border-radius: 50%;
+    width: 17px;
+    height: 17px;
+    font-size: 9.5px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-family: var(--font-mono);
+}
+
+/* ── Tabla ────────────────────────────────────────────────────── */
+.db-table-wrap {
+    max-height: 540px;
+    overflow-y: auto;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+    scrollbar-width: thin;
+    scrollbar-color: var(--border) transparent;
+}
+
+.db-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    font-family: var(--font);
+}
+
+.db-table thead {
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.db-table thead tr {
+    background: var(--navy);
+}
+
+.db-table thead th {
+    padding: 8px 11px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 10px;
+    text-transform: uppercase;
+    letter-spacing: .7px;
+    color: rgba(255, 255, 255, .88);
+    white-space: nowrap;
+}
+
+.db-table tbody tr {
+    border-bottom: 1px solid var(--border-light);
+    transition: background var(--transition);
+}
+
+.db-table tbody tr:nth-child(even) {
+    background: var(--surface-alt);
+}
+
+.db-table tbody tr:hover {
+    background: var(--navy-pale);
+}
+
+.db-table td {
+    padding: 6px 11px;
+    color: var(--text-primary);
+    vertical-align: middle;
+}
+
+.db-table td.truncate {
+    max-width: 175px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.db-status-pill {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 20px;
+    font-size: 9.5px;
+    font-weight: 700;
+    letter-spacing: .3px;
+    color: #fff;
+}
+
+/* ── Empty / WIP ──────────────────────────────────────────────── */
+.db-empty,
+.db-wip {
+    text-align: center;
+    padding: 70px 40px;
+    color: var(--text-muted);
+}
+
+.db-empty-icon,
+.db-wip-icon {
+    font-size: 40px;
+    opacity: .4;
+    margin-bottom: 12px;
+}
+
+.db-wip h5 {
+    font-size: 16px;
+    color: var(--text-primary);
+    margin-bottom: 8px;
+}
+
+.db-wip p,
+.db-empty p {
+    font-size: 13px;
+    max-width: 400px;
+    margin: 0 auto;
+}
+
+/* ── Close btn ────────────────────────────────────────────────── */
+.db-close-btn {
+    margin-left: auto;
+    background: var(--navy);
+    color: #fff;
+    border: none;
+    border-radius: var(--radius-sm);
+    padding: 6px 18px;
+    cursor: pointer;
+    font-size: 12px;
+    font-family: var(--font);
+    font-weight: 600;
+    letter-spacing: .2px;
+    transition: background var(--transition);
+}
+
+.db-close-btn:hover {
+    background: var(--navy-mid);
+}
+
+/* ── Responsive ───────────────────────────────────────────────── */
+@media (max-width: 768px) {
+    .db-kpi-strip-row {
+        gap: 8px;
+    }
+
+    .db-kpi {
+        min-width: 90px;
+    }
+
+    .db-scroll {
+        padding: 14px;
+    }
+}

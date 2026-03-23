@@ -290,3 +290,46 @@ export const getUsuariosProyecto = proyectoId => apiWithToken.get(`/proyecto/${p
 export const deleteUsuarioProyecto = (usuarioId, proyectoId) => apiWithToken.delete(`/proyecto/${proyectoId}/usuario/${usuarioId}`);
 export const getUserProjectRol = (usuarioId, proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/usuario/${usuarioId}/rol`);
 
+// --- ENCUESTA DE SATISFACCIÓN ---
+export const verificarEstadoEncuesta = (proyectoId) => apiWithToken.get(`/proyecto/encuesta-satisfaccion/verificar/${proyectoId}`);
+export const getEncuestasProyecto = (proyectoId) => apiWithToken.get(`/proyecto/encuesta-satisfaccion/proyecto/${proyectoId}`);
+export const guardarEncuesta = (payload) => apiWithToken.post('/proyecto/encuesta-satisfaccion', payload);
+export const rechazarEncuesta = (proyectoId) => apiWithToken.post('/proyecto/encuesta-satisfaccion/rechazar', { proyectoId });
+export const getAllEncuestasProyecto = (proyectoId) => apiWithToken.get(`/proyecto/encuesta-satisfaccion/todas/${proyectoId}`);
+export const getProjectStatusLogs = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/estados`);
+
+// Informes de Avance
+export const getAllInformesAvance = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/informes-avance`);
+export const getInformeAvanceById = (id) => apiWithToken.get(`/proyecto/informe-avance/${id}`);
+export const createInformeAvance = (data) => apiWithToken.post(`/proyecto/informe-avance`, data);
+export const updateInformeAvance = (id, data) => apiWithToken.put(`/proyecto/informe-avance/${id}`, data);
+export const deleteInformeAvance = (id) => apiWithToken.delete(`proyecto/informe-avance/${id}`);
+
+// --- ENDPOINTS DASHBOARD ---
+export const getTareasDashboard = (usuarioId, modo, done = null) =>
+  apiWithToken.get(`/tarea/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}${done !== null ? `&done=${done}` : ''}`);
+
+export const getEncuestasDashboard = (usuarioId, modo) =>
+  apiWithToken.get(`/proyecto/dashboard/encuestas/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);
+
+export const getInformesDashboard = (usuarioId, modo) =>
+  apiWithToken.get(`/proyecto/dashboard/informes/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);
+
+export const getGanttDashboard = (usuarioId, modo) =>
+  apiWithToken.get(`/proyecto/dashboard/gantt/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);
+
+export const getKanbanDashboard = (usuarioId, modo) =>
+  apiWithToken.get(`/proyecto/dashboard/kanban/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);
+
+// --- CONTROL DE CAMBIOS ---
+export const getSolicitudesProyecto = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/control-cambio`);
+export const createSolicitudCambio = (payload) => apiWithToken.post('/proyecto/control-cambio', payload);
+export const updateEstadoSolicitudCambio = (id, payload) => apiWithToken.put(`/proyecto/control-cambio/${id}/estado`, payload);
+export const getSolicitudesDashboard = (usuarioId, modo) => apiWithToken.get(`/proyecto/dashboard/control-cambio/usuario/${usuarioId}?modo=${modo}`);
+
+//--- PROGRAMA ---
+export const getProyectosDelPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/proyectos`);
+export const getProyectosDisponiblesParaPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/disponibles`);
+export const asignarProyectoAPrograma = (programaId, proyectoId) => apiWithToken.post(`/proyecto/${programaId}/programa/asignar`, { proyectoId });
+export const desasignarProyectoDePrograma = (proyectoId) => apiWithToken.delete(`/proyecto/${proyectoId}/programa`);
+export const getProgramasLista = () => apiWithToken.get('/proyecto/programas/lista');

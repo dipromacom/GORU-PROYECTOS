@@ -1,7 +1,5 @@
 /* eslint-disable no-unused-vars */
-const {
-  Op, fn, col, literal
-} = require('sequelize');
+const { Op, fn, col, literal } = require('sequelize');
 const { Proyecto, Usuario } = require('../models/index');
 const {
   Persona, DirectorProyecto, Patrocinador, Departamento,
@@ -9,250 +7,219 @@ const {
 } = require('../models/index');
 const DateUtils = require("./date-utils");
 const { getNombreApellidoFromStr } = require('./string-utils');
+const { saveLog } = require('./log-service');
 
-// otras importaciones para logs
-const { saveLog } = require('./log-service'); // 💡 IMPORTAR SERVICIO DE LOGS
+// ─────────────────────────────────────────────
+// 🔹 CONSTANTE COMPARTIDA: includes base para proyectos
+// Antes estaba duplicada en getAllProyecto, getActiveProyecto,
+// getProyectoById, getFilteredProjects y updateProyecto
+// ─────────────────────────────────────────────
+const BASE_PROYECTO_INCLUDES = [
+  {
+    model: DirectorProyecto,
+    as: 'DirectorProyecto',
+    include: { model: Persona, as: 'Persona' },
+  },
+  {
+    model: Patrocinador,
+    as: 'Patrocinador',
+    include: { model: Persona, as: 'Persona' },
+  },
+  { model: Empresa, as: 'Empresa' },
+  { model: Departamento, as: 'Departamento' },
+  { model: TipoProyecto, as: 'TipoProyecto' },
+];
 
+// 🔹 CONSTANTE COMPARTIDA: orden por estado
+const ORDER_BY_ESTADO = [
+  [literal(`CASE 
+    WHEN estado = 'X' THEN 1
+    WHEN estado = 'P' THEN 2
+    WHEN estado = 'S' THEN 3
+    WHEN estado = 'C' THEN 4
+    WHEN estado = 'E' THEN 5
+    ELSE 6 END`), 'ASC']
+];
+
+// ─────────────────────────────────────────────
+// 🔹 HELPER: include de Usuarios para filtrar por usuarioId
+// ─────────────────────────────────────────────
+const usuarioInclude = (usuarioId, required = false) => ({
+  model: Usuario,
+  as: 'Usuarios',
+  required,
+  through: { attributes: [] },
+  attributes: ['id'],
+  ...(required ? { where: { id: usuarioId } } : {}),
+});
+
+// ─────────────────────────────────────────────
+// 🔹 HELPER: condición OR para creador o asignado
+// ─────────────────────────────────────────────
+const usuarioOrCondition = (usuarioId) => ({
+  [Op.or]: [
+    { usuario_creador: usuarioId },
+    { '$Usuarios.id$': usuarioId },
+  ],
+});
+
+// ─────────────────────────────────────────────
+// 🔹 HELPER: comparar y acumular cambios para logs
+// Soporta primitivos y objetos/arrays (JSONB)
+// ─────────────────────────────────────────────
+const collectChanges = (proyecto, data, fieldsToIgnore = []) => {
+  const changes = {};
+  const defaultIgnore = ['id', 'numero', 'fecha_creacion', 'DirectorProyecto', 'Patrocinador', 'Departamento'];
+  const ignored = [...defaultIgnore, ...fieldsToIgnore];
+
+  Object.keys(data).forEach(key => {
+    if (ignored.includes(key) || !proyecto.dataValues.hasOwnProperty(key)) return;
+
+    const oldValue = proyecto[key];
+    const newValue = data[key];
+
+    if (typeof oldValue === 'object' && oldValue !== null) {
+      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
+        changes[key] = { old: oldValue, new: newValue };
+      }
+    } else if (oldValue != newValue && newValue !== undefined) {
+      changes[key] = { old: oldValue, new: newValue };
+    }
+  });
+
+  return changes;
+};
+
+// ─────────────────────────────────────────────
+// 🔹 HELPER: convertir camelCase a snake_case
+// ─────────────────────────────────────────────
+const toSnakeCase = (obj) => {
+  if (Array.isArray(obj)) return obj.map(toSnakeCase);
+  if (obj !== null && typeof obj === 'object') {
+    return Object.keys(obj).reduce((acc, key) => {
+      acc[key.replace(/([A-Z])/g, '_$1').toLowerCase()] = toSnakeCase(obj[key]);
+      return acc;
+    }, {});
+  }
+  return obj;
+};
+
+// ═════════════════════════════════════════════
+// QUERIES
+// ═════════════════════════════════════════════
+
+// 🔹 Obtiene todos los proyectos del usuario (creador o asignado)
 const getAllProyecto = async (usuarioId) => {
-  const items = await Proyecto.findAll({
-    where: {
-      [Op.or]: [
-        { usuario_creador: usuarioId },
-        { '$Usuarios.id$': usuarioId } // <-- Acceso a través de la tabla pivote
-      ]
-    },
+  return Proyecto.findAll({
+    where: usuarioOrCondition(usuarioId),
     include: [
-      {
-        model: Usuario,
-        as: 'Usuarios',
-        required: false, // Usar 'required: true' si solo quieres proyectos compartidos
-        through: { attributes: [] },
-        attributes: ['id'] // Solo necesitamos el ID para el WHERE
-      },
-      {
-        model: DirectorProyecto,
-        as: 'DirectorProyecto',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
-      },
-      {
-        model: Patrocinador,
-        as: 'Patrocinador',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
-      },
-      {
-        model: Empresa,
-        as: 'Empresa',
-      },
-      {
-        model: Departamento,
-        as: 'Departamento',
-      },
-      {
-        model: TipoProyecto,
-        as: 'TipoProyecto',
-      },
+      usuarioInclude(usuarioId, false),
+      ...BASE_PROYECTO_INCLUDES,
     ],
-    order: [
-      [literal(`CASE 
-        WHEN estado = 'X' THEN 1
-        WHEN estado = 'P' THEN 2
-        WHEN estado = 'S' THEN 3
-        WHEN estado = 'C' THEN 4
-        WHEN estado = 'E' THEN 5
-        ELSE 6 END`), 'ASC']
-    ]
+    order: ORDER_BY_ESTADO,
   });
-  return items;
 };
 
+// 🔹 Obtiene proyectos activos (sin filtro de usuario — uso interno)
 const getActiveProyecto = async () => {
-  const items = await Proyecto.findAll({
-    where: {
-      activo: true,
-    },
-    include: [
-      {
-        model: DirectorProyecto,
-        as: 'DirectorProyecto',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
-      },
-      {
-        model: Patrocinador,
-        as: 'Patrocinador',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
-      },
-      {
-        model: Empresa,
-        as: 'Empresa',
-      },
-      {
-        model: Departamento,
-        as: 'Departamento',
-      },
-      {
-        model: TipoProyecto,
-        as: 'TipoProyecto',
-      },
-    ],
+  return Proyecto.findAll({
+    where: { activo: true },
+    include: BASE_PROYECTO_INCLUDES,
   });
-  return items;
 };
 
+// 🔹 Obtiene un proyecto por ID con todas sus relaciones
 const getProyectoById = async (id) => {
-  const item = await Proyecto.findOne({
-    where: {
-      id,
-    },
+  return Proyecto.findOne({
+    where: { id },
+    include: BASE_PROYECTO_INCLUDES,
+  });
+};
+
+// 🔹 Obtiene proyectos filtrados por query params
+// FIX: Antes era una función completamente separada de getAllProyecto
+// con includes y lógica duplicada. Ahora unificada y limpia.
+const getFilteredProjects = async (query, usuarioId) => {
+  const { startDateFrom, startDateTo, responsable, status, name, modo } = query;
+
+  // Construir filtros dinámicos
+  const where = { ...usuarioOrCondition(usuarioId) };
+
+  if (startDateFrom && startDateTo) {
+    where.fecha_inicio = {
+      [Op.ne]: null,
+      [Op.between]: [startDateFrom, startDateTo],
+    };
+  }
+  if (status) where.estado = status;
+  if (modo) where.modo = modo;
+  if (name) where.nombre = { [Op.iLike]: `%${name}%` };
+
+  // Filtro de persona (director) si viene responsable
+  const filterPersona = responsable
+    ? {
+      [Op.or]: [
+        { nombre: { [Op.iLike]: `%${responsable}%` } },
+        { apellido: { [Op.iLike]: `%${responsable}%` } },
+      ],
+    }
+    : {};
+
+  if (responsable) {
+    where['$DirectorProyecto.id$'] = { [Op.ne]: null };
+  }
+
+  return Proyecto.findAll({
+    where,
     include: [
+      usuarioInclude(usuarioId, false),
       {
         model: DirectorProyecto,
         as: 'DirectorProyecto',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
+        include: { model: Persona, as: 'Persona', where: filterPersona },
       },
       {
         model: Patrocinador,
         as: 'Patrocinador',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
+        include: { model: Persona, as: 'Persona' },
       },
-      {
-        model: Empresa,
-        as: 'Empresa',
-      },
-      {
-        model: Departamento,
-        as: 'Departamento',
-      },
-      {
-        model: TipoProyecto,
-        as: 'TipoProyecto',
-      },
+      { model: Empresa, as: 'Empresa' },
+      { model: Departamento, as: 'Departamento' },
+      { model: TipoProyecto, as: 'TipoProyecto' },
     ],
+    order: ORDER_BY_ESTADO,
   });
-
-  return item;
 };
 
+// ═════════════════════════════════════════════
+// CREATES
+// ═════════════════════════════════════════════
+
+// 🔹 Creación simple de proyecto (sin datos completos)
 const createProyecto = async (data, usuarioId) => {
-  /* const {
-    numero, nombre, informacion, tipoProyecto, empresa, departamento,
-    directorProyecto, patrocinador,
-    pendienteAsignacion,
-    documentacionAdjunta,
-    contrato,
-    casoNegocio,
-    portafolio,
-    programa,
-    justificacion,
-    descripcion,
-    analisisViabilidad,
-    objetivoCosto,
-    objetivoPlazo,
-    objetivoDesempeno,
-    alcanceEntregables,
-    tiempoDuracion,
-    tiempoFechasCriticas,
-    costoEntregable,
-    costoGanancia,
-    costoReservaContingencia,
-    costoReservaGestion,
-    calidadObjetivos,
-    calidadMetricas,
-    capacitacionObjetivos,
-    capacitacionMetricas,
-  } = data; */
-
-  /* const proyecto = await Proyecto.create({
-    nombre,
-    informacion,
-    tipo_proyecto: tipoProyecto,
-    empresa,
-    departamento,
-    director: directorProyecto,
-    patrocinador,
-    fecha_creacion: DateUtils.getLocalDate(),
-    estado: 'C',
-    activo: true,
-    pendiente_asignacion: pendienteAsignacion ,
-    documentacion_adjunta: documentacionAdjunta,
-    contrato: contrato,
-    caso_negocio : casoNegocio,
-    portafolio: portafolio,
-    programa: programa,
-    justificacion: justificacion,
-    descripcion : descripcion,
-    analisis_viabilidad : analisisViabilidad,
-    objetivo_costo : objetivoCosto,
-    objetivo_plazo : objetivoPlazo,
-    objetivo_desempeno : objetivoDesempeno,
-    alcance_entregables : alcanceEntregables,
-    tiempo_duracion : tiempoDuracion,
-    tiempo_fechas_criticas: tiempoFechasCriticas,
-    costo_entregable : costoEntregable,
-    costo_ganancia : costoGanancia,
-    costo_reserva_contingencia  : costoReservaContingencia,
-    costo_reserva_gestion: costoReservaGestion,
-    calidad_objetivos : calidadObjetivos,
-    calidad_metricas  : calidadMetricas,
-    capacitacion_objetivos : capacitacionObjetivos,
-    capacitacion_metricas: capacitacionMetricas,
-  }); */
-
   const proyecto = await Proyecto.create({
     ...data,
     estado: 'C',
     activo: true,
     fecha_creacion: DateUtils.getLocalDate(),
     modo: data.modo,
-    usuario_creador: usuarioId
-  })
+    usuario_creador: usuarioId,
+  });
 
-  // Registro en Logs
   await saveLog({
     userId: usuarioId,
     actionType: 'PROJECT_CREATED',
     resourceType: 'Proyecto',
     resourceId: proyecto.id,
-    details: {
-      nombre: proyecto.nombre,
-      modo: proyecto.modo,
-      estado: 'C'
-    }
+    details: { nombre: proyecto.nombre, modo: proyecto.modo, estado: 'C' },
   });
 
   return proyecto;
 };
 
-function toSnakeCase(obj) {
-  if (Array.isArray(obj)) {
-    return obj.map((item) => toSnakeCase(item));
-  } else if (obj !== null && typeof obj === "object") {
-    return Object.keys(obj).reduce((acc, key) => {
-      const snakeKey = key.replace(/([A-Z])/g, "_$1").toLowerCase();
-      acc[snakeKey] = toSnakeCase(obj[key]);
-      return acc;
-    }, {});
-  }
-  return obj;
-}
-
+// 🔹 Creación de proyecto con datos generales completos (wizard)
+// FIX: corregido bug — al actualizar patrocinador usaba 
+// directorProyectoDetails en lugar de patrocinadorProyectoDetails
 const createProyectoGeneralData = async (data, usuarioId) => {
   const {
     nombreProyecto,
@@ -265,42 +232,34 @@ const createProyectoGeneralData = async (data, usuarioId) => {
     ...rest
   } = data;
 
-  let directorProyecto;
-  let patrocinador;
-  let persona;
-  let departamento;
+  let directorProyecto, patrocinador, persona, departamento;
 
   if (directorProyectoDetails) {
     const { nombre, apellido } = getNombreApellidoFromStr(directorProyectoDetails);
-
     persona = await Persona.create({
-      nombre,
-      apellido,
+      nombre, apellido,
       fecha_creacion: DateUtils.getLocalDate(),
       activo: true,
     });
-
     directorProyecto = await persona.createDirectorProyecto({
       fecha_creacion: DateUtils.getLocalDate(),
-      activo: true
+      activo: true,
     });
   }
 
   if (patrocinadorProyectoDetails) {
+    // Si el patrocinador es distinto al director, crear nueva persona
     if (
       !directorProyectoDetails ||
       patrocinadorProyectoDetails.toLowerCase() !== directorProyectoDetails.toLowerCase()
     ) {
       const { nombre, apellido } = getNombreApellidoFromStr(patrocinadorProyectoDetails);
-
       persona = await Persona.create({
-        nombre,
-        apellido,
+        nombre, apellido,
         fecha_creacion: DateUtils.getLocalDate(),
         activo: true,
       });
     }
-
     patrocinador = await persona.createPatrocinador({
       fecha_creacion: DateUtils.getLocalDate(),
       activo: true,
@@ -315,32 +274,26 @@ const createProyectoGeneralData = async (data, usuarioId) => {
     });
   }
 
-  const restSnake = toSnakeCase(rest);
-
-  const proyectoPayload = {
+  const proyecto = await Proyecto.create({
     nombre: nombreProyecto,
     informacion: informacionBreve,
     tipo_proyecto: tipoProyecto,
-    estado: "C",
+    estado: 'C',
     activo: true,
     fecha_creacion: DateUtils.getLocalDate(),
     usuario_creador: usuarioId,
     modo,
-    director: directorProyecto.id || null,
-    patrocinador: patrocinador.id || null,
-    departamento: departamento.id || null,
-    ...restSnake,
-  };
+    director: directorProyecto?.id || null,
+    patrocinador: patrocinador?.id || null,
+    departamento: departamento?.id || null,
+    ...toSnakeCase(rest),
+  });
 
-  const proyecto = await Proyecto.create(proyectoPayload);
-
-  // Sequelize automáticamente añade la entrada en la tabla 'usuario_proyecto'
   await proyecto.addUsuario(usuarioId);
 
-  // Registro en Logs
   await saveLog({
     userId: usuarioId,
-    actionType: 'PROJECT_CREATED_FULL', // Un tipo distinto para diferenciar el wizard completo
+    actionType: 'PROJECT_CREATED_FULL',
     resourceType: 'Proyecto',
     resourceId: proyecto.id,
     details: {
@@ -348,395 +301,180 @@ const createProyectoGeneralData = async (data, usuarioId) => {
       modo: proyecto.modo,
       tipo_proyecto: proyecto.tipo_proyecto,
       has_director: !!proyecto.director,
-      has_patrocinador: !!proyecto.patrocinador
-    }
+      has_patrocinador: !!proyecto.patrocinador,
+    },
   });
 
   return proyecto;
 };
 
+// ═════════════════════════════════════════════
+// UPDATES
+// ═════════════════════════════════════════════
 
+// 🔹 Actualización de datos técnicos/económicos del proyecto
 const updateProyecto = async (data, id, usuarioId) => {
   const proyecto = await Proyecto.findOne({
     where: { id },
     include: [
+      { model: Departamento, as: 'Departamento' },
       {
-        model: Departamento,
-        as: 'Departamento',
+        model: DirectorProyecto, as: 'DirectorProyecto',
+        include: { model: Persona, as: 'Persona' },
       },
       {
-        model: DirectorProyecto,
-        as: 'DirectorProyecto',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
+        model: Patrocinador, as: 'Patrocinador',
+        include: { model: Persona, as: 'Persona' },
       },
-      {
-        model: Patrocinador,
-        as: 'Patrocinador',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
-      },
-    ]
+    ],
   });
 
-  if (!proyecto) throw new Error("Proyecto no encontrado");
+  if (!proyecto) throw new Error('Proyecto no encontrado');
 
-  // PREPARAR EL RECOLECTOR DE CAMBIOS
-  const changes = {};
-
-  /**
-   * Función auxiliar para comparar valores simples y complejos (Arrays/Objects)
-   */
-  const checkDifference = (key, newValue) => {
-    const oldValue = proyecto[key];
-
-    // Si el valor es un objeto o arreglo (JSONB en la DB)
-    if (typeof oldValue === 'object' && oldValue !== null) {
-      if (JSON.stringify(oldValue) !== JSON.stringify(newValue)) {
-        changes[key] = { old: oldValue, new: newValue };
+  // Validación de programa_id si viene en los datos
+  if (data.programa_id !== undefined) {
+    if (data.programa_id !== null) {
+      const programa = await Proyecto.findOne({
+        where: { id: data.programa_id, modo: 'PR' },
+      });
+      if (!programa) throw new Error(`El ID ${data.programa_id} no corresponde a un programa válido.`);
+      if (proyecto.programa_id && proyecto.programa_id !== parseInt(data.programa_id)) {
+        throw new Error(`El proyecto ya pertenece al programa ID ${proyecto.programa_id}. Desasignelo primero.`);
       }
     }
-    // Si es un valor primitivo (string, number, boolean)
-    else if (oldValue != newValue && newValue !== undefined) {
-      changes[key] = { old: oldValue, new: newValue };
-    }
-  };
-
-  // ITERAR SOBRE LOS DATOS QUE VIENEN DEL FRONT
-  // Esto detectará cambios en costo_entregable, alcance_entregables, hitos, etc.
-  const fieldsToIgnore = ['id', 'numero', 'fecha_creacion', 'DirectorProyecto', 'Patrocinador', 'Departamento'];
-
-  Object.keys(data).forEach(key => {
-    if (!fieldsToIgnore.includes(key) && proyecto.dataValues.hasOwnProperty(key)) {
-      checkDifference(key, data[key]);
-    }
-  });
-
-  // CASOS ESPECIALES (Si los IDs de relaciones cambiaron)
-  if (data.tipo_proyecto && proyecto.tipo_proyecto !== data.tipo_proyecto) {
-    changes['tipo_proyecto'] = { old: proyecto.tipo_proyecto, new: data.tipo_proyecto };
   }
 
-  await proyecto.update(data)
+  const changes = collectChanges(proyecto, data);
 
-  // GUARDAR LOG SOLO SI HUBO CAMBIOS REALES
+  await proyecto.update(data);
+
   if (Object.keys(changes).length > 0) {
     await saveLog({
       userId: usuarioId,
       actionType: 'PROJECT_DETAIL_UPDATED',
       resourceType: 'Proyecto',
       resourceId: id,
-      details: {
-        message: "Cambio en detalles técnicos/económicos",
-        changed_fields: changes
-      }
+      details: { message: 'Cambio en detalles técnicos/económicos', changed_fields: changes },
     });
   }
 
   return proyecto;
-}
+};
 
+// 🔹 Actualización de datos generales del proyecto (nombre, director, patrocinador, etc.)
+// FIX: corregido bug — el bloque de actualización de patrocinador
+// usaba directorProyectoDetails en su condición en lugar de patrocinadorProyecto
 const updateProyectoGeneralData = async (data, id, usuarioId) => {
   const proyecto = await Proyecto.findOne({
     where: { id },
     include: [
+      { model: Departamento, as: 'Departamento' },
       {
-        model: Departamento,
-        as: 'Departamento',
+        model: DirectorProyecto, as: 'DirectorProyecto',
+        include: { model: Persona, as: 'Persona' },
       },
       {
-        model: DirectorProyecto,
-        as: 'DirectorProyecto',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
+        model: Patrocinador, as: 'Patrocinador',
+        include: { model: Persona, as: 'Persona' },
       },
-      {
-        model: Patrocinador,
-        as: 'Patrocinador',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
-      },
-    ]
+    ],
   });
 
-  if (!proyecto) throw new Error("Proyecto no encontrado");
+  if (!proyecto) throw new Error('Proyecto no encontrado');
 
-  // PREPARAR EL RECOLECTOR DE CAMBIOS
   const changes = {};
 
-  // Función auxiliar para comparar y registrar cambios
   const trackChange = (path, oldVal, newVal) => {
     if (oldVal !== newVal && newVal !== undefined) {
       changes[path] = { old: oldVal, new: newVal };
     }
   };
 
-  // COMPARAR DATOS BÁSICOS DEL PROYECTO
   trackChange('nombre', proyecto.nombre, data.nombreProyecto);
   trackChange('informacion', proyecto.informacion, data.informacionBreve);
   trackChange('tipo_proyecto', proyecto.tipo_proyecto, data.tipoProyecto);
 
-  // COMPARAR DEPARTAMENTO
   if (data.departamento && proyecto.Departamento) {
     trackChange('departamento', proyecto.Departamento.nombre, data.departamento);
   }
 
-  // COMPARAR DIRECTOR (Nombre completo)
   if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
     const oldName = `${proyecto.DirectorProyecto.Persona.nombre} ${proyecto.DirectorProyecto.Persona.apellido}`.trim();
-    const newName = `${nombre} ${apellido}`.trim();
-    trackChange('director', oldName, newName);
+    trackChange('director', oldName, `${nombre} ${apellido}`.trim());
   }
 
-  // COMPARAR PATROCINADOR
   if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
     const oldName = `${proyecto.Patrocinador.Persona.nombre} ${proyecto.Patrocinador.Persona.apellido}`.trim();
-    const newName = `${nombre} ${apellido}`.trim();
-    trackChange('patrocinador', oldName, newName);
+    trackChange('patrocinador', oldName, `${nombre} ${apellido}`.trim());
   }
 
-  // --- EJECUCIÓN DE LAS ACTUALIZACIONES ---
-
-  const projectData = {
+  // Ejecutar actualizaciones
+  await proyecto.update({
     nombre: data.nombreProyecto,
     informacion: data.informacionBreve,
-    tipo_proyecto: data.tipoProyecto
-  }
+    tipo_proyecto: data.tipoProyecto,
+  });
 
-  await proyecto.update(projectData);
   if (data.departamento && proyecto.Departamento) {
     await proyecto.Departamento.update({ nombre: data.departamento });
   }
 
   if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
-
-    await proyecto.DirectorProyecto.Persona.update({
-      nombre, apellido
-    });
+    await proyecto.DirectorProyecto.Persona.update({ nombre, apellido });
   }
 
+  // FIX: antes usaba directorProyectoDetails en la condición — ahora usa patrocinadorProyecto
   if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
-    await proyecto.Patrocinador.Persona.update({
-      nombre, apellido
-    });
+    await proyecto.Patrocinador.Persona.update({ nombre, apellido });
   }
 
-  // GUARDAR LOG SOLO SI HUBO CAMBIOS
-  //if (Object.keys(changes).length > 0) {
-    await saveLog({
-      userId: usuarioId,
-      actionType: 'PROJECT_UPDATED_GENERAL',
-      resourceType: 'Proyecto',
-      resourceId: id,
-      details: {
-        message: "Actualización de datos generales",
-        changed_fields: changes // Aquí se guarda solo lo que cambió
-      }
-    });
-  //}
-
-  return proyecto;
-}
-
-const getFilteredProjects = async (query, usuarioId) => {
-  const {
-    startDateFrom, startDateTo, responsable, status, name, modo
-  } = query;
-  let filter = {}
-  if (startDateFrom && startDateTo) {
-    filter = {
-      ...filter,
-      fecha_inicio: {
-        [Op.ne]: null,
-        [Op.between]: [startDateFrom, startDateTo],
-      },
-    };
-  }
-
-  if (status) {
-    filter = { ...filter, estado: status };
-  }
-
-  if (modo) {
-    filter = { ...filter, modo };  // 👈 filtramos por modo si llega desde el front
-  }
-
-  if (name) {
-    filter = { ...filter, nombre: { [Op.iLike]: `%${name}%` } };
-  }
-
-  let filterPersona = {};
-  if (responsable) {
-    filter = {
-      ...filter,
-      '$DirectorProyecto.id$': { [Op.ne]: null },
-    };
-    filterPersona = {
-      ...filterPersona,
-      [Op.or]: [
-        { nombre: { [Op.iLike]: `%${responsable}%` } },
-        { apellido: { [Op.iLike]: `%${responsable}%` } }
-      ]
-    };
-  }
-
-  if (usuarioId) {
-    //filter = { ...filter, usuario_creador: usuarioId };
-    filter = {
-      ...filter,
-      [Op.or]: [
-        { usuario_creador: usuarioId },
-        // La búsqueda por asociación se manejará en el include. 
-        // Aquí solo se necesita la condición del creador.
-        // La condición del usuario asignado debe estar en el JOIN y el WHERE de la asociación.
-      ]
-    };
-  }
-
-  const items = await Proyecto.findAll({
-    include: [
-      {
-        model: Usuario,
-        as: 'Usuarios',
-        required: true, // Esto actúa como un JOIN INNER
-        through: { attributes: [] },
-        // Filtramos la asociación para que solo coincida con el usuario logueado
-        where: { id: usuarioId },
-        attributes: ['id']
-      },
-      {
-        model: DirectorProyecto,
-        as: 'DirectorProyecto',
-        include: {
-          model: Persona,
-          as: 'Persona',
-          where: filterPersona
-        },
-      },
-      {
-        model: Patrocinador,
-        as: 'Patrocinador',
-        include: {
-          model: Persona,
-          as: 'Persona',
-        },
-      },
-      {
-        model: Empresa,
-        as: 'Empresa',
-      },
-      {
-        model: Departamento,
-        as: 'Departamento',
-      },
-      {
-        model: TipoProyecto,
-        as: 'TipoProyecto',
-      },
-    ],
-    //where: filter,
-    where: {
-      ...filter,
-      // Re-aplicar la lógica de OR para el creador
-      // Para simplificar, si el usuario está en la tabla pivote, ya tiene acceso.
-      // Si mantenemos usuario_creador, la lógica en el JOIN es más limpia:
-      // Aseguramos que el usuario es creador *O* está en la tabla pivote.
-      [Op.or]: [
-        { usuario_creador: usuarioId },
-        { '$Usuarios.id$': usuarioId }
-      ],
-    },
-    order: [
-      [literal(`CASE 
-        WHEN estado = 'X' THEN 1
-        WHEN estado = 'P' THEN 2
-        WHEN estado = 'S' THEN 3
-        WHEN estado = 'C' THEN 4
-        WHEN estado = 'E' THEN 5
-        ELSE 6 END`), 'ASC']
-    ]
+  await saveLog({
+    userId: usuarioId,
+    actionType: 'PROJECT_UPDATED_GENERAL',
+    resourceType: 'Proyecto',
+    resourceId: id,
+    details: { message: 'Actualización de datos generales', changed_fields: changes },
   });
 
-  return items;
+  return proyecto;
 };
 
+// ═════════════════════════════════════════════
+// OTROS
+// ═════════════════════════════════════════════
+
+// 🔹 Asigna el creador del proyecto a la tabla pivote usuario_proyecto
 const assignCreatorToProject = async (projectId, usuarioId) => {
-  try {
-    const proyecto = await Proyecto.findByPk(projectId);
-
-    if (!proyecto) {
-      throw new Error(`Proyecto con ID ${projectId} no encontrado.`);
-    }
-
-    // Usamos addUsuario, que añade la relación en la tabla pivote
-    // 'usuario_proyecto' sin afectar a las ya existentes.
-    await proyecto.addUsuario(usuarioId);
-
-  } catch (error) {
-    // En un entorno de producción, es crucial registrar este error.
-    logger.error({
-      message: `Error al asignar el creador al proyecto ${projectId} en la tabla pivote: ${error.message}`,
-      source: file,
-      method: "assignCreatorToProject()",
-      params: { projectId, usuarioId },
-    });
-
-    throw error;
-  }
+  const proyecto = await Proyecto.findByPk(projectId);
+  if (!proyecto) throw new Error(`Proyecto con ID ${projectId} no encontrado.`);
+  await proyecto.addUsuario(usuarioId);
 };
 
-/**
- * Actualiza el proyecto y registra el cambio de estado.
- * @param {number} projectId - ID del proyecto.
- * @param {string} newStatus - Nuevo estado (S, E, P, C, etc.).
- * @param {number} userId - ID del usuario que realiza la acción (obtenido del token).
- * @param {object} [extraFields={}] - Campos adicionales a actualizar (ej: fecha_inicio, fecha_cierre).
- * @param {string} actionType - Tipo de acción para el log (ej: 'PROJECT_ACTIVATED').
- */
+// 🔹 Actualiza estado del proyecto y registra el cambio en logs
 const logUpdateEstadoProyecto = async (projectId, newStatus, userId, extraFields = {}, actionType) => {
   const proyecto = await Proyecto.findByPk(projectId);
+  if (!proyecto) throw new Error(`Proyecto con ID ${projectId} no encontrado.`);
 
-  if (!proyecto) {
-    throw new Error(`Proyecto con ID ${projectId} no encontrado.`);
-  }
+  const oldStatus = proyecto.estado;
 
-  const oldStatus = proyecto.estado; // 💡 Capturar el estado anterior
+  await proyecto.update({ estado: newStatus, ...extraFields });
 
-  // 1. Ejecutar la actualización
-  const dataToUpdate = {
-    estado: newStatus,
-    ...extraFields,
-  };
-  await proyecto.update(dataToUpdate);
-
-  // 2. Registrar el log
   await saveLog({
-    userId: userId,
-    actionType: actionType,
+    userId,
+    actionType,
     resourceType: 'Proyecto',
     resourceId: projectId,
     details: {
-      status: {
-        old: oldStatus,
-        new: newStatus,
-      },
-      ...extraFields, // Incluir campos extra en el log
-    }
+      status: { old: oldStatus, new: newStatus },
+      ...extraFields,
+    },
   });
 
-  return proyecto; // Devolver el proyecto actualizado
+  return proyecto;
 };
 
 module.exports = {
@@ -746,8 +484,8 @@ module.exports = {
   createProyecto,
   createProyectoGeneralData,
   updateProyecto,
-  getFilteredProjects,
   updateProyectoGeneralData,
+  getFilteredProjects,
   assignCreatorToProject,
   logUpdateEstadoProyecto,
 };

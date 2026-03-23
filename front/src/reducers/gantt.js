@@ -15,6 +15,12 @@ export const types = {
     SYNC_GANTT_SUCCESS: "gantt/SYNC_GANTT_SUCCESS",
     SYNC_GANTT_ERROR: "gantt/SYNC_GANTT_ERROR",
 
+    FETCH_GANTT_DASHBOARD_REQUEST: "gantt/FETCH_GANTT_DASHBOARD_REQUEST",
+    FETCH_GANTT_DASHBOARD_SUCCESS: "gantt/FETCH_GANTT_DASHBOARD_SUCCESS",
+    FETCH_GANTT_DASHBOARD_ERROR: "gantt/FETCH_GANTT_DASHBOARD_ERROR",
+
+    CLEAR_TASKS: "gantt/CLEAR_TASKS",
+
     CLEAN: "gantt/CLEAN",
 };
 
@@ -110,6 +116,11 @@ export const actions = {
 
     clean: () => ({
         type: types.CLEAN,
+    }),
+    fetchGanttDashboard: (usuarioId, modo) => ({
+        type: types.FETCH_GANTT_DASHBOARD_REQUEST,
+        usuarioId,
+        modo
     }),
 };
 
@@ -239,8 +250,35 @@ const ganttReducer = (state = defaultState, action = {}) => {
             };
         }
 
+        case types.FETCH_GANTT_DASHBOARD_REQUEST:
+            return {
+                ...state,
+                isLoading: true
+            };
+
+        case types.FETCH_GANTT_DASHBOARD_SUCCESS:
+            // action.payload vendrá con la lista de tareas de todos los proyectos del usuario
+            return {
+                ...state,
+                isLoading: false,
+                tasks: action.payload.map((t) => ({
+                    ...t,
+                    type: t.type || "task",
+                    parent_id: t.parent_id || null,
+                    is_critical: !!t.is_critical,
+                    duration: t.duration || 0,
+                })),
+                error: null
+            };
+
         case types.CLEAN:
             return defaultState;
+        
+        case types.CLEAR_TASKS:
+            return {
+                ...state,
+                tasks: [],
+            };
 
         default:
             return state;

@@ -55,5 +55,12 @@ module.exports = (db, Sequelize) => {
         tableName: 'tarea',
     });
 
+    Tarea.associate = (models) => {
+        Tarea.belongsTo(models.Proyecto, {
+            as: 'Proyecto',
+            foreignKey: 'proyecto_id'
+        });
+    };
+
     return Tarea;
 }

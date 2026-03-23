@@ -6,25 +6,13 @@ const setGantt = async (req, res) => {
 
     try {
         if (Array.isArray(tasks) && tasks.length > 0) {
-            // 🟢 Caso: Sync masivo con tasks[]
-            for (const t of tasks) {
-                if (!t.id) {
-                    console.warn(`task sin id detectada en setGantt:`, t);
-                    continue; // saltar tareas sin id
-                }
-                await GanttUtils.setGantt({ task: t, projectId });
-            }
+            // 🔹 Sync masivo: una sola transacción
+            await GanttUtils.syncGantt({ tasks, projectId });
         } else if (task) {
-            // 🟢 Caso: Una sola tarea (createTask / editTask)
-            if (!task.id) {
-                return res.status(400).json({ success: false, message: "El task recibido no tiene id" });
-            }
+            if (!task.id) return res.status(400).json({ success: false, message: "Task sin id" });
             await GanttUtils.setGantt({ task, projectId });
         } else {
-            return res.status(400).json({
-                success: false,
-                message: "No se envió ninguna tarea válida. Debe enviarse task o tasks"
-            });
+            return res.status(400).json({ success: false, message: "No se envió tarea válida" });
         }
 
         return res.status(200).json({ success: true });
@@ -71,6 +59,29 @@ const getGantt = async (req, res) => {
     }
 }
 
+const getGanttByUser = async (req, res) => {
+    const { usuarioId } = req.params;
+    const { modo } = req.query; 
+    try {
+        const tasks = await GanttUtils.getGanttByUser({ usuarioId, modo });
+        let allIds = [];
+        let byId = {};
+
+        tasks.forEach(task => {
+            allIds.push(task.id);
+            byId[task.id] = {
+                ...task.toJSON(),
+                projectName: task.Proyecto && task.Proyecto.nombre
+            };
+        });
+
+        return res.status(200).json({ success: true, tasks: { allIds, byId } });
+    } catch (e) {
+        console.error(e); 
+        return res.status(500).json({ success: false, debug: e.message });
+    }
+};
+
 const deleteGantt = async (req, res) => {
     const { id: projectId, taskId } = req.params;
 
@@ -96,5 +107,5 @@ const deleteGantt = async (req, res) => {
 
 
 module.exports = {
-    setGantt, getGantt, deleteGantt
+    setGantt, getGantt, deleteGantt, getGanttByUser
 }

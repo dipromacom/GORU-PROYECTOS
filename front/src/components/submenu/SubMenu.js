@@ -26,8 +26,8 @@ function SubMenu({ title, newLabel,total=0, newButtonAction, DashboardButtonActi
       <div className="vertical-separator float-left"/>
 
       <div className="dashboard-container float-left">
-        <p className="disable-widget-label"
-            style={{ cursor: 'not-allowed' }}
+          <p className="green widget-label"
+            style={{ cursor: 'pointer' }}
             onClick={DashboardButtonAction}
           >
           <img src="/icons/submenu/dashboard-icon.svg" alt="Dashboard" />&nbsp;Dashboard

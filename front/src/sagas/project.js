@@ -28,7 +28,8 @@ const sagas = [
     takeLatest(types.CREATE_RESPUESTA_ANALISIS_AMBIENTAL_REQUEST, handleCreateRespuestaAnalisisAmbiental),
     takeLatest(types.GET_RESPUESTA_ANALISIS_AMBIENTAL_REQUEST, handleGetRespuestaAnalisisAmbiental),
     takeLatest(types.UPDATE_RESPUESTA_ANALISIS_AMBIENTAL_REQUEST, handleUpdateRespuestaAnalisisAmbiental),
-    takeLatest(types.GET_TASKS_BY_ID_REQUEST, handleGetTasks)
+    takeLatest(types.GET_TASKS_BY_ID_REQUEST, handleGetTasks),
+    takeLatest(types.GET_TASKS_DASHBOARD_REQUEST, handleGetTasksDashboard)
 ]
 
 
@@ -228,7 +229,8 @@ function* handleInsertInteresado({ payload }) {
         const response = yield call(Api.createInteresadosBatch, payload);
         const { success, data } = response.data;
         if (success) {
-            const currentInteresados = yield select(state => state.interesados);
+            //const currentInteresados = yield select(state => state.interesados);
+            const currentInteresados = yield select(state => state.project.interesados);
             const updatedInteresados = [...(currentInteresados || []), ...data];
             yield put({ type: types.CREATE_INTERESADO_SUCCESS, interesados: updatedInteresados });
             yield put({ type: types.GET_LIST_INTERESADOS_SUCCESS, interesados: updatedInteresados });
@@ -249,8 +251,8 @@ function* handleUpdateInteresado({ payload }) {
 
         if (success) {
             // 🔹 Obtener la lista actual desde el store
-            const currentInteresados = yield select(state => state.interesados);
-
+            //const currentInteresados = yield select(state => state.interesados);
+            const currentInteresados = yield select(state => state.project.interesados);
             // 🔹 Reemplazar el interesado actualizado dentro de la lista
             const updatedInteresados = (currentInteresados || []).map(item =>
                 item.id === data.id ? data : item
@@ -410,6 +412,18 @@ function* handleGetTasks({ idProject, page, limit, done }) {
         yield put({ type: types.GET_TASKS_BY_ID_ERROR })
     }
 }
+function* handleGetTasksDashboard(action) {
+    try {
+        const response = yield call(Api.getTareasDashboard, action.usuarioId, action.modo, action.done);
+        const { success, data } = response.data;
+        if (success) {
+            yield put({ type: types.GET_TASKS_DASHBOARD_SUCCESS, payload: data.tareas || data });
+        }
+    } catch (e) {
+        yield put({ type: types.GET_TASKS_DASHBOARD_ERROR });
+        onError(e);
+    }
+}
 
 const createRequestProjectCreation = ({
     nombreProyecto,
@@ -454,7 +468,8 @@ const createRequestProjectCreation = ({
     plazoPeriodo,
     maxDesviacionPeriodo,
     leccionesAprendidas,
-    beneficios
+    beneficios,
+    programa_id,
 }) => {
     return {
         nombre: nombreProyecto,
@@ -499,7 +514,8 @@ const createRequestProjectCreation = ({
         plazo_periodo: plazoPeriodo,
         max_desviacion_periodo: maxDesviacionPeriodo,
         lecciones_aprendidas: leccionesAprendidas,
-        beneficios: beneficios
+        beneficios: beneficios,
+        programa_id: programa_id ?? null,
     }
 }
 

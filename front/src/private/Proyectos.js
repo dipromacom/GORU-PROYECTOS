@@ -22,13 +22,17 @@ import { Form, Dropdown } from "react-bootstrap"
 import { DownloadPdfButton } from "../components/downloadPdfButton/downloadPdfButton";
 import { ProyectoListPDF, csvHeader, convertToCsvData } from "./ProyectosReport"
 import { CSVLink } from "react-csv"
-import { FaPlay, FaArrowRight } from 'react-icons/fa';
-import { MdOutlineDoNotDisturbOn } from "react-icons/md";
+import { FaPlay, FaArrowRight, FaReply } from 'react-icons/fa';
+import { MdOutlineDoNotDisturbOn, MdSettingsBackupRestore } from "react-icons/md";
 import { FaLock } from "react-icons/fa"; // ícono de cerrado
 import Modal from "react-bootstrap/Modal";
+import ChangeControlModal from "../components/controlCambio/ChangeControlModal";
+import { selectors as sessionSelectors } from "../reducers/session";
+
+import DashboardModal from "../components/dashboard/dashboardModal";
 
 
-function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, dateFilterInput, filtersExpanded }) {
+function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, dateFilterInput, filtersExpanded, jwtToken, usuario }) {
 
   const MODO_CONFIG = {
     "/activities": { modo: "A", isDemoRestricted: false, newLabel: "Nuevo Proyecto Personal", title: "Proyectos Personales" },
@@ -56,6 +60,20 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   const [fechaCierre, setFechaCierre] = useState(moment().format("YYYY-MM-DD"));
   const [isRestricted, setIsRestricted] = useState(false);
   const [subscriptionMode, setSubscriptionMode] = useState(null);
+
+  const [showDashboard, setShowDashboard] = useState(false);
+
+  const [showChangeControl, setShowChangeControl] = useState(false);
+  const [projectForChange, setProjectForChange] = useState(null);
+
+  const handleOpenChangeControl = (proyecto) => {
+    const detail = {
+      ...proyecto,
+      director: `${proyecto.DirectorProyecto?.Persona.nombre ?? ''} ${proyecto.DirectorProyecto?.Persona.apellido ?? ''}`
+    };
+    setProjectForChange(detail);
+    setShowChangeControl(true);
+  };
 
   const currentConfig = useMemo(() => {
     const currentPath = location.pathname;
@@ -241,7 +259,9 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
             case 'P':
               return "Cambiar a Ejecutado";
             case 'X':
-              return "Cerrar Proyecto"; // Este icono no se muestra, pero por completitud
+              return "Regresar a Planificado"; // Nueva descripción
+            case 'E':
+              return "Cerrar Proyecto";
             default:
               return "Cambiar Estado";
           }
@@ -307,6 +327,28 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
                     <FaLock size={16} />
                   </a>
                 </OverlayTrigger>
+
+                  <OverlayTrigger
+                    placement="top"
+                    overlay={<Tooltip id={`tooltip-regresar-${proyecto.id}`}>{getCambiarEstadoTooltip('X')}</Tooltip>}
+                  >
+                    {/*<a
+                      className="btn info"                    
+                      onClick={() => {
+                        const confirmResult = window.confirm("¿Desea regresar el estado del proyecto a 'Planificado'?");
+                        if (confirmResult) {
+                          handleConfirmCambiarEstadoProyecto(proyecto.id, "P");
+                        }
+                      }}
+                    >*/}
+                    <a
+                      className="btn info"
+                      onClick={() => handleOpenChangeControl(proyecto)} // <-- Llama al modal en lugar del confirm
+                    >
+                      <MdSettingsBackupRestore size={16} />
+                    </a>
+                  </OverlayTrigger>
+
               </div>
             ) : proyecto.estado === 'P' ? (
               // 📦 Planificado → Ejecutado (ver, cambiar estado, cerrar)
@@ -503,6 +545,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
               newLabel={currentConfig.newLabel}
               total={projectList.length}
               newButtonAction={() => handleClickNewProyect()}
+              DashboardButtonAction={() => setShowDashboard(true)}
             />
 
           {/* <SubMenu
@@ -672,6 +715,32 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
             </Modal>
           </>
         )}
+
+      <ChangeControlModal
+        show={showChangeControl}
+        onHide={() => {
+          setShowChangeControl(false);
+          setProjectForChange(null);
+        }}
+        proyectoId={projectForChange?.id}
+        projectDetail={projectForChange}
+        usuario={usuario}
+        isAdmin="admin"
+        onSuccess={() => {
+          // Esta función se ejecuta DESPUÉS de enviar la solicitud en el modal
+          handleConfirmCambiarEstadoProyecto(projectForChange.id, "P");
+        }}
+      />
+
+      <DashboardModal
+        show={showDashboard}
+        onHide={() => setShowDashboard(false)}
+        projectList={projectList}
+        modo={getCurrentMode()}
+        apiBaseUrl={process.env.REACT_APP_API_URL}
+        jwtToken={jwtToken}            
+      />
+
     </div>
   );
 }
@@ -683,7 +752,9 @@ const mapStateToProps = state => ({
   endDate: selectors.getEndDateFilter(state),
   startDate: selectors.getStartDateFilter(state),
   dateFilterInput: selectors.getDateFilterInput(state),
-  filtersExpanded: selectors.getFilterExpanded(state)
+  filtersExpanded: selectors.getFilterExpanded(state),
+  jwtToken: state.session.jwtToken,
+  usuario: sessionSelectors.getUser(state),
 });
 
 export default connect(mapStateToProps)(Proyectos);

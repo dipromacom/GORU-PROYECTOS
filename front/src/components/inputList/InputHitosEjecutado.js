@@ -1,109 +1,95 @@
-import React from 'react';
-import { ListGroup, Form, Row, Col, ProgressBar } from 'react-bootstrap';
+import React, { useState } from 'react';
+import { ListGroup, Form, Row, Col, Modal, Button, Badge } from 'react-bootstrap';
 import moment from 'moment';
-import { useEffect, useState, useMemo } from 'react';
+import 'moment/locale/es';
 
-const InputHitosEjecutado = ({ tiempoFechasCriticas, setTiempoFechasCriticas, editMode, ejecutado, onSummaryChange = () => { } }) => {
+const InputHitosEjecutado = ({ tiempoFechasCriticas, setTiempoFechasCriticas, editMode, ejecutado, cerrado }) => {
+    const [showCloseModal, setShowCloseModal] = useState(false);
+    const [selectedIndex, setSelectedIndex] = useState(null);
+    const [closingDate, setClosingDate] = useState(new Date().toISOString().split('T')[0]);
 
-    // 1. Cálculo de Progreso
-    const totalHitos = tiempoFechasCriticas?.length || 0;
-    const completados = tiempoFechasCriticas.filter(h => h.completado).length;
-    const porcentajeCompletado = totalHitos > 0 ? Math.round((completados / totalHitos) * 100) : 0;
-
-    // 2. Manejo del Checkbox con Alerta
     const handleCheckboxChange = (index) => {
-        const item = tiempoFechasCriticas[index];
-        const newCompletado = !item.completado;
-
-        // Alerta de confirmación al marcar como completado
-        if (newCompletado) {
-            const isConfirmed = window.confirm(
-                `¿Está seguro que desea cerrar y dar por finalizado el Hito: "${item.description}" (${moment(item.date).format('DD/MM/YYYY')})?`
+        if (tiempoFechasCriticas[index].completado) {
+            // Si ya estaba completado, lo desmarcamos
+            const updated = tiempoFechasCriticas.map((item, i) =>
+                i === index ? { ...item, completado: false, fecha_hito: null } : item
             );
-
-            if (!isConfirmed) {
-                return; // Si el usuario cancela, no hacemos nada
-            }
+            setTiempoFechasCriticas(updated);
+        } else {
+            // Si se va a cerrar, abrimos modal
+            setSelectedIndex(index);
+            setClosingDate(new Date().toISOString().split('T')[0]);
+            setShowCloseModal(true);
         }
+    };
 
-        const updatedList = tiempoFechasCriticas.map((current_item, i) => {
-            if (i === index) {
-                return {
-                    ...current_item,
-                    completado: newCompletado,
-                };
+    const confirmClose = () => {
+        const updatedList = tiempoFechasCriticas.map((item, i) => {
+            if (i === selectedIndex) {
+                return { ...item, completado: true, fecha_hito: closingDate };
             }
-            return current_item;
+            return item;
         });
-
         setTiempoFechasCriticas(updatedList);
+        setShowCloseModal(false);
     };
 
     const deleteItemHandle = (index) => {
         setTiempoFechasCriticas(tiempoFechasCriticas.filter((item, i) => i !== index));
     };
 
-    useEffect(() => {
-        if (ejecutado) {
-            onSummaryChange('hitos', porcentajeCompletado);
-        }
-    }, [porcentajeCompletado, ejecutado, onSummaryChange]);
-
     return (
         <div className="input-hitos-ejecutado mt-3">
-            <div className="mb-3">
-                <Form.Label>Progreso de Hitos: <span className="fw-bold">{porcentajeCompletado}%</span></Form.Label><br></br>
-                <Form.Label><span className="fw-bold">Fórmula: (entregables_hitos / total_hitos) * 100 </span></Form.Label>
-                <ProgressBar now={porcentajeCompletado} label={`${porcentajeCompletado}%`} />
-            </div>
-
             <div className={tiempoFechasCriticas?.length > 0 ? "mt-2" : ""}>
-                {/* Cabecera para el estado ejecutado: 70% Hito + Fecha / 30% Finalizado */}
-                <Row className="alcance-header fw-bold">
-                    <Col xs={8} md={9} lg={9}>Hito / Fecha</Col>
-                    <Col xs={4} md={3} lg={3} className="text-center">Finalizado</Col>
+                <Row className="alcance-header fw-bold border-bottom pb-2 mb-2 text-muted" style={{ fontSize: '0.85rem' }}>
+                    <Col xs={6}>HITO / FECHA PROGRAMADA</Col>
+                    <Col xs={4} className="text-center">CIERRE REAL</Col>
+                    <Col xs={2} className="text-center">FIN</Col>
                 </Row>
 
                 <ListGroup variant="flush">
                     {tiempoFechasCriticas?.map((item, index) => (
-                        <ListGroup.Item key={index} className="ps-0 pe-0">
-                            <Row className="alcance-row align-items-center">
-                                {/* Columna 70% - Hito y Fecha */}
-                                <Col xs={8} md={9} lg={9}>
-                                    <Row className="align-items-center">
-                                        <Col xs={10} className="item-content">
-                                            <span
-                                                style={{ textDecoration: item.completado ? 'line-through' : 'none', fontWeight: 'bold' }}
-                                                title={item.description}
-                                            >
+                        <ListGroup.Item key={index} className="px-0 py-2 border-0">
+                            <Row className="align-items-center">
+                                {/* Columna Hito */}
+                                <Col xs={6}>
+                                    <div className="d-flex align-items-center">
+                                        {editMode && !ejecutado && (
+                                            <i
+                                                className="bi bi-x-circle text-danger me-2 cursor-pointer"
+                                                onClick={() => deleteItemHandle(index)}
+                                            ></i>
+                                        )}
+                                        <div>
+                                            <span className="fw-bold d-block" style={{ textDecoration: item.completado ? 'line-through' : 'none' }}>
                                                 {item.description}
                                             </span>
-                                            <div className="text-muted" style={{ fontSize: '0.8rem' }}>
-                                                <i className='bi bi-calendar' style={{ paddingRight: "5px" }}></i>
+                                            <small className="text-muted">
+                                                <i className="bi bi-calendar-event me-1"></i>
                                                 {moment(item.date).locale('es').format('LL')}
-                                            </div>
-                                        </Col>
-                                        <Col xs={2} className="text-end item-actions">
-                                            {/* Botón de eliminar (solo en modo edición) */}
-                                            {editMode && (
-                                                <span
-                                                    className="bi bi-x-lg delete-btn text-danger"
-                                                    onClick={() => deleteItemHandle(index)}
-                                                    title="Eliminar Hito"
-                                                ></span>
-                                            )}
-                                        </Col>
-                                    </Row>
+                                            </small>
+                                        </div>
+                                    </div>
                                 </Col>
 
-                                {/* Columna 30% - Checkbox */}
-                                <Col xs={4} md={3} lg={3} className="text-center">
+                                {/* Columna Fecha de Cierre Real */}
+                                <Col xs={4} className="text-center">
+                                    {item.completado ? (
+                                        <Badge variant="light" className="border text-dark">
+                                            {moment(item.fecha_hito).format('DD/MM/YYYY')}
+                                        </Badge>
+                                    ) : (
+                                        <span className="text-muted small">Pendiente</span>
+                                    )}
+                                </Col>
+
+                                {/* Columna Checkbox */}
+                                <Col xs={2} className="text-center">
                                     <Form.Check
                                         type="checkbox"
-                                        checked={item.completado || false} // Aseguramos que sea false si es undefined
-                                        disabled={!editMode}
+                                        checked={item.completado || false}
+                                        disabled={!editMode || !ejecutado} // Solo se puede cerrar en ejecución
                                         onChange={() => handleCheckboxChange(index)}
-                                        inline
                                     />
                                 </Col>
                             </Row>
@@ -111,6 +97,28 @@ const InputHitosEjecutado = ({ tiempoFechasCriticas, setTiempoFechasCriticas, ed
                     ))}
                 </ListGroup>
             </div>
+
+            {/* Modal de Finalización de Hito */}
+            <Modal show={showCloseModal} onHide={() => setShowCloseModal(false)} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Finalizar Hito</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p>¿En qué fecha se cumplió el hito: <strong>{tiempoFechasCriticas[selectedIndex]?.description}</strong>?</p>
+                    <Form.Group>
+                        <Form.Label className="small fw-bold">FECHA DE CUMPLIMIENTO:</Form.Label>
+                        <Form.Control
+                            type="date"
+                            value={closingDate}
+                            onChange={(e) => setClosingDate(e.target.value)}
+                        />
+                    </Form.Group>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowCloseModal(false)}>Cancelar</Button>
+                    <Button variant="success" onClick={confirmClose}>Confirmar Cierre</Button>
+                </Modal.Footer>
+            </Modal>
         </div>
     );
 };

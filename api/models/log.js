@@ -42,7 +42,7 @@ module.exports = (db, Sequelize) => {
         const { Usuario } = models;
         // Asociación con el Usuario que realizó la acción
         Log.Usuario = Log.belongsTo(Usuario, {
-            as: 'Actor', // Podrías llamarlo 'Actor' para claridad
+            as: 'Usuario', // Podrías llamarlo 'Actor' para claridad
             foreignKey: 'user_id',
         });
     };

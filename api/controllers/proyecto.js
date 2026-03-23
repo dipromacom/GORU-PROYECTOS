@@ -4,40 +4,40 @@ const ProyectoUtils = require('../utils/proyecto-utils');
 const DateUtils = require('../utils/date-utils');
 const { decodeToken } = require('../utils/security-utils');
 
+// ─────────────────────────────────────────────
+// GET
+// ─────────────────────────────────────────────
+
 const getAllProyecto = async (req, res) => {
   try {
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
 
-    const items = (req.query && Object.keys(req.query).length > 0)
-      ? await ProyectoUtils.getFilteredProjects(req.query, usuarioId)
-      : await ProyectoUtils.getAllProyecto(usuarioId)
+    // FIX: unificado en una sola llamada — getFilteredProjects
+    // soporta query vacío y se comporta igual que getAllProyecto
+    const items = await ProyectoUtils.getFilteredProjects(req.query || {}, usuarioId);
 
     return res.status(200).json({ success: true, data: items });
   } catch (error) {
-    return res.status(500).json({
-      success: false,
-      messge: error.message,
-    });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const getActiveProyecto = async (req, res) => {
   try {
     const items = await ProyectoUtils.getActiveProyecto();
-
-    res.status(200).json({ success: true, data: items });
+    return res.status(200).json({ success: true, data: items });
   } catch (error) {
-    res.status(500).json({ success: false, message: error.message });
+    return res.status(500).json({ success: false, message: error.message });
   }
 };
 
 const getProyectoById = async (req, res) => {
   try {
-    const { id} = req.params;
+    const { id } = req.params;
     const item = await ProyectoUtils.getProyectoById(id);
 
-    if (item == null) {
+    if (!item) {
       return res.status(404).json({ success: false, message: 'Proyecto no existe' });
     }
 
@@ -47,13 +47,16 @@ const getProyectoById = async (req, res) => {
   }
 };
 
+// ─────────────────────────────────────────────
+// CREATE
+// ─────────────────────────────────────────────
+
 const createProyecto = async (req, res) => {
   try {
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
-    const data = req.body;
-    const Proyecto = await ProyectoUtils.createProyecto(data, usuarioId);
-    return res.status(201).json({ success: true, data: Proyecto });
+    const proyecto = await ProyectoUtils.createProyecto(req.body, usuarioId);
+    return res.status(201).json({ success: true, data: proyecto });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
@@ -63,77 +66,76 @@ const createProyectoGeneralData = async (req, res) => {
   try {
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
-
-    const data = req.body;
-    const Proyecto = await ProyectoUtils.createProyectoGeneralData(data, usuarioId);
-    return res.status(201).json({ success: true, data: Proyecto });
+    const proyecto = await ProyectoUtils.createProyectoGeneralData(req.body, usuarioId);
+    return res.status(201).json({ success: true, data: proyecto });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
 
+// ─────────────────────────────────────────────
+// UPDATE
+// ─────────────────────────────────────────────
+
+const updateProyecto = async (req, res) => {
+  try {
+    const { authorization } = req.headers;
+    const { id: usuarioId } = decodeToken(authorization);
+    const proyecto = await ProyectoUtils.updateProyecto(req.body, req.params.id, usuarioId);
+    return res.status(200).json({ success: true, data: proyecto });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+const updateProyectoGeneralData = async (req, res) => {
+  try {
+    const { authorization } = req.headers;
+    const { id: usuarioId } = decodeToken(authorization);
+    const proyecto = await ProyectoUtils.updateProyectoGeneralData(req.body, req.params.id, usuarioId);
+    return res.status(200).json({ success: true, data: proyecto });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
+// ─────────────────────────────────────────────
+// ESTADO
+// ─────────────────────────────────────────────
+
 const activarProyecto = async (req, res) => {
   try {
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
-    const { projectId } = req.body
-    /*const proyecto = await ProyectoUtils.updateProyecto(
-      {
-        usuario_creador: usuarioId,
-        activo: true,
-        estado: 'S',
-        fecha_inicio: DateUtils.getLocalDate()
-      }, projectId
-    )*/
+    const { projectId } = req.body;
 
     const proyecto = await ProyectoUtils.logUpdateEstadoProyecto(
-      projectId,
-      'S', // Estado 'S' (Iniciado/Activo)
-      usuarioId,
-      {
-        usuario_creador: usuarioId, // Asignar creador en la misma operación
-        activo: true,
-        fecha_inicio: DateUtils.getLocalDate()
-      },
-      'PROJECT_ACTIVATED' // Action Type
+      projectId, 'S', usuarioId,
+      { usuario_creador: usuarioId, activo: true, fecha_inicio: DateUtils.getLocalDate() },
+      'PROJECT_ACTIVATED'
     );
 
-    // Nueva utilidad para manejar la lógica de asignación N:M
     await ProyectoUtils.assignCreatorToProject(projectId, usuarioId);
+
     return res.status(201).json({ success: true, data: proyecto });
   } catch (error) {
     return res.status(500).json({ success: false, message: error.message });
   }
-}
+};
 
 const cerrarProyecto = async (req, res) => {
   try {
-    const { projectId, fecha_cierre } = req.body; // 👈 recibimos ambos del body
+    const { projectId, fecha_cierre } = req.body;
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
 
-    if (!projectId) {
-      return res.status(400).json({ success: false, message: "El campo projectId es obligatorio" });
-    }
-
-    if (!fecha_cierre) {
-      return res.status(400).json({ success: false, message: "El campo fecha_cierre es obligatorio" });
-    }
-
-    /*const proyecto = await ProyectoUtils.updateProyecto(
-      {
-        estado: "E",
-        fecha_cierre
-      },
-      projectId
-    );*/
+    if (!projectId) return res.status(400).json({ success: false, message: 'El campo projectId es obligatorio' });
+    if (!fecha_cierre) return res.status(400).json({ success: false, message: 'El campo fecha_cierre es obligatorio' });
 
     const proyecto = await ProyectoUtils.logUpdateEstadoProyecto(
-      projectId,
-      'E', // Estado 'E' (Terminado/Cerrado)
-      usuarioId,
-      { fecha_cierre: fecha_cierre }, // Campo extra
-      'PROJECT_CLOSED' // Action Type
+      projectId, 'E', usuarioId,
+      { fecha_cierre },
+      'PROJECT_CLOSED'
     );
 
     return res.status(200).json({ success: true, data: proyecto });
@@ -144,22 +146,12 @@ const cerrarProyecto = async (req, res) => {
 
 const updateEstadoProyecto = async (req, res) => {
   try {
-    const { projectId, estado } = req.body; // 👈 recibimos ambos del body
+    const { projectId, estado } = req.body;
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
-    /*const proyecto = await ProyectoUtils.updateProyecto(
-      {
-        estado: estado,
-      },
-      projectId
-    );*/
 
     const proyecto = await ProyectoUtils.logUpdateEstadoProyecto(
-      projectId,
-      estado,
-      usuarioId,
-      {}, // No hay campos extra
-      'PROJECT_STATUS_CHANGED' // Action Type
+      projectId, estado, usuarioId, {}, 'PROJECT_STATUS_CHANGED'
     );
 
     return res.status(200).json({ success: true, data: proyecto });
@@ -167,33 +159,6 @@ const updateEstadoProyecto = async (req, res) => {
     return res.status(500).json({ success: false, message: error.message });
   }
 };
-
-const updateProyecto = async (req, res) => {
-  try {
-    const { authorization } = req.headers;
-    const { id: usuarioId } = decodeToken(authorization);
-    const projectId = req.params.id;
-    const data = req.body
-    const proyecto = await ProyectoUtils.updateProyecto(data, projectId, usuarioId)
-    return res.status(201).json({ success: true, data: proyecto });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-}
-
-const updateProyectoGeneralData = async (req, res) => {
-  try {
-    const { authorization } = req.headers;
-    const { id: usuarioId } = decodeToken(authorization);
-
-    const projectId = req.params.id;
-    const data = req.body
-    const proyecto = await ProyectoUtils.updateProyectoGeneralData(data, projectId, usuarioId)
-    return res.status(201).json({ success: true, data: proyecto });
-  } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
-  }
-}
 
 module.exports = {
   getAllProyecto,
@@ -205,5 +170,5 @@ module.exports = {
   cerrarProyecto,
   updateEstadoProyecto,
   updateProyecto,
-  updateProyectoGeneralData
+  updateProyectoGeneralData,
 };

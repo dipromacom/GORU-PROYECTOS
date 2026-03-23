@@ -48,8 +48,9 @@ module.exports = (db, Sequelize) => {
     plazo_periodo: { type: Sequelize.TEXT },
     max_desviacion_periodo: { type: Sequelize.TEXT },
     modo: { type: Sequelize.STRING },
-    lecciones_aprendidas: { type: Sequelize.TEXT },
+    lecciones_aprendidas: { type: Sequelize.JSONB },
     beneficios: { type: Sequelize.JSONB },
+    programa_id: { type: Sequelize.INTEGER, allowNull: true },
   }, {
     freezeTableName: true,
     tableName: 'proyecto',
@@ -58,7 +59,7 @@ module.exports = (db, Sequelize) => {
   Proyecto.associate = (models) => {
     const {
       TipoProyecto, Empresa, Departamento, DirectorProyecto,
-      Patrocinador, Evaluacion, Usuario, UsuarioProyecto, RolProyecto
+      Patrocinador, Evaluacion, Usuario, UsuarioProyecto, RolProyecto, InformeAvance, GanttTask, KanbanStatus,
     } = models;
 
     Proyecto.TipoProyecto = Proyecto.belongsTo(TipoProyecto, {
@@ -98,14 +99,41 @@ module.exports = (db, Sequelize) => {
 
     Proyecto.Usuarios = Proyecto.belongsToMany(Usuario, {
       as: 'Usuarios',
-      through: UsuarioProyecto, // Nombre de la tabla pivote que creamos
-      foreignKey: 'proyecto_id', // Clave foránea en la tabla pivote que apunta a Proyecto
-      otherKey: 'usuario_id', // Clave foránea en la tabla pivote que apunta a Usuario
+      through: UsuarioProyecto, 
+      foreignKey: 'proyecto_id', 
+      otherKey: 'usuario_id', 
     });
-    // Si necesitas ver los roles asignados a los usuarios en este proyecto:
+
     Proyecto.UsuariosAsignados = Proyecto.hasMany(UsuarioProyecto, {
       as: 'UsuariosAsignados',
       foreignKey: 'proyecto_id',
+    });
+
+    Proyecto.InformeAvance = Proyecto.hasMany(InformeAvance, {
+      as: 'InformesAvance',
+      foreignKey: 'proyecto_id',
+    });
+
+    Proyecto.GanttTasks = Proyecto.hasMany(GanttTask, {
+      as: 'GanttTasks',
+      foreignKey: 'project_id'
+    });
+
+    Proyecto.KanbanStatuses = Proyecto.hasMany(KanbanStatus, {
+      as: 'KanbanStatuses',
+      foreignKey: 'project_id'
+    });
+
+    Proyecto.Programa = Proyecto.belongsTo(Proyecto, {
+      as: 'Programa',
+      foreignKey: 'programa_id',
+      constraints: false,   
+    });
+
+    Proyecto.Proyectos = Proyecto.hasMany(Proyecto, {
+      as: 'Proyectos',
+      foreignKey: 'programa_id',
+      constraints: false,
     });
 
 

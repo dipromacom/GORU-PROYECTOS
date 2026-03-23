@@ -1,11 +1,12 @@
 /* eslint-disable react-hooks/exhaustive-deps */
 import React, { useState, useEffect, useMemo } from "react";
-import { Col, Form, ListGroup, Button, InputGroup, Row, Alert, ProgressBar } from "react-bootstrap"
+import { Col, Form, ListGroup, Button, InputGroup, Row, Alert, ProgressBar, Nav, Tab } from "react-bootstrap"
 import { CriticalBadgeFromText, CriticalBadgeFromTextValue } from "../badge/Badge";
 import PlanRespuestaModal from "./PlanRespuestaModal";
+import RiskHeatmapMatrix from "../summaryChart/RiskHeatmapMatrix";
 
 
-const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabled = false, ejecutado, interesados = [], onSummaryChange = () => { } }) => {
+const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabled = false, ejecutado, cerrado, interesados = [], onSummaryChange = () => { } }) => {
     // Definición de estados con valores iniciales para M (Medio = 2)
     const [riesgosDesc, setRiesgoDesc] = useState("")
     const [probabilidad, setProbabilidad] = useState("M") // Clave para el <select>
@@ -96,15 +97,22 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
         const probNum = claveToNum[probabilidad] || 0;
         const impactNum = claveToNum[impacto] || 0;
 
+        const nextId = `R${(riesgosList?.length || 0) + 1}`;
+
         const riesgo = {
+            id: nextId, 
             descripcion: riesgosDesc,
-            valor: riesgoVal, // Ahora es el resultado numérico (1-9)
-            probabilidad: probNum, // Ahora es el número (1, 2, 3)
-            impacto: impactNum, // Ahora es el número (1, 2, 3)
+            valor: riesgoVal,
+            probabilidad: probNum,
+            impacto: impactNum,
+            probabilidad_residual: null, 
+            impacto_residual: null, 
+            valor_residual: null, 
             plan_descripcion: '',
             fecha_realizacion: '',
             responsable_id: '',
             completado: false,
+            estrategia: '',
         }
 
         const newList = [...(riesgosList || []), riesgo]
@@ -145,7 +153,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
 
 
     const renderPlanInfo = (item) => {
-        if (!ejecutado) return null;
+        if (!(ejecutado || cerrado)) return null;
 
         const responsable = getResponsableName(item.responsable_id);
         const fecha = item.fecha_realizacion
@@ -174,14 +182,20 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
     };
 
     useEffect(() => {
-        if (ejecutado && !isOldFormatDetected) {
+        if ((ejecutado || cerrado) && !isOldFormatDetected) {
             onSummaryChange(riesgoPromedio);
         }
-    }, [riesgoPromedio, ejecutado, onSummaryChange, isOldFormatDetected]);
+    }, [riesgoPromedio, ejecutado, cerrado, onSummaryChange, isOldFormatDetected]);
 
 
     return (
-        <div>
+        <div className="riesgos-container shadow-sm border rounded p-4 bg-white mt-4">
+            {/* Título con diseño unificado */}
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <h4 className="mb-0 text-dark fw-bold">
+                    <i className="bi bi-exclamation-octagon me-2"></i>Gestión de Riesgos
+                </h4>
+            </div>
             {selectedRiesgo && (
                 <PlanRespuestaModal
                     show={showModal}
@@ -202,7 +216,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
             <Form>
                 <Form.Row>
                     <Col xs={5}>
-                        <Form.Label>Descripcion</Form.Label>
+                        <Form.Label className="small fw-bold text-muted">Descripcion</Form.Label>
                         {!disabled && <Form.Control
                             autoComplete="off"
                             type="text"
@@ -211,7 +225,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                         />}
                     </Col>
                     <Col xs={2}>
-                        <Form.Label>Probabilidad</Form.Label>
+                        <Form.Label className="small fw-bold text-muted">Probabilidad</Form.Label>
                         {!disabled && <Form.Control as="select" size="sm" custom onChange={e => { setProbabilidad(e.target.value) }} value={probabilidad}>
                             {
                                 values.map(
@@ -224,7 +238,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                         </Form.Control>}
                     </Col>
                     <Col xs={2}>
-                        <Form.Label>Impacto</Form.Label>
+                        <Form.Label className="small fw-bold text-muted">Impacto</Form.Label>
                         {!disabled && <Form.Control as="select" size="sm" custom onChange={e => { setImpacto(e.target.value) }} value={impacto}>
                             {
                                 values.map(
@@ -237,7 +251,7 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                         </Form.Control>}
                     </Col>
                     <Col xs={1}>
-                        <Form.Label>Valor ({riesgoVal})</Form.Label>
+                        <Form.Label className="small fw-bold text-muted">Valor ({riesgoVal})</Form.Label>
                         <InputGroup>
                             {!disabled && <CriticalBadgeFromTextValue value={getBadgeClaveFromValue(riesgoVal)} />}
                         </InputGroup>
@@ -248,20 +262,20 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                 </Form.Row>
             </Form>
 
-            <div className={riesgosList?.length > 0 ? "mt-4" : ""}>
-                <ListGroup horizontal className="fw-bold d-flex p-0 list-risk-header" style={{ borderBottom: '2px solid #ccc' }}>
-                    <ListGroup.Item className="col-4">Descripción</ListGroup.Item>
-                    <ListGroup.Item className="col-2 text-center">Prob.</ListGroup.Item>
-                    <ListGroup.Item className="col-2 text-center">Impac.</ListGroup.Item>
-                    <ListGroup.Item className="col-2 text-center">Valor</ListGroup.Item>
-                    {ejecutado && <ListGroup.Item className="col-2 text-center">Plan Respuesta</ListGroup.Item>}
-                </ListGroup>
+            <div className={riesgosList?.length > 0 ? "mt-4 border rounded p-3 bg-light" : ""}>
+                <div className="d-flex fw-bold pb-2 border-bottom mb-2 text-muted small mt-4">
+                    <div className="col-4">DESCRIPCIÓN</div>
+                    <div className="col-2 text-center">PROB.</div>
+                    <div className="col-2 text-center">IMPAC.</div>
+                    <div className="col-2 text-center">VALOR</div>
+                    {(ejecutado || cerrado) && <div className="col-2 text-center">PLAN RESPUESTA</div>}
+                </div>
 
                 <ListGroup variant="flush">
                     {(riesgosList || []).map((item, index) => (
                         <ListGroup.Item key={index} className='p-0'>
                             <div className='d-flex align-items-center p-2'>
-                                <div className="col-4 text-break">{item.descripcion}</div>
+                                <div className="col-4 text-break">{item.descripcion} ({item.id})</div>
                                 <div className="col-2 text-center"><CriticalBadgeFromText value={getClaveForDisplay(item.probabilidad)} femenize /></div>
                                 <div className="col-2 text-center"><CriticalBadgeFromText value={getClaveForDisplay(item.impacto)} /></div>
                                 <div className="col-2 text-center">
@@ -271,39 +285,82 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
                                     </span>
                                 </div>
 
-                                {ejecutado && !disabled && (
+                                {(ejecutado || cerrado) && !disabled && (
                                     <div className="col-2 text-center pr-0">
                                         <Button variant="outline-primary" size="sm" onClick={() => handleOpenModal(item)}>
                                             Plan de Respuesta
                                         </Button>
                                     </div>
                                 )}
-
-                                <div className={`col-${ejecutado && !disabled ? 1 : 2} text-end pr-0`}>
-                                    {!disabled && <span className="bi bi-x-lg pull-end" style={{ cursor: 'pointer' }} onClick={() => deleteItemHandle(index)} ></span>}
-                                </div>
+                                {(!ejecutado && !cerrado) && !disabled && (
+                                    <div className={`col-${(ejecutado || cerrado) && !disabled ? 1 : 2} text-end pr-0`}>
+                                        {!disabled && <span className="bi bi-x-lg pull-end" style={{ cursor: 'pointer' }} onClick={() => deleteItemHandle(index)} ></span>}
+                                    </div>
+                                )}
                             </div>
 
                             {renderPlanInfo(item)}
                         </ListGroup.Item>
                     ))}
 
-                    {ejecutado && !isOldFormatDetected && (riesgosList || []).length > 0 && (
-                        <ListGroup.Item className='fw-bold p-2 total-risk-row'>
-                            <div className="mb-3">
-                                <Form.Label>RIESGO PROMEDIO: <span className="fw-bold">{riesgoPromedio}%</span></Form.Label><br></br>
-                                <Form.Label><span className="fw-bold">Fórmula: ((Suma_Valores/Riesgos_totales) / 9) * 100</span></Form.Label>
-                                <ProgressBar
-                                    now={riesgoPromedio}
-                                    label={`${riesgoPromedio}%`}
-                                    variant={getProgressVariant(riesgoPromedio)} // Usa la función para el color
-                                />
+                    {(ejecutado || cerrado) && !isOldFormatDetected && (riesgosList || []).length > 0 && (
+                        <div className="mt-4">
+                            <div className="d-flex justify-content-between small fw-bold mb-1 text-uppercase">
+                                <span>Nivel de Riesgo Promedio (Exposición):</span>
+                                <span className={`text-${getProgressVariant(riesgoPromedio)}`}>{riesgoPromedio}%</span>
                             </div>
-                        </ListGroup.Item>
+                            <ProgressBar
+                                now={riesgoPromedio}
+                                variant={getProgressVariant(riesgoPromedio)}
+                                style={{ height: '20px', borderRadius: '5px' }}
+                            />
+                            <div className="text-muted" style={{ fontSize: '0.7rem', marginTop: '5px' }}>
+                                Basado en la matriz Probabilidad x Impacto (Máximo 9 pts).
+                            </div>
+                        </div>
                     )}
 
                 </ListGroup>
             </div>
+            {(ejecutado || cerrado) && (riesgosList || []).length > 0 && !isOldFormatDetected && (
+                <div className="mt-5">
+                    <Tab.Container defaultActiveKey="inicial">
+                        <Nav variant="tabs" className="mb-3">
+                            <Nav.Item>
+                                <Nav.Link eventKey="inicial">
+                                    <i className="bi bi-grid-3x3 me-2"></i>
+                                    Matriz de Calor de Riesgos
+                                </Nav.Link>
+                            </Nav.Item>
+                            {/* Solo mostrar pestaña residual si hay planes cerrados */}
+                            {(riesgosList || []).some(r => r.completado) && (
+                                <Nav.Item>
+                                    <Nav.Link eventKey="residual">
+                                        <i className="bi bi-shield-check me-2"></i>
+                                        Matriz de Calor de Riesgos (Residual)
+                                    </Nav.Link>
+                                </Nav.Item>
+                            )}
+                        </Nav>
+
+                        <Tab.Content>
+                            <Tab.Pane eventKey="inicial">
+                                <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={false} />
+                            </Tab.Pane>
+
+                            <Tab.Pane eventKey="residual">
+                                <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={true} />
+
+                                {/* Información adicional sobre riesgos cerrados */}
+                                <div className="alert alert-info mt-3">
+                                    <i className="bi bi-info-circle me-2"></i>
+                                    <strong>Riesgos con plan completado:</strong> {(riesgosList || []).filter(r => r.completado).length} de {(riesgosList || []).length}
+                                </div>
+                            </Tab.Pane>
+                        </Tab.Content>
+                    </Tab.Container>
+                </div>
+            )}
         </div>
     )
 }

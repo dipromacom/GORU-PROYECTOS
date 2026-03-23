@@ -1,6 +1,6 @@
 const { Op } = require('sequelize');
 const db = require('../db')
-const { KanbanStatus, KanbanTask } = require('../models/index');
+const { KanbanStatus, KanbanTask, Proyecto, Usuario } = require('../models/index');
 const path = require('path');
 const file = path.basename(__filename);
 const logger = require('../logger/logger');
@@ -45,7 +45,9 @@ const setKanban = async ({ status, tasks, projectId }) => {
                     ...tasksById[taskId],
                     status_id: statusId,
                     index: indexTask,
-                    interesadoId: tasksById[taskId].interesadoId || null
+                    interesadoId: tasksById[taskId].interesadoId || null,
+                    deadline: tasksById[taskId].deadline || null,
+                    closed_at: tasksById[taskId].closed_at || null
                 }, { transaction })
             }
         }
@@ -73,7 +75,7 @@ const getKanban = async ({projectId})=>{
             include: [{
                 as: 'tasks',
                 model: KanbanTask,
-                attributes: ['id', 'content', 'priority', 'interesadoId']
+                attributes: ['id', 'content', 'priority', 'interesadoId', 'deadline', 'closed_at']
             }],
             order: [
                 ['index', 'ASC'],                   
@@ -92,6 +94,40 @@ const getKanban = async ({projectId})=>{
     }
 }
 
+const getKanbanByUser = async ({ usuarioId, modo }) => {
+    try {
+        const status = await KanbanStatus.findAll({
+            include: [
+                {
+                    model: KanbanTask,
+                    as: 'tasks',
+                },
+                {
+                    model: Proyecto,
+                    as: 'Proyecto',
+                    where: { modo: modo },
+                    required: true,
+                    include: [{
+                        model: Usuario,
+                        as: 'Usuarios',
+                        where: { id: usuarioId },
+                        required: true,
+                        through: { attributes: [] }
+                    }]
+                }
+            ],
+            order: [
+                ['index', 'ASC'],
+                [{ model: KanbanTask, as: 'tasks' }, 'index', 'ASC']
+            ]
+        });
+        return status;
+    } catch (e) {
+        logger.error({ message: e.message, source: file, method: "getKanbanByUser()" });
+        throw e;
+    }
+};
+
 module.exports = {
-    setKanban, getKanban
+    setKanban, getKanban, getKanbanByUser
 }

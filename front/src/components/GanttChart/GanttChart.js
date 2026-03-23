@@ -10,7 +10,7 @@ import { actions as ganttActions, selectors as ganttSelectors } from "../../redu
 import "./GanttChart.css";
 import { duration } from "moment";
 
-const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, esPrograma, onSummaryChange = () => { } }) => {
+const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, esPrograma, onSummaryChange = () => { }, onPerformanceChange = () => { }, onGanttSummary = () => { } }) => {
     let type = "actividad"
     if (esPrograma) type = "componente"
     let types = "actividades"
@@ -50,7 +50,11 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     // --- Carga inicial ---
     useEffect(() => {
         if (!safeProjectId) return;
+        dispatch(ganttActions.clean());
         dispatch(ganttActions.fetch({ projectId: safeProjectId }));
+        return () => {
+            dispatch(ganttActions.clean()); // 🔹 limpiar al salir
+        };
     }, [dispatch, safeProjectId]);
 
     // --- Normalización de datos ---
@@ -103,28 +107,39 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     const findCriticalPath = (tasks) => {
         const taskMap = Object.fromEntries(tasks.map((t) => [t.id, t]));
         const memo = {};
+        const visiting = new Set(); // 🔹 NUEVO: detectar ciclos
 
         const getUTCMidnight = (dateStr) => {
             if (!dateStr) return new Date();
             return new Date(`${dateStr.slice(0, 10)}T00:00:00Z`);
-        }
+        };
 
         const dfs = (taskId) => {
-            if (memo[taskId]) return memo[taskId];
+            if (memo[taskId] !== undefined) return memo[taskId];
+            if (visiting.has(taskId)) return 0; // 🔹 NUEVO: ciclo detectado, cortar
+
+            visiting.add(taskId); // 🔹 NUEVO: marcar como en proceso
+
             const task = taskMap[taskId];
-            if (!task) return 0;
+            if (!task) {
+                visiting.delete(taskId);
+                return 0;
+            }
 
             const startDate = getUTCMidnight(task.start_date);
             const endDate = getUTCMidnight(task.end_date);
 
             if (!task.dependencies || task.dependencies.length === 0) {
                 memo[taskId] = (endDate - startDate) / (1000 * 3600 * 24);
+                visiting.delete(taskId); // 🔹 NUEVO
                 return memo[taskId];
             }
 
             const maxDep = Math.max(...task.dependencies.map(dfs));
             const duration = (endDate - startDate) / (1000 * 3600 * 24);
             memo[taskId] = maxDep + duration;
+
+            visiting.delete(taskId); // 🔹 NUEVO
             return memo[taskId];
         };
 
@@ -163,6 +178,98 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         return [...criticalTasks];
     };
 
+    const calculatePerformance = (task) => {
+        const now = new Date();
+        const start = new Date(task.start_date || task.start);
+        const end = new Date(task.end_date || task.end);
+
+        // Si el proyecto aún no ha empezado
+        if (now < start) {
+            return {
+                performance: 0,
+                expectedProgress: 0,
+                isFuture: true
+            };
+        }
+
+        // Si el proyecto ya terminó
+        if (now > end) {
+            return {
+                performance: task.progress >= 100 ? 1 : task.progress / 100,
+                expectedProgress: 100,
+                isFuture: false
+            };
+        }
+
+        // Calcular porcentaje de tiempo transcurrido
+        const totalDuration = end - start;
+        const elapsed = now - start;
+        const expectedProgress = (elapsed / totalDuration) * 100;
+
+        // Evitar división por cero
+        if (expectedProgress === 0 || expectedProgress < 1) {
+            return {
+                performance: 0,
+                expectedProgress: Math.round(expectedProgress),
+                isFuture: true
+            };
+        }
+
+        // Desempeño como decimal = Avance Real / Avance Esperado
+        const performance = task.progress / expectedProgress;
+
+        return {
+            performance: Math.min(Math.round(performance * 100) / 100, 2.00), // 🔹 MODIFICADO: Límite a 2.00
+            expectedProgress: Math.round(expectedProgress),
+            isFuture: false
+        };
+    };
+
+    // Calcula el avance y desempeño promedio de un grupo basado en sus hijos
+    const calculateGroupMetrics = (groupId, tasks) => {
+        const children = tasks.filter(t => t.parent_id === groupId && t.type !== 'group');
+
+        if (children.length === 0) {
+            return { avgProgress: 0, avgPerformance: 0, avgExpected: 0 };
+        }
+
+        const totalProgress = children.reduce((sum, child) => sum + (child.progress || 0), 0);
+        const avgProgress = totalProgress / children.length;
+
+        let totalPerformance = 0;
+        let totalExpected = 0;
+        let validPerformanceCount = 0;
+
+        children.forEach(child => {
+            const metrics = calculatePerformance(child);
+            totalExpected += metrics.expectedProgress;
+
+            if (!metrics.isFuture && metrics.expectedProgress > 0) {
+                totalPerformance += metrics.performance;
+                validPerformanceCount++;
+            }
+        });
+
+        const avgPerformance = validPerformanceCount > 0
+            ? totalPerformance / validPerformanceCount
+            : 0;
+        const avgExpected = totalExpected / children.length;
+
+        return {
+            avgProgress: Math.round(avgProgress),
+            avgPerformance: Math.min(Math.round(avgPerformance * 100) / 100, 2.00), // 🔹 MODIFICADO: Límite a 2.00
+            avgExpected: Math.round(avgExpected)
+        };
+    };
+
+    // Retorna color basado en el nivel de desempeño
+    const getPerformanceColor = (performance) => {
+        if (performance >= 1) return '#28a745';     // Verde - Excelente (100% o más)
+        if (performance >= 0.8) return '#ffc107';   // Amarillo - Bueno (80-99%)
+        if (performance >= 0.5) return '#fd7e14';   // Naranja - Regular (50-79%)
+        return '#dc3545';                            // Rojo - Crítico (< 50%)
+    };
+
     const ganttTasks = useMemo(() => {
         // 🔸 1. Recalcular fechas de grupos
         let recalculatedTasks = recalculateGroupDates(tasks);
@@ -181,22 +288,38 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         // 🔸 3. Calcular ruta crítica
         const criticalIds = findCriticalPath(recalculatedTasks);
 
-        // 🔸 4. Ordenar: grupos primero (por fecha más reciente)
-        const orderedTasks = [...recalculatedTasks].sort((a, b) => {
-            // Prioriza los de tipo grupo
-            if (a.type === "group" && b.type !== "group") return -1;
-            if (a.type !== "group" && b.type === "group") return 1;
+        // 🔸 4. MODIFICADO: Ordenar grupos con sus tareas hijas juntas
+        const groups = recalculatedTasks.filter(t => t.type === "group");
+        const tasksWithoutParent = recalculatedTasks.filter(t => t.type !== "group" && !t.parent_id);
 
-            // Entre grupos, mostrar el más reciente primero
-            if (a.type === "group" && b.type === "group") {
-                const endA = new Date(a.end_date).getTime();
-                const endB = new Date(b.end_date).getTime();
-                return endA - endB; // Más reciente primero
-            }
-
-            // Para tareas normales, mantener orden actual
-            return 0;
+        // Ordenar grupos por fecha de inicio
+        const sortedGroups = groups.sort((a, b) => {
+            const startA = new Date(a.start_date).getTime();
+            const startB = new Date(b.start_date).getTime();
+            return startA - startB;
         });
+
+        // Crear array ordenado: grupo seguido de sus hijos
+        const orderedTasks = [];
+        sortedGroups.forEach(group => {
+            orderedTasks.push(group);
+            const children = recalculatedTasks.filter(t => t.parent_id === group.id);
+            // Ordenar hijos por fecha de inicio
+            const sortedChildren = children.sort((a, b) => {
+                const startA = new Date(a.start_date).getTime();
+                const startB = new Date(b.start_date).getTime();
+                return startA - startB;
+            });
+            orderedTasks.push(...sortedChildren);
+        });
+
+        // Añadir tareas sin grupo al final, ordenadas por fecha
+        const sortedTasksWithoutParent = tasksWithoutParent.sort((a, b) => {
+            const startA = new Date(a.start_date).getTime();
+            const startB = new Date(b.start_date).getTime();
+            return startA - startB;
+        });
+        orderedTasks.push(...sortedTasksWithoutParent);
 
         // 🔸 5. Mapear a formato del Gantt
         return orderedTasks.map((t) => {
@@ -233,7 +356,6 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             };
         });
     }, [tasks, interesados]);
-
 
     // --- Dependencias inversas
     const dependencyMap = useMemo(() => {
@@ -291,7 +413,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             status: "pending",
             type: "task",
             parent_id: "",
-            duration: 0,
+            duration: 1,
         });
         setModalMode("create");
         setEditingId(null);
@@ -311,26 +433,30 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         const t = tasks.find((x) => String(x.id) === String(taskId));
         if (!t) return;
 
+        // 🔹 NUEVO: Calcular duración en días desde las fechas existentes
+        const startDate = new Date(t.start_date || t.start);
+        const endDate = new Date(t.end_date || t.end);
+        const durationInDays = Math.ceil((endDate - startDate) / (1000 * 3600 * 24));
+
         setForm({
             id: t.id,
             name: t.name || "",
             description: t.description || "",
             start_date: t.start_date ? toInputDate(t.start_date) : toInputDate(t.start),
-            end_date: t.end_date ? toInputDate(t.end_date) : toInputDate(t.end),      
+            end_date: t.end_date ? toInputDate(t.end_date) : toInputDate(t.end), // Se mantiene para referencia
             progress: Number(t.progress ?? 0),
             dependencies: t.dependencies ? [...t.dependencies] : [],
             interesados_id: t.interesados_id ? t.interesados_id.map(String) : [],
             status: t.status ?? "pending",
             type: t.type || "task",
             parent_id: t.parent_id || "",
-            duration: t.duration || 0,
+            duration: durationInDays > 0 ? durationInDays : 1, // 🔹 NUEVO: Calcular duración
         });
 
         setModalMode("edit");
         setEditingId(taskId);
         setShowModal(true);
     };
-
     // --- Eliminar ---
     const confirmDeleteTask = (taskId) => {
         // Si hay tareas que dependen de esta, no permitir eliminar
@@ -360,9 +486,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     // --- Guardar / Crear ---
     const saveForm = () => {
         if (!form.name) return alert("Nombre requerido");
-        if (!form.start_date || !form.end_date) return alert("Fechas requeridas");
+        if (!form.start_date) return alert("Fecha de inicio requerida");
+        if (!form.duration || form.duration < 1) return alert("La duración debe ser al menos 1 día");
 
         const interesadosUUID = (form.interesados_id || []).map(String);
+
+        // 🔹 NUEVO: Calcular fecha final basada en la duración
+        const startDate = new Date(`${form.start_date}T00:00:00`);
+        const endDate = new Date(startDate);
+        endDate.setDate(endDate.getDate() + parseInt(form.duration));
 
         const payload = {
             id: form.id,
@@ -370,16 +502,37 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             name: form.name,
             description: form.description,
             type: form.type || "task",
-            start: new Date(`${form.start_date}T00:00:00`).toISOString(),
-            end: new Date(`${form.end_date}T00:00:00`).toISOString(),
+            start: startDate.toISOString(),
+            end: endDate.toISOString(), // 🔹 CAMBIO: Usar fecha calculada
             progress: Number(form.progress || 0),
             dependencies: form.dependencies || [],
             interesados_id: interesadosUUID,
             parent_id: form.parent_id || null,
             status: form.status,
-            is_critical: false, // se marcará luego por lógica de ruta crítica
+            is_critical: false,
         };
-        console.log(payload);
+
+        const wouldCreateCycle = (taskId, newDeps, tasks) => {
+            const taskMap = Object.fromEntries(tasks.map(t => [t.id, t]));
+
+            const visited = new Set();
+            const dfs = (currentId) => {
+                if (currentId === taskId) return true; // ciclo!
+                if (visited.has(currentId)) return false;
+                visited.add(currentId);
+                const task = taskMap[currentId];
+                if (!task) return false;
+                return (task.dependencies || []).some(dfs);
+            };
+
+            return newDeps.some(depId => dfs(depId));
+        };
+
+        // Dentro de saveForm(), antes del dispatch:
+        if (wouldCreateCycle(form.id, form.dependencies, tasks)) {
+            return alert("No se puede crear esta dependencia porque genera un ciclo circular.");
+        }
+
         if (modalMode === "create") {
             dispatch(ganttActions.createTask(payload));
         } else {
@@ -459,12 +612,40 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         const totalDays = (projectEnd - projectStart) / (1000 * 3600 * 24);
         let remainDays = (projectEnd - new Date()) / (1000 * 3600 * 24);
         if (remainDays < 0) remainDays = 0;
-        const totalHours = totalDays * 8;
 
-        const avgProgress = tasks.reduce((acc, t) => acc + (t.progress || 0), 0) / tasks.length;
+        // 🔹 Calcular solo con tareas individuales (no grupos)
+        const individualTasks = tasks.filter(t => t.type !== "group");
 
-        const totalTasks = tasks.filter(t => t.gantt_type !== "group").length;
-        const totalGroups = tasks.filter(t => t.gantt_type === "group").length;
+        const avgProgress = individualTasks.length > 0
+            ? individualTasks.reduce((acc, t) => acc + (t.progress || 0), 0) / individualTasks.length
+            : 0;
+
+        // 🔹 MODIFICADO: Calcular desempeño excluyendo tareas futuras
+        let totalPerformance = 0;
+        let totalExpected = 0;
+        let validPerformanceCount = 0; // 🔹 NUEVO: Solo contar tareas activas
+
+        individualTasks.forEach(t => {
+            const metrics = calculatePerformance(t);
+            totalExpected += metrics.expectedProgress;
+
+            // 🔹 NUEVO: Solo incluir en desempeño si ya empezó (expectedProgress > 0)
+            if (!metrics.isFuture && metrics.expectedProgress > 0) {
+                totalPerformance += metrics.performance;
+                validPerformanceCount++;
+            }
+        });
+
+        const avgPerformance = validPerformanceCount > 0
+            ? Math.min(totalPerformance / validPerformanceCount, 2.00)
+            : 0;
+
+        const avgExpected = individualTasks.length > 0
+            ? totalExpected / individualTasks.length
+            : 0;
+
+        const totalTasks = tasks.filter(t => t.type !== "group").length;
+        const totalGroups = tasks.filter(t => t.type === "group").length;
 
         const criticalIds = findCriticalPath(tasks);
         const criticalTasks = tasks.filter(t => criticalIds.includes(t.id));
@@ -479,8 +660,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             end: projectEnd.toLocaleDateString(),
             totalDays: Math.round(totalDays),
             remainDays: Math.round(remainDays),
-            totalHours: Math.round(totalHours),
             avgProgress: Math.round(avgProgress),
+            avgPerformance: Math.round(avgPerformance * 100) / 100, // 🔹 Decimal con 2 decimales
+            avgExpected: Math.round(avgExpected),
             totalTasks,
             totalGroups,
             criticalDays: Math.round(criticalDays)
@@ -490,6 +672,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     // --- 🔹 Sección resumen general ---
     const renderProjectSummary = () => {
         if (!projectSummary) return null;
+
+        const performanceColor = getPerformanceColor(projectSummary.avgPerformance);
 
         return (
             <div className="gantt-summary">
@@ -510,17 +694,31 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                         <div className="gantt-summary-item">
                             <strong>Días restantes:</strong> {projectSummary.remainDays}
                         </div>
-                        {/*<div className="gantt-summary-item">
-                            <strong>Total horas:</strong> {projectSummary.totalHours}
-                        </div>*/}
                     </Col>
                     <Col md={6} lg={4}>
-                        {/*<div className="gantt-summary-item">
-                            <strong>Ruta crítica:</strong> {projectSummary.criticalDays} días
-                        </div>*/}
                         <div className="gantt-summary-item">
-                            <strong>Avance total:</strong> {projectSummary.avgProgress}%
+                            <strong>Avance real:</strong>{' '}
+                            {projectSummary.avgProgress}%
                         </div>
+                        {(cerrado || ejecutado)  && (
+                            <>
+                                <div className="gantt-summary-item">
+                                    <strong>Avance estimado:</strong>{' '}
+                                    {projectSummary.avgExpected}%
+                                </div>
+                                {/* 🔹 MODIFICADO: Mostrar como número decimal */}
+                                <div className="gantt-summary-item">
+                                    <strong>Desempeño total:</strong>{' '}
+                                    <span style={{
+                                        color: performanceColor,
+                                        fontWeight: 'bold',
+                                        fontSize: '1.1em'
+                                    }}>
+                                        {projectSummary.avgPerformance.toFixed(2)}
+                                    </span>
+                                </div>
+                            </>
+                        )}
                     </Col>
                 </Row>
                 <div className="gantt-summary-footer">
@@ -532,13 +730,20 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     };
 
     useEffect(() => {
-        if (ejecutado && projectSummary) {
+        if ((ejecutado || cerrado) && projectSummary) {
             onSummaryChange('gantt', projectSummary.avgProgress);
-        }
-        else{
+            onPerformanceChange('cronograma', projectSummary.avgPerformance);
+            onGanttSummary({
+                start: projectSummary.start,
+                end: projectSummary.end,
+                totalDays: projectSummary.totalDays,
+            });
+        } else {
             onSummaryChange('gantt', 0);
-        } 
-    }, [projectSummary, ejecutado, onSummaryChange]);
+            onPerformanceChange('cronograma', 0);
+            onGanttSummary(null);
+        }
+    }, [projectSummary, ejecutado, cerrado, onSummaryChange, onPerformanceChange, onGanttSummary]);
 
     // --- Lista lateral ---
     const renderLeftList = () => {
@@ -610,7 +815,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                             <span className="gantt-arrow">
                                                 {expandedGroups[group.id] ? "▼" : "▶"}
                                             </span>
-                                            {group.name} ({taskAliasMap[group.id] || 'G?'} )
+                                            {group.name} ({taskAliasMap[group.id] || 'G?'})
                                         </div>
                                         <div className="gantt-item-dates">
                                             {updatedTasksMap[group.id]?.start_date_local
@@ -622,6 +827,38 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                                 <strong>Duración:</strong>{" "}
                                                 {updatedTasksMap[group.id]?.duration_days ?? "-"} días
                                             </div>
+                                            {/* Métricas del grupo */}
+                                            {(() => {
+                                                const metrics = calculateGroupMetrics(group.id, tasks);
+                                                const performanceColor = getPerformanceColor(metrics.avgPerformance);
+                                                return (
+                                                    <>
+                                                        <div>
+                                                            <strong>Avance estimado:</strong>{" "}
+                                                            {metrics.avgExpected}%
+                                                        </div>
+                                                        {(cerrado || ejecutado) && (
+                                                            <>
+                                                                <div>
+                                                                    <strong>Avance real:</strong>{" "}
+                                                                    {metrics.avgProgress}%
+                                                                </div>
+                                                                <div>
+                                                                    <strong>Desempeño:</strong>{" "}
+                                                                    <span style={{
+                                                                        color: performanceColor,
+                                                                        fontWeight: 'bold',
+                                                                        fontSize: '1em'
+                                                                    }}>
+                                                                        {metrics.avgPerformance.toFixed(2)}
+                                                                    </span>
+                                                                    
+                                                                </div>
+                                                            </>
+                                                        )}           
+                                                    </>
+                                                );
+                                            })()}
                                         </div>
                                     </div>
                                     <div className="gantt-item-actions">
@@ -669,20 +906,54 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                                     </div>
                                                     <div>
                                                         <strong>Dependencias:</strong>{" "}
-                                                        {renderDependencies(
-                                                            t.dependencies
-                                                        )}
+                                                        {renderDependencies(t.dependencies)}
                                                     </div>
                                                     <div>
                                                         <strong>Interesados:</strong>{" "}
-                                                        {renderInteresados(
-                                                            t.interesados_id
-                                                        )}
+                                                        {renderInteresados(t.interesados_id)}
                                                     </div>
-                                                    <div>
-                                                        <strong>% de avance:</strong>{" "}
-                                                        {t.progress}
-                                                    </div>
+                                                    {(cerrado || ejecutado) && (
+                                                        <>
+                                                            <div>
+                                                                <strong>Avance estimado:</strong>{" "}
+                                                                {(() => {
+                                                                    const metrics = calculatePerformance(t);
+                                                                    return <>{metrics.expectedProgress}%</>;
+                                                                })()}
+                                                            </div>
+                                                            <div>
+                                                                <strong>Avance real:</strong>{" "}
+                                                                {t.progress}%
+                                                            </div>
+                                                            <div>
+                                                                <strong>Desempeño:</strong>{" "}
+                                                                {(() => {
+                                                                    const metrics = calculatePerformance(t);
+                                                                    const performanceColor = getPerformanceColor(metrics.performance);
+                                                                    if (metrics.isFuture) {
+                                                                        return (
+                                                                            <span style={{
+                                                                                color: '#6c757d',
+                                                                                fontStyle: 'italic'
+                                                                            }}>
+                                                                                Pendiente
+                                                                            </span>
+                                                                        );
+                                                                    }
+
+                                                                    return (
+                                                                        <span style={{
+                                                                            color: performanceColor,
+                                                                            fontWeight: 'bold',
+                                                                            fontSize: '1.1em'
+                                                                        }}>
+                                                                            {metrics.performance.toFixed(2)}
+                                                                        </span>
+                                                                    );
+                                                                })()}
+                                                            </div>
+                                                        </>
+                                                    )}
                                                 </div>
                                             </div>
                                             <div className="gantt-item-actions">
@@ -739,9 +1010,47 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                                 {renderInteresados(t.interesados_id)}
                                             </div>
                                             <div>
-                                                <strong>% de avance:</strong>{" "}
-                                                {t.progress}
+                                                <strong>Avance estimado:</strong>{" "}
+                                                {(() => {
+                                                    const metrics = calculatePerformance(t);
+                                                    return <>{metrics.expectedProgress}%</>;
+                                                })()}
                                             </div>
+                                            {(cerrado || ejecutado) && (
+                                                <>
+                                                    <div>
+                                                        <strong>Avance real:</strong>{" "}
+                                                        {t.progress}%
+                                                    </div>
+                                                    <div>
+                                                        <strong>Desempeño:</strong>{" "}
+                                                        {(() => {
+                                                            const metrics = calculatePerformance(t);
+                                                            const performanceColor = getPerformanceColor(metrics.performance);
+                                                            if (metrics.isFuture) {
+                                                                return (
+                                                                    <span style={{
+                                                                        color: '#6c757d',
+                                                                        fontStyle: 'italic'
+                                                                    }}>
+                                                                        Pendiente
+                                                                    </span>
+                                                                );
+                                                            }
+
+                                                            return (
+                                                                <span style={{
+                                                                    color: performanceColor,
+                                                                    fontWeight: 'bold',
+                                                                    fontSize: '1.1em'
+                                                                }}>
+                                                                    {metrics.performance.toFixed(2)}
+                                                                </span>
+                                                            );
+                                                        })()}
+                                                    </div>
+                                                </>
+                                            )}
                                         </div>
                                     </div>
                                     <div className="gantt-item-actions">
@@ -857,44 +1166,45 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                             />
                         </Form.Group>
                         <Form.Group className="mb-3">
-                            <Form.Label>Fechas</Form.Label>
-                            <div className="d-flex gap-2">
-                                <Form.Control
-                                    type="date"
-                                    value={form.start_date}
-                                    onChange={(e) => {
-                                        const newStart = e.target.value;
+                            <Form.Label>Fecha de Inicio</Form.Label>
+                            <Form.Control
+                                type="date"
+                                value={form.start_date}
+                                onChange={(e) => {
+                                    setForm({ ...form, start_date: e.target.value });
+                                }}
+                            />
+                        </Form.Group>
 
-                                        // Si la fecha de fin es menor o igual a la nueva fecha de inicio
-                                        if (form.end_date <= newStart) {
-                                            // Crear una nueva fecha end_date = start_date + 1 día
-                                            const nextDay = new Date(newStart);
-                                            nextDay.setDate(nextDay.getDate() + 1);
-
-                                            // Convertir a formato YYYY-MM-DD
-                                            const nextDayFormatted = nextDay.toISOString().split("T")[0];
-
-                                            // Actualizar ambos campos
-                                            setForm({ ...form, start_date: newStart, end_date: nextDayFormatted });
-                                        } else {
-                                            // Solo actualizar la fecha de inicio
-                                            setForm({ ...form, start_date: newStart });
-                                        }
-                                    }}
-                                />
-                                <Form.Control
-                                    type="date"
-                                    value={form.end_date}
-                                    onChange={(e) => {
-                                        const newEndDate = e.target.value;
-                                        if (newEndDate < form.start_date) {
-                                            alert("La fecha de fin no puede ser anterior a la fecha de inicio.");
-                                            return; // evita actualizar el estado
-                                        }
-                                        setForm({ ...form, end_date: newEndDate });
-                                    }}
-                                />
-                            </div>
+                        <Form.Group className="mb-3">
+                            <Form.Label>Duración (días)</Form.Label>
+                            <Form.Control
+                                type="number"
+                                min={1}
+                                value={form.duration}
+                                onChange={(e) => {
+                                    const value = parseInt(e.target.value) || 1;
+                                    setForm({ ...form, duration: value });
+                                }}
+                                placeholder="Ingrese la duración en días"
+                            />
+                            <Form.Text className="text-muted">
+                                {form.start_date && form.duration ? (
+                                    <>
+                                        Fecha final calculada:{" "}
+                                        <strong>
+                                            {(() => {
+                                                const start = new Date(form.start_date);
+                                                const end = new Date(start);
+                                                end.setDate(end.getDate() + parseInt(form.duration));
+                                                return end.toLocaleDateString('es-EC');
+                                            })()}
+                                        </strong>
+                                    </>
+                                ) : (
+                                    "Seleccione una fecha de inicio para ver la fecha final"
+                                )}
+                            </Form.Text>
                         </Form.Group>
 
                         <Form.Group className="mb-3">
@@ -982,9 +1292,26 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                 type="number"
                                 min={0}
                                 max={100}
-                                value={form.progress}
-                                onChange={(e) => setForm({ ...form, progress: Number(e.target.value) })}
+                                value={form.progress === 0 ? "" : form.progress}
+                                placeholder="0"
+                                onChange={(e) => {
+                                    const val = e.target.value;
+                                    if (val === "") {
+                                        setForm({ ...form, progress: 0 });
+                                        return;
+                                    }
+                                    const num = Number(val);
+                                    if (num >= 0 && num <= 100) {
+                                        setForm({ ...form, progress: num });
+                                    }
+                                }}
+                                disabled={form.type === "group"}
                             />
+                            {form.type === "group" && (
+                                <Form.Text className="text-muted">
+                                    El progreso de los grupos se calcula automáticamente según sus tareas hijas.
+                                </Form.Text>
+                            )}
                         </Form.Group>
                     </Form>
                 </Modal.Body>

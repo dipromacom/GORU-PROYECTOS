@@ -3,7 +3,7 @@ import { Form } from "react-bootstrap";
 import InputCriteriosInput from "./InputCriteriosInput";
 import InputCalidadEjecutado from "./InputCalidadEjecutado";
 
-const InputCalidadList = ({ calidadMetricas, setCalidadMetricas, costoEntregable, editMode, ejecutado, onSummaryChange = () => { } }) => {
+const InputCalidadList = ({ calidadMetricas, setCalidadMetricas, costoEntregable, editMode, ejecutado, cerrado, onSummaryChange = () => { } }) => {
 
     const transformedMetricas = useMemo(() => {
         const metrics = calidadMetricas || [];
@@ -24,24 +24,33 @@ const InputCalidadList = ({ calidadMetricas, setCalidadMetricas, costoEntregable
     }
 
     return (
-        <div className="mt-4">
-            <h3>Calidad / Requisitos Funcionales / Requisitos del Cliente</h3>
-            <Form.Group controlId="metricas-criterios">
-                <Form.Label>Métrica / Criterios de Aceptación</Form.Label>
-                {ejecutado ? (
+        <div className="calidad-container shadow-sm border rounded p-4 bg-white mt-4">
+            {/* Título con diseño unificado */}
+            <div className="d-flex justify-content-between align-items-center mb-4">
+                <h4 className="mb-0 text-dark fw-bold">
+                    <i className="bi bi-clipboard-check me-2"></i>Calidad y Requisitos
+                </h4>
+            </div>
+
+            <Form.Group controlId="metricas-criterios" className="mb-0">
+                {ejecutado || cerrado ? (
                     <InputCalidadEjecutado
                         calidadMetricas={transformedMetricas}
                         setCalidadMetricas={setCalidadMetricas}
                         editMode={editMode}
                         ejecutado={ejecutado}
+                        cerrado={cerrado}
                         onSummaryChange={onSummaryChange}
                     />
                 ) : (
-                    <InputCriteriosInput
-                        disabled={!editMode}
-                        criteriosList={calidadMetricas}
-                        setCriterioList={setCalidadMetricas}
-                    />
+                    <>
+                        <Form.Label className="small fw-bold text-muted">Métricas / Criterios de Aceptación</Form.Label>
+                        <InputCriteriosInput
+                            disabled={!editMode}
+                            criteriosList={calidadMetricas}
+                            setCriterioList={setCalidadMetricas}
+                        />
+                    </>
                 )}
             </Form.Group>
         </div>

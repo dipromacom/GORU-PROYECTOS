@@ -17,6 +17,10 @@ export const types = {
     SYNC_KANBAN_ERROR: "kanban/SYNC_KANBAN_ERROR",
     FETCH_KANBAN_REQUEST: "kanban/FETCH_KANBAN_REQUEST",
     CLEAN: "kanban/CLEAN",
+
+    FETCH_KANBAN_DASHBOARD_REQUEST: "kanban/FETCH_KANBAN_DASHBOARD_REQUEST",
+    FETCH_KANBAN_DASHBOARD_SUCCESS: "kanban/FETCH_KANBAN_DASHBOARD_SUCCESS",
+    FETCH_KANBAN_DASHBOARD_ERROR: "kanban/FETCH_KANBAN_DASHBOARD_ERROR",
 }
 
 
@@ -36,9 +40,9 @@ export const actions = {
         statusId: idField, statusTitle: title
     }),
 
-    createTask: ({ content, priority, statusId, interesadoId }) => ({
+    createTask: ({ content, priority, statusId, interesadoId, deadline, closed_at }) => ({
         type: types.CREATE_TASK,
-        taskContent: content, priority, statusId, interesadoId
+        taskContent: content, priority, statusId, interesadoId, deadline, closed_at
     }),
 
     moveTask: ({ destination, source, draggableId }) => ({
@@ -46,9 +50,9 @@ export const actions = {
         destination, source, draggableId
     }),
 
-    editTask: ({ id, content, priority, interesadoId }) => ({
+    editTask: ({ id, content, priority, interesadoId, deadline, closed_at }) => ({
         type: types.EDIT_TASK,
-        taskId: id, taskContent: content, priority, interesadoId
+        taskId: id, taskContent: content, priority, interesadoId, deadline, closed_at
     }),
 
     deleteTask: ({ id }) => ({
@@ -64,7 +68,13 @@ export const actions = {
     fetch: ({ projectId }) => ({
         type: types.FETCH_KANBAN_REQUEST,
         projectId
-    })
+    }),
+
+    fetchKanbanDashboard: (usuarioId, modo) => ({
+        type: types.FETCH_KANBAN_DASHBOARD_REQUEST,
+        usuarioId,
+        modo
+    }),
 }
 
 const defaultState = {
@@ -161,6 +171,8 @@ const kanbanReducer = (state = defaultState, action = {}) => {
                             content: taskContent || "New Task",
                             priority: "none",
                             interesadoId: action.interesadoId || null,
+                            deadline: action.deadline || null,
+                            closed_at: action.closed_at || null, 
                         },
                     },
                     allIds: [...state.tasks.allIds, uuid_task],
@@ -191,6 +203,12 @@ const kanbanReducer = (state = defaultState, action = {}) => {
                             interesadoId: action.interesadoId !== undefined
                                 ? action.interesadoId
                                 : state.tasks.byId[taskId].interesadoId,
+                            deadline: action.deadline !== undefined
+                                ? action.deadline
+                                : state.tasks.byId[taskId].deadline,
+                            closed_at: action.closed_at !== undefined
+                                ? action.closed_at
+                                : state.tasks.byId[taskId].closed_at,
                         }
                     }
                 }
@@ -237,6 +255,31 @@ const kanbanReducer = (state = defaultState, action = {}) => {
                     ...tasks
                 }
             }
+        
+        case types.FETCH_KANBAN_DASHBOARD_REQUEST:
+            return {
+                ...state,
+                isLoading: true
+            };
+
+        case types.FETCH_KANBAN_DASHBOARD_SUCCESS:
+            // Aquí asumimos que el payload ya viene con la estructura { status, tasks } 
+            // procesada por el servidor para el modo dashboard
+            return {
+                ...state,
+                isLoading: false,
+                status: action.payload.status || state.status,
+                tasks: action.payload.tasks || state.tasks,
+                error: null
+            };
+
+        case types.FETCH_KANBAN_DASHBOARD_ERROR:
+            return {
+                ...state,
+                isLoading: false,
+                error: action.error
+            };
+            
         case types.CLEAN:
             return defaultState
         default:

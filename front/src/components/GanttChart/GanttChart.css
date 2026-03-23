@@ -253,3 +253,16 @@
 .gantt-summary-footer {
     margin-top: 10px;
 }
+
+/* Badges de desempeño */
+.gantt-item-extra .badge {
+    font-size: 0.85em;
+    padding: 0.35em 0.6em;
+    margin-left: 0.3em;
+}
+
+/* Resumen con énfasis en desempeño */
+.gantt-summary-item span[style*="color"] {
+    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.1);
+}
+
