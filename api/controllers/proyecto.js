@@ -4,6 +4,10 @@ const ProyectoUtils = require('../utils/proyecto-utils');
 const DateUtils = require('../utils/date-utils');
 const { decodeToken } = require('../utils/security-utils');
 
+const httpErrorStatus = (error, fallback = 500) => (
+  error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : fallback
+);
+
 // ─────────────────────────────────────────────
 // GET
 // ─────────────────────────────────────────────
@@ -19,7 +23,7 @@ const getAllProyecto = async (req, res) => {
 
     return res.status(200).json({ success: true, data: items });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(httpErrorStatus(error)).json({ success: false, message: error.message });
   }
 };
 
@@ -58,7 +62,7 @@ const createProyecto = async (req, res) => {
     const proyecto = await ProyectoUtils.createProyecto(req.body, usuarioId);
     return res.status(201).json({ success: true, data: proyecto });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(httpErrorStatus(error)).json({ success: false, message: error.message });
   }
 };
 
@@ -69,7 +73,7 @@ const createProyectoGeneralData = async (req, res) => {
     const proyecto = await ProyectoUtils.createProyectoGeneralData(req.body, usuarioId);
     return res.status(201).json({ success: true, data: proyecto });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(httpErrorStatus(error)).json({ success: false, message: error.message });
   }
 };
 
@@ -84,7 +88,7 @@ const updateProyecto = async (req, res) => {
     const proyecto = await ProyectoUtils.updateProyecto(req.body, req.params.id, usuarioId);
     return res.status(200).json({ success: true, data: proyecto });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(httpErrorStatus(error)).json({ success: false, message: error.message });
   }
 };
 

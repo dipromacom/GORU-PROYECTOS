@@ -17,6 +17,7 @@ const file = path.basename(__filename);
 
 const DateUils = require('./date-utils');
 const TipoLicenciaUtils = require('./tipo-licencia-utils');
+const { PLAN_PERSONAL_ID } = require('../constants/plan-licencia');
 
 let DEFAULT_ROL_ID = null;
 
@@ -38,7 +39,7 @@ const getUsuarioById = async (id) => {
     where: {
       id, suspendido: false, eliminado: false,
     },
-    attributes: ['id', 'username', 'persona'],
+    attributes: ['id', 'username', 'persona', 'tipo_licencia'],
     include: [
       {
         model: Persona,
@@ -136,10 +137,14 @@ const createUsuario = async (data) => {
 
     const hashedPassword = bcrypt.hashSync(clave, Number(process.env.SALT_ROUNDS));
 
+    const tipoLicenciaFinal = (tipoLicencia !== undefined && tipoLicencia !== null)
+      ? tipoLicencia
+      : PLAN_PERSONAL_ID;
+
     const usuario = await Usuario.create({
       empresa,
       persona,
-      tipo_licencia: tipoLicencia,
+      tipo_licencia: tipoLicenciaFinal,
       nivel_permiso: nivelPermiso,
       username: username.toLowerCase(),
       clave: hashedPassword,
@@ -183,17 +188,24 @@ const getUsuarioByEmail = async (email) => {
   try {
     const usuario = await Usuario.findOne({
       where: { username: email },
-      include: { // <-- Añadimos la inclusión del rol
-        model: Rol,
-        as: 'Rol',
-        attributes: ['id', 'nombre'],
-        include: {
-          model: Permiso,
-          as: 'permisos',
-          attributes: ['nombre'],
-          through: { attributes: [] }
-        }
-      },
+      include: [
+        {
+          model: Rol,
+          as: 'Rol',
+          attributes: ['id', 'nombre'],
+          include: {
+            model: Permiso,
+            as: 'permisos',
+            attributes: ['nombre'],
+            through: { attributes: [] },
+          },
+        },
+        {
+          model: TipoLicencia,
+          as: 'TipoLicencia',
+          attributes: ['id', 'nombre'],
+        },
+      ],
     });
 
     return usuario;
@@ -228,10 +240,10 @@ const getUsuarioByAwsId = async (awsId) => {
 };
 
 const getOnbStep = (usuario) => {
-/*   let page = '/desktop';
-  if (usuario.tipo_licencia === null) {
-    page = '/membership';
-  } */
+  /*   let page = '/desktop';
+    if (usuario.tipo_licencia === null) {
+      page = '/membership';
+    } */
 
   const page = '/membership';
   return page;
@@ -239,15 +251,9 @@ const getOnbStep = (usuario) => {
 
 const setTipoLicencia = async (usuario, tipoLicenciaId) => {
   try {
-    let result = false;
-
-    if (usuario.getTipoLicencia() != null) {
-      const tipoLicencia = await TipoLicenciaUtils.getTipoLicenciaById(tipoLicenciaId);
-      await usuario.setTipoLicencia(tipoLicencia);
-      result = true;
-    }
-
-    return result;
+    const tipoLicencia = await TipoLicenciaUtils.getTipoLicenciaById(tipoLicenciaId);
+    await usuario.setTipoLicencia(tipoLicencia);
+    return true;
   } catch (error) {
     logger.error({
       message: error.message,
@@ -300,6 +306,8 @@ const updateUsuarioRol = async (userId, rolId) => {
     if (!usuario) {
       throw new Error(`Usuario con ID ${userId} no encontrado.`);
     }
+
+    const oldRolId = usuario.rol_id;
 
     // Verificación de existencia del Rol
     const rolExiste = await Rol.findByPk(rolId);

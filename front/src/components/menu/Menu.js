@@ -1,21 +1,25 @@
 import React from "react";
 import "../../css/Commons.css";
 import "./Menu.css";
-import MenuItem  from "./MenuItem";
-import MenuLogo  from "./MenuLogo";
+import MenuItem from "./MenuItem";
+import MenuLogo from "./MenuLogo";
 
+/**
+ * Programa / Proyecto / Actividades no usan disabled: la restricción se muestra
+ * en la vista de listado (Proyectos.js) con el texto "Ops!, no tiene permiso...".
+ */
 export default function Menu() {
   return (
     <div className="menu blue-bg">
       <div className="menu-header">
-        <MenuLogo 
-          menuName="Goru" 
+        <MenuLogo
+          menuName="Goru"
           menuAlt="Goru"
           redirectTo="home"
         />
 
-        <MenuItem 
-          menuName="Inicio" 
+        <MenuItem
+          menuName="Inicio"
           menuAlt="Inicio"
           menuToolTip="HOME"
           redirectTo="membership"
@@ -23,14 +27,8 @@ export default function Menu() {
       </div>
 
       <div className="menu-body">
-        {/*<MenuItem 
-          menuName="Portafolio" 
-          menuAlt="Portafolio"
-          menuToolTip="PORTAFOLIOS"
-          redirectTo="portfolios"
-        />*/}
-        <MenuItem 
-          menuName="Programa" 
+        <MenuItem
+          menuName="Programa"
           menuAlt="Programa"
           menuToolTip="PROGRAMAS"
           redirectTo="programs"
@@ -49,8 +47,8 @@ export default function Menu() {
           redirectTo="activities"
         />
 
-        <MenuItem 
-          menuName="Instrumentos" 
+        <MenuItem
+          menuName="Instrumentos"
           menuAlt="Instrumentos"
           menuToolTip="INSTRUMENTOS"
           redirectTo="tools"
@@ -58,8 +56,8 @@ export default function Menu() {
       </div>
 
       <div className="menu-footer">
-        <MenuItem 
-          menuName="Configuracion" 
+        <MenuItem
+          menuName="Configuracion"
           menuAlt="Configuracion"
           menuToolTip="CONFIGURACION"
         />

@@ -8,6 +8,8 @@ const {
 const DateUtils = require("./date-utils");
 const { getNombreApellidoFromStr } = require('./string-utils');
 const { saveLog } = require('./log-service');
+const { getAllowedModos } = require('../constants/plan-licencia');
+const PlanLicenciaUtils = require('./plan-licencia-utils');
 
 // ─────────────────────────────────────────────
 // 🔹 CONSTANTE COMPARTIDA: includes base para proyectos
@@ -142,8 +144,22 @@ const getProyectoById = async (id) => {
 const getFilteredProjects = async (query, usuarioId) => {
   const { startDateFrom, startDateTo, responsable, status, name, modo } = query;
 
+  const tipoLicenciaId = await PlanLicenciaUtils.getTipoLicenciaIdUsuario(usuarioId);
+  const modosPermitidos = getAllowedModos(tipoLicenciaId);
+
   // Construir filtros dinámicos
   const where = { ...usuarioOrCondition(usuarioId) };
+
+  if (modo) {
+    if (!modosPermitidos.includes(modo)) {
+      const err = new Error('Su plan no permite listar proyectos de este tipo.');
+      err.statusCode = 403;
+      throw err;
+    }
+    where.modo = modo;
+  } else {
+    where.modo = { [Op.in]: modosPermitidos };
+  }
 
   if (startDateFrom && startDateTo) {
     where.fecha_inicio = {
@@ -152,7 +168,6 @@ const getFilteredProjects = async (query, usuarioId) => {
     };
   }
   if (status) where.estado = status;
-  if (modo) where.modo = modo;
   if (name) where.nombre = { [Op.iLike]: `%${name}%` };
 
   // Filtro de persona (director) si viene responsable
@@ -197,6 +212,8 @@ const getFilteredProjects = async (query, usuarioId) => {
 
 // 🔹 Creación simple de proyecto (sin datos completos)
 const createProyecto = async (data, usuarioId) => {
+  await PlanLicenciaUtils.assertUsuarioPuedeCrearProyecto(usuarioId, data.modo);
+
   const proyecto = await Proyecto.create({
     ...data,
     estado: 'C',
@@ -274,6 +291,8 @@ const createProyectoGeneralData = async (data, usuarioId) => {
     });
   }
 
+  await PlanLicenciaUtils.assertUsuarioPuedeCrearProyecto(usuarioId, modo);
+
   const proyecto = await Proyecto.create({
     nombre: nombreProyecto,
     informacion: informacionBreve,
@@ -330,6 +349,9 @@ const updateProyecto = async (data, id, usuarioId) => {
   });
 
   if (!proyecto) throw new Error('Proyecto no encontrado');
+
+  await PlanLicenciaUtils.assertPuedeAsignarProgramaId(usuarioId, data.programa_id);
+  await PlanLicenciaUtils.assertUsuarioPuedeUsarModoEnActualizacion(usuarioId, data.modo);
 
   // Validación de programa_id si viene en los datos
   if (data.programa_id !== undefined) {

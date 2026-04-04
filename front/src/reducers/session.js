@@ -39,6 +39,9 @@ export const types = {
   GET_USUARIOS_EMPRESA_SUCCESS: "session/GET_USUARIOS_EMPRESA_SUCCESS",
   GET_USUARIOS_EMPRESA_ERROR: "session/GET_USUARIOS_EMPRESA_ERROR",
 
+  REFRESH_USER_SYSTEM: "session/REFRESH_USER_SYSTEM",
+  SET_MEMBERSHIP_NAV_MODE: "session/SET_MEMBERSHIP_NAV_MODE",
+
 };
 
 export const actions = {
@@ -85,9 +88,17 @@ export const actions = {
     type: types.GET_USUARIOS_EMPRESA_REQUEST,
     empresaId,
   }),
+  refreshUserSystem: (userSystem) => ({
+    type: types.REFRESH_USER_SYSTEM,
+    userSystem,
+  }),
+  setMembershipNavMode: (membershipNavMode) => ({
+    type: types.SET_MEMBERSHIP_NAV_MODE,
+    membershipNavMode,
+  }),
 };
 
-const defaultState =  {
+const defaultState = {
   isAuthenticated: null,
   isAuthenticating: false,
   isValidatingSession: false,
@@ -99,17 +110,19 @@ const defaultState =  {
   codeSent: null,
   usuariosEmpresa: [],
   isLoadingUsuariosEmpresa: false,
+  membershipNavMode: null,
 };
 
 const sessionReducer = (state = defaultState, action = {}) => {
-  const { 
+  const {
     userAws,
     userSystem,
     jwtToken,
     emailAvailable,
     errorMessage,
     usuariosEmpresa,
-   } = action;
+    membershipNavMode,
+  } = action;
 
   switch (action.type) {
     case types.LOGIN_REQUEST:
@@ -129,6 +142,7 @@ const sessionReducer = (state = defaultState, action = {}) => {
         isAuthenticated: true,
         isAuthenticating: false,
         errorMessage: "",
+        membershipNavMode: membershipNavMode ?? state.membershipNavMode,
       };
 
     case types.LOGIN_ERROR:
@@ -139,27 +153,29 @@ const sessionReducer = (state = defaultState, action = {}) => {
         isAuthenticated: false,
         isAuthenticating: false,
         errorMessage: errorMessage,
+        membershipNavMode: null,
       };
 
     case types.LOGOUT_REQUEST:
       return {
         ...state,
-        isAuthenticated:  true,
+        isAuthenticated: true,
       };
 
     case types.LOGOUT_SUCCESS:
       return {
         ...state,
-        isAuthenticated:  false,
+        isAuthenticated: false,
         isAuthenticating: false,
         userAws: null,
-        userSystem: null
+        userSystem: null,
+        membershipNavMode: null,
       };
 
     case types.LOGOUT_ERROR:
       return {
         ...state,
-        isAuthenticated:  true,
+        isAuthenticated: true,
       };
 
     case types.SIGN_UP_REQUEST:
@@ -180,7 +196,7 @@ const sessionReducer = (state = defaultState, action = {}) => {
         errorMessage: "",
       };
 
-    case types.SIGN_UP_ERROR: 
+    case types.SIGN_UP_ERROR:
       return {
         ...state,
         userAws: null,
@@ -222,7 +238,7 @@ const sessionReducer = (state = defaultState, action = {}) => {
         ...state,
         emailAvailable: emailAvailable,
       };
-    
+
     case types.VALIDATE_EMAIL_ERROR:
       return {
         ...state,
@@ -263,7 +279,7 @@ const sessionReducer = (state = defaultState, action = {}) => {
         isAuthenticated: false,
         errorMessage: null,
       }
-    
+
     case types.RECOVER_ACCOUNT_SUCCESS:
       return {
         ...state,
@@ -283,7 +299,7 @@ const sessionReducer = (state = defaultState, action = {}) => {
         ...state,
         codeSent: null,
       };
-    
+
     case types.GET_USUARIOS_EMPRESA_REQUEST:
       return {
         ...state,
@@ -305,6 +321,18 @@ const sessionReducer = (state = defaultState, action = {}) => {
         // Mantener la lista anterior o limpiarla según la política de UX
       };
 
+    case types.REFRESH_USER_SYSTEM:
+      return {
+        ...state,
+        userSystem: action.userSystem,
+      };
+
+    case types.SET_MEMBERSHIP_NAV_MODE:
+      return {
+        ...state,
+        membershipNavMode: action.membershipNavMode,
+      };
+
     default:
       return state;
   }
@@ -318,7 +346,7 @@ export const selectors = {
   getIsAuthenticating: ({ session }) => session.isAuthenticating,
   getAwsUser: ({ session }) => session.userAws,
   getUser: ({ session }) => session.userSystem,
-  getIsValidatingSession: ({ session }) =>  session.isValidatingSession,
+  getIsValidatingSession: ({ session }) => session.isValidatingSession,
   getJwtToken: ({ session }) => session.jwtToken,
   getEmailAvailable: ({ session }) => session.emailAvailable,
   getErrorMessage: ({ session }) => session.errorMessage,
@@ -326,4 +354,5 @@ export const selectors = {
   // --- Nuevos selectores ---
   getUsuariosEmpresa: ({ session }) => session.usuariosEmpresa,
   getIsLoadingUsuariosEmpresa: ({ session }) => session.isLoadingUsuariosEmpresa,
+  getMembershipNavMode: ({ session }) => session.membershipNavMode,
 };

@@ -77,9 +77,14 @@ import ChangeControlPdf from "../components/controlCambio/ChangeControlPdf";
 import ProgramaProyectos from "../components/programaProyectos/ProgramaProyectos";
 
 import { actions as programaActions, selectors as programaSelectors } from "../reducers/programa";
+import {
+    defaultMembershipNavFromPlan,
+    isPersonalOnlyPlanUser,
+    MEMBERSHIP_DEMO,
+    MEMBERSHIP_PROFESIONAL,
+} from "../libs/planLicencia";
 
-
-function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, }) {
+function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, membershipNavMode }) {
     const routeParams = useParams();
     const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
@@ -96,9 +101,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const ejecutado = projectDetail?.estado === "X";
     const [projectId, setProjectId] = useState(null) 
 
-    if (localStorage.getItem("modo") === "Demo" && !esActividad) {
+    /*if (localStorage.getItem("modo") === "Demo" && !esActividad) {
         dispatch(routesActions.goTo(`membership`));
-    }
+    }*/
 
 
     const [editMode, setEditMode] = useState(false);
@@ -136,6 +141,22 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
 
     }, [numericId, dispatch, usuario]);
+
+    useEffect(() => {
+        if (!usuario || !projectDetail) return;
+        if (isPersonalOnlyPlanUser(usuario) && projectDetail.modo !== "A") {
+            dispatch(routesActions.goTo("membership"));
+            return;
+        }
+        const nav = membershipNavMode ?? defaultMembershipNavFromPlan(usuario);
+        if (nav === MEMBERSHIP_DEMO && projectDetail.modo !== "A") {
+            dispatch(routesActions.goTo("activities"));
+            return;
+        }
+        if (nav === MEMBERSHIP_PROFESIONAL && projectDetail.modo === "PR") {
+            dispatch(routesActions.goTo("projects"));
+        }
+    }, [usuario, projectDetail, membershipNavMode, dispatch]);
 
     // console.log({ interesados });
 

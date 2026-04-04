@@ -9,6 +9,12 @@
   cursor: pointer;
 }
 
+.menu-item-disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+  pointer-events: none;
+}
+
 .menu-tooltip {
   width: 170px;
   height: 20px;
