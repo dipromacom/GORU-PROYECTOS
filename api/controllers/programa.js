@@ -2,6 +2,8 @@
 const ProgramaUtils = require('../utils/programa-utils');
 const PlanLicenciaUtils = require('../utils/plan-licencia-utils');
 const { decodeToken } = require('../utils/security-utils');
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
+const { P } = PermisoProyectoUtils;
 
 const httpErrorStatus = (error, fallback = 500) => (
     error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : fallback
@@ -21,6 +23,9 @@ const getProyectosDelPrograma = async (req, res) => {
         await PlanLicenciaUtils.assertUsuarioPlanCorporativo(usuarioId);
 
         const { id: programaId } = req.params;
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, programaId, P.PROGRAMA_PROYECTOS_VER);
+        if (!ok) return;
+
         const proyectos = await ProgramaUtils.getProyectosByPrograma(programaId);
         return res.status(200).json({ success: true, data: proyectos });
     } catch (error) {
@@ -39,6 +44,9 @@ const getProyectosDisponibles = async (req, res) => {
         const { authorization } = req.headers;
         const { id: usuarioId } = decodeToken(authorization);
         await PlanLicenciaUtils.assertUsuarioPlanCorporativo(usuarioId);
+
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, programaId, P.PROGRAMA_PROYECTOS_VER);
+        if (!ok) return;
 
         const proyectos = await ProgramaUtils.getProyectosDisponiblesParaPrograma(
             programaId,
@@ -67,6 +75,11 @@ const asignarProyecto = async (req, res) => {
             return res.status(400).json({ success: false, message: 'El campo proyectoId es obligatorio.' });
         }
 
+        const okProg = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, programaId, P.PROGRAMA_VINCULAR);
+        if (!okProg) return;
+        const okProy = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.PROGRAMA_VINCULAR);
+        if (!okProy) return;
+
         const proyecto = await ProgramaUtils.asignarProyectoAPrograma(
             programaId,
             proyectoId,
@@ -88,6 +101,9 @@ const desasignarProyecto = async (req, res) => {
         const { authorization } = req.headers;
         const { id: usuarioId } = decodeToken(authorization);
         await PlanLicenciaUtils.assertUsuarioPlanCorporativo(usuarioId);
+
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.PROGRAMA_VINCULAR);
+        if (!ok) return;
 
         const proyecto = await ProgramaUtils.desasignarProyectoDePrograma(
             proyectoId,

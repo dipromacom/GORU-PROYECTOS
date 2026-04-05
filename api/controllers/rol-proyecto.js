@@ -1,10 +1,11 @@
 // controllers/rol-proyecto.js
 
 const RolProyectoUtils = require('../utils/rol-proyecto-utils');
+const { Proyecto } = require('../models/index');
+const { decodeToken } = require('../utils/security-utils');
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
+const { P } = PermisoProyectoUtils;
 // const logger = require('../logger/logger'); // Asumiendo imports de logger y path
-
-// --- CONSTANTES DE PERMISOS ---
-const GESTIONAR_PROYECTO_ROLES = 'proyecto_gestionar_roles';
 
 // --- Asignación de Rol (Ya existente) ---
 
@@ -15,6 +16,11 @@ const assignRolProyecto = async (req, res) => {
         if (!usuarioId || !proyectoId || !rolProyectoId) {
             return res.status(400).json({ success: false, message: 'Faltan parámetros de asignación.' });
         }
+
+        const { authorization } = req.headers;
+        const { id: solicitanteId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, solicitanteId, proyectoId, P.PROYECTO_MIEMBROS_GEST);
+        if (!ok) return;
 
         const asignacion = await RolProyectoUtils.assignRolProyectoToUsuario(
             usuarioId,
@@ -136,6 +142,11 @@ const deletePermisoProyecto = async (req, res) => {
 const getUsuariosProyecto = async (req, res) => {
     const { id: proyectoId } = req.params;
     try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.PROYECTO_MIEMBROS_VER);
+        if (!ok) return;
+
         const usuarios = await RolProyectoUtils.getUsuariosProyecto(proyectoId);
         return res.status(200).json({ success: true, data: usuarios });
     } catch (error) {
@@ -146,6 +157,11 @@ const getUsuariosProyecto = async (req, res) => {
 const deleteUsuarioProyecto = async (req, res) => {
     const { usuarioId, proyectoId } = req.params;
     try {
+        const { authorization } = req.headers;
+        const { id: solicitanteId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, solicitanteId, proyectoId, P.PROYECTO_MIEMBROS_GEST);
+        if (!ok) return;
+
         const success = await RolProyectoUtils.deleteUsuarioProyecto(usuarioId, proyectoId);
         if (!success) {
             return res.status(404).json({ success: false, message: 'Asignación no encontrada' });
@@ -159,20 +175,29 @@ const deleteUsuarioProyecto = async (req, res) => {
 const getUserProjectRol = async (req, res) => {
     const { usuarioId, proyectoId } = req.params;
     try {
+        const proyecto = await Proyecto.findByPk(proyectoId, { attributes: ['id', 'usuario_creador'] });
+        if (!proyecto) {
+            return res.status(404).json({ success: false, message: 'Proyecto no encontrado' });
+        }
+
         const rol = await RolProyectoUtils.getUserProjectRol(usuarioId, proyectoId);
-        // Si rol es null (es decir, el usuario no está en UsuarioProyecto), 
-        // asumimos que es el creador/admin y le asignamos un rol por defecto.
-        if (!rol) {
-            // Retornamos una estructura que el front pueda entender como Admin/Creador
+        if (rol) {
+            return res.status(200).json({ success: true, data: rol });
+        }
+
+        if (Number(proyecto.usuario_creador) === Number(usuarioId)) {
+            const permisos = await RolProyectoUtils.getAllAdminPermisos();
             return res.status(200).json({
-                success: true, data: {
-                    rol_proyecto_id: null, // Indicador de Admin/Creador
+                success: true,
+                data: {
+                    rol_proyecto_id: null,
                     nombre_rol: 'Administrador (Creador)',
-                    PermisosProyecto: RolProyectoUtils.getAllAdminPermisos() // Asume todos los permisos
-                }
+                    PermisosProyecto: permisos.map((p) => ({ id: p.id, nombre: p.nombre })),
+                },
             });
         }
-        return res.status(200).json({ success: true, data: rol });
+
+        return res.status(403).json({ success: false, message: 'No tiene acceso a este proyecto.' });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }

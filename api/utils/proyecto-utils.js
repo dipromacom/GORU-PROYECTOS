@@ -302,9 +302,9 @@ const createProyectoGeneralData = async (data, usuarioId) => {
     fecha_creacion: DateUtils.getLocalDate(),
     usuario_creador: usuarioId,
     modo,
-    director: directorProyecto?.id || null,
-    patrocinador: patrocinador?.id || null,
-    departamento: departamento?.id || null,
+    director: (directorProyecto && directorProyecto.id) || null,
+    patrocinador: (patrocinador && patrocinador.id) || null,
+    departamento: (departamento && departamento.id) || null,
     ...toSnakeCase(rest),
   });
 
@@ -420,13 +420,13 @@ const updateProyectoGeneralData = async (data, id, usuarioId) => {
     trackChange('departamento', proyecto.Departamento.nombre, data.departamento);
   }
 
-  if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
+  if (data.directorProyecto && proyecto.DirectorProyecto && proyecto.DirectorProyecto.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
     const oldName = `${proyecto.DirectorProyecto.Persona.nombre} ${proyecto.DirectorProyecto.Persona.apellido}`.trim();
     trackChange('director', oldName, `${nombre} ${apellido}`.trim());
   }
 
-  if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
+  if (data.patrocinadorProyecto && proyecto.Patrocinador && proyecto.Patrocinador.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
     const oldName = `${proyecto.Patrocinador.Persona.nombre} ${proyecto.Patrocinador.Persona.apellido}`.trim();
     trackChange('patrocinador', oldName, `${nombre} ${apellido}`.trim());
@@ -443,13 +443,13 @@ const updateProyectoGeneralData = async (data, id, usuarioId) => {
     await proyecto.Departamento.update({ nombre: data.departamento });
   }
 
-  if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
+  if (data.directorProyecto && proyecto.DirectorProyecto && proyecto.DirectorProyecto.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
     await proyecto.DirectorProyecto.Persona.update({ nombre, apellido });
   }
 
   // FIX: antes usaba directorProyectoDetails en la condición — ahora usa patrocinadorProyecto
-  if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
+  if (data.patrocinadorProyecto && proyecto.Patrocinador && proyecto.Patrocinador.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
     await proyecto.Patrocinador.Persona.update({ nombre, apellido });
   }

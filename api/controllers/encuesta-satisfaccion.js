@@ -1,6 +1,8 @@
 const path = require('path');
 const EncuestaUtils = require('../utils/encuesta-satisfaccion-utils');
 const { decodeToken } = require('../utils/security-utils');
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
+const { P } = PermisoProyectoUtils;
 const logger = require('../logger/logger');
 
 const file = path.basename(__filename);
@@ -13,6 +15,9 @@ const verificarEstadoEncuesta = async (req, res) => {
         const { proyectoId } = req.params;
         const { authorization } = req.headers;
         const { id: usuarioId } = decodeToken(authorization);
+
+        const ok = await PermisoProyectoUtils.assertMiembroProyecto(res, usuarioId, proyectoId);
+        if (!ok) return;
 
         const encuesta = await EncuestaUtils.getEncuestaByProyectoUsuario(
             parseInt(proyectoId),
@@ -47,6 +52,10 @@ const verificarEstadoEncuesta = async (req, res) => {
 const getEncuestasProyecto = async (req, res) => {
     try {
         const { proyectoId } = req.params;
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.ENCUESTAS_VER);
+        if (!ok) return;
 
         const encuestas = await EncuestaUtils.getEncuestasByProyecto(parseInt(proyectoId));
         const estadisticas = await EncuestaUtils.getEstadisticasEncuesta(parseInt(proyectoId));
@@ -85,6 +94,9 @@ const guardarEncuesta = async (req, res) => {
             });
         }
 
+        const ok = await PermisoProyectoUtils.assertMiembroProyecto(res, usuarioId, data.proyectoId);
+        if (!ok) return;
+
         const encuesta = await EncuestaUtils.createOrUpdateEncuesta(data, usuarioId);
 
         return res.status(201).json({ success: true, data: encuesta });
@@ -115,6 +127,9 @@ const rechazarEncuesta = async (req, res) => {
             });
         }
 
+        const ok = await PermisoProyectoUtils.assertMiembroProyecto(res, usuarioId, proyectoId);
+        if (!ok) return;
+
         const encuesta = await EncuestaUtils.rechazarEncuesta(
             parseInt(proyectoId),
             usuarioId
@@ -135,7 +150,10 @@ const rechazarEncuesta = async (req, res) => {
 const getAllEncuestasProyecto = async (req, res) => {
     try {
         const { proyectoId } = req.params;
-
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.ENCUESTAS_VER);
+        if (!ok) return;
 
         const encuestas = await EncuestaUtils.getAllEncuestasByProyecto(parseInt(proyectoId));
         const estadisticas = await EncuestaUtils.getEstadisticasEncuesta(parseInt(proyectoId));

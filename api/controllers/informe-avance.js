@@ -1,8 +1,16 @@
 const InformeAvanceUtils = require('../utils/informe-avance-utils');
+const { decodeToken } = require('../utils/security-utils');
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
+const { P } = PermisoProyectoUtils;
 
 const getAllInformesByProyecto = async (req, res) => {
     try {
         const { proyectoId } = req.params;
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.INFORMES_VER);
+        if (!ok) return;
+
         const items = await InformeAvanceUtils.getAllInformesByProyecto(proyectoId);
         return res.status(200).json({ success: true, data: items });
     } catch (error) {
@@ -25,6 +33,12 @@ const getInformeById = async (req, res) => {
             });
         }
 
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const proyectoId = item.proyecto_id || (item.Proyecto && item.Proyecto.id);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.INFORMES_VER);
+        if (!ok) return;
+
         return res.status(200).json({ success: true, data: item });
     } catch (error) {
         return res.status(500).json({
@@ -46,6 +60,15 @@ const createInforme = async (req, res) => {
             });
         }
 
+        if (!data.proyectoId) {
+            return res.status(400).json({ success: false, message: 'proyectoId es requerido' });
+        }
+
+        const { authorization } = req.headers;
+        const { id: tokenUserId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, tokenUserId, data.proyectoId, P.INFORMES_GEST);
+        if (!ok) return;
+
         const informe = await InformeAvanceUtils.createInforme(data, usuarioId);
 
         return res.status(201).json({
@@ -66,6 +89,16 @@ const updateInforme = async (req, res) => {
         const { id } = req.params;
         const data = req.body;
 
+        const existente = await InformeAvanceUtils.getInformeById(id);
+        if (!existente) {
+            return res.status(404).json({ success: false, message: 'Informe no encontrado' });
+        }
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const proyectoId = existente.proyecto_id || (existente.Proyecto && existente.Proyecto.id);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.INFORMES_GEST);
+        if (!ok) return;
+
         const informe = await InformeAvanceUtils.updateInforme(id, data);
 
         return res.status(200).json({
@@ -84,6 +117,16 @@ const updateInforme = async (req, res) => {
 const deleteInforme = async (req, res) => {
     try {
         const { id } = req.params;
+
+        const existente = await InformeAvanceUtils.getInformeById(id);
+        if (!existente) {
+            return res.status(404).json({ success: false, message: 'Informe no encontrado' });
+        }
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const proyectoId = existente.proyecto_id || (existente.Proyecto && existente.Proyecto.id);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.INFORMES_GEST);
+        if (!ok) return;
 
         await InformeAvanceUtils.deleteInforme(id);
 

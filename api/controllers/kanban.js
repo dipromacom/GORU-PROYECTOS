@@ -1,9 +1,17 @@
 const KanbanUtils = require('../utils/kanban-utils')
+const { decodeToken } = require('../utils/security-utils')
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils')
+const { P } = PermisoProyectoUtils
 
 const setKanban = async (req, res) => {
     const { id: projectId } = req.params
     const { body } = req
     try {
+        const { authorization } = req.headers
+        const { id: usuarioId } = decodeToken(authorization)
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.KANBAN_GEST)
+        if (!ok) return
+
         const success = await KanbanUtils.setKanban({ ...body, projectId })
         return res.status(200).json(success)
     } catch (e) {
@@ -15,6 +23,11 @@ const setKanban = async (req, res) => {
 const getKanban = async (req, res) => {
     const { id: projectId } = req.params
     try {
+        const { authorization } = req.headers
+        const { id: usuarioId } = decodeToken(authorization)
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.KANBAN_VER)
+        if (!ok) return
+
         const statusQuery = await KanbanUtils.getKanban({ projectId })
         let allStatusIds = []
         let allStatusById = {}
@@ -33,7 +46,7 @@ const getKanban = async (req, res) => {
                     content: tempTask.content,
                     priority: tempTask.priority,
                     interesadoId: tempTask.interesadoId || null,
-                    deadline: tempTask.deadline || null,   
+                    deadline: tempTask.deadline || null,
                     closed_at: tempTask.closed_at || null
                 }
             }
@@ -91,7 +104,7 @@ const getKanbanByUser = async (req, res) => {
             allStatusById[tempStatus.id] = {
                 id: tempStatus.id,
                 title: tempStatus.title,
-                projectName: tempStatus.Proyecto && tempStatus.Proyecto.nombre, 
+                projectName: tempStatus.Proyecto && tempStatus.Proyecto.nombre,
                 tasks: innerTasks
             };
         }
@@ -102,7 +115,7 @@ const getKanbanByUser = async (req, res) => {
         return res.status(200).json({ success: true, status, tasks });
 
     } catch (e) {
-        console.error("Error en getKanbanByUser:", e); 
+        console.error("Error en getKanbanByUser:", e);
         return res.status(500).json({ success: false, error: e.message });
     }
 };

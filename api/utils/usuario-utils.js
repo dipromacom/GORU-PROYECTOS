@@ -39,7 +39,7 @@ const getUsuarioById = async (id) => {
     where: {
       id, suspendido: false, eliminado: false,
     },
-    attributes: ['id', 'username', 'persona', 'tipo_licencia'],
+    attributes: ['id', 'username', 'persona', 'tipo_licencia', 'empresa'],
     include: [
       {
         model: Persona,
