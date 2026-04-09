@@ -3,6 +3,12 @@
 const ProyectoUtils = require('../utils/proyecto-utils');
 const DateUtils = require('../utils/date-utils');
 const { decodeToken } = require('../utils/security-utils');
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
+const { P } = PermisoProyectoUtils;
+
+const httpErrorStatus = (error, fallback = 500) => (
+  error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : fallback
+);
 
 // ─────────────────────────────────────────────
 // GET
@@ -19,7 +25,7 @@ const getAllProyecto = async (req, res) => {
 
     return res.status(200).json({ success: true, data: items });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(httpErrorStatus(error)).json({ success: false, message: error.message });
   }
 };
 
@@ -34,7 +40,13 @@ const getActiveProyecto = async (req, res) => {
 
 const getProyectoById = async (req, res) => {
   try {
+    const { authorization } = req.headers;
+    const { id: usuarioId } = decodeToken(authorization);
     const { id } = req.params;
+
+    const puedeVer = await PermisoProyectoUtils.assertMiembroProyecto(res, usuarioId, id);
+    if (!puedeVer) return;
+
     const item = await ProyectoUtils.getProyectoById(id);
 
     if (!item) {
@@ -58,7 +70,7 @@ const createProyecto = async (req, res) => {
     const proyecto = await ProyectoUtils.createProyecto(req.body, usuarioId);
     return res.status(201).json({ success: true, data: proyecto });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(httpErrorStatus(error)).json({ success: false, message: error.message });
   }
 };
 
@@ -69,7 +81,7 @@ const createProyectoGeneralData = async (req, res) => {
     const proyecto = await ProyectoUtils.createProyectoGeneralData(req.body, usuarioId);
     return res.status(201).json({ success: true, data: proyecto });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(httpErrorStatus(error)).json({ success: false, message: error.message });
   }
 };
 
@@ -81,10 +93,13 @@ const updateProyecto = async (req, res) => {
   try {
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
+    const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, req.params.id, P.PROYECTO_CONFIG_GEST);
+    if (!ok) return;
+
     const proyecto = await ProyectoUtils.updateProyecto(req.body, req.params.id, usuarioId);
     return res.status(200).json({ success: true, data: proyecto });
   } catch (error) {
-    return res.status(500).json({ success: false, message: error.message });
+    return res.status(httpErrorStatus(error)).json({ success: false, message: error.message });
   }
 };
 
@@ -92,6 +107,9 @@ const updateProyectoGeneralData = async (req, res) => {
   try {
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
+    const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, req.params.id, P.PROYECTO_CONFIG_GEST);
+    if (!ok) return;
+
     const proyecto = await ProyectoUtils.updateProyectoGeneralData(req.body, req.params.id, usuarioId);
     return res.status(200).json({ success: true, data: proyecto });
   } catch (error) {
@@ -108,6 +126,9 @@ const activarProyecto = async (req, res) => {
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
     const { projectId } = req.body;
+
+    const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.PROYECTO_CONFIG_GEST);
+    if (!ok) return;
 
     const proyecto = await ProyectoUtils.logUpdateEstadoProyecto(
       projectId, 'S', usuarioId,
@@ -132,6 +153,9 @@ const cerrarProyecto = async (req, res) => {
     if (!projectId) return res.status(400).json({ success: false, message: 'El campo projectId es obligatorio' });
     if (!fecha_cierre) return res.status(400).json({ success: false, message: 'El campo fecha_cierre es obligatorio' });
 
+    const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.PROYECTO_CONFIG_GEST);
+    if (!ok) return;
+
     const proyecto = await ProyectoUtils.logUpdateEstadoProyecto(
       projectId, 'E', usuarioId,
       { fecha_cierre },
@@ -149,6 +173,9 @@ const updateEstadoProyecto = async (req, res) => {
     const { projectId, estado } = req.body;
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
+
+    const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.PROYECTO_CONFIG_GEST);
+    if (!ok) return;
 
     const proyecto = await ProyectoUtils.logUpdateEstadoProyecto(
       projectId, estado, usuarioId, {}, 'PROJECT_STATUS_CHANGED'

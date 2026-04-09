@@ -1,10 +1,18 @@
 const GanttUtils = require('../utils/gantt-utils')
+const { decodeToken } = require('../utils/security-utils')
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils')
+const { P } = PermisoProyectoUtils
 
 const setGantt = async (req, res) => {
     const { id: projectId } = req.params;
     const { task, tasks } = req.body;
 
     try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.GANTT_GEST);
+        if (!ok) return;
+
         if (Array.isArray(tasks) && tasks.length > 0) {
             // 🔹 Sync masivo: una sola transacción
             await GanttUtils.syncGantt({ tasks, projectId });
@@ -25,6 +33,11 @@ const setGantt = async (req, res) => {
 const getGantt = async (req, res) => {
     const { id: projectId } = req.params
     try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.GANTT_VER);
+        if (!ok) return;
+
         const tasks = await GanttUtils.getGantt({ projectId })
 
         let allIds = []
@@ -61,7 +74,7 @@ const getGantt = async (req, res) => {
 
 const getGanttByUser = async (req, res) => {
     const { usuarioId } = req.params;
-    const { modo } = req.query; 
+    const { modo } = req.query;
     try {
         const tasks = await GanttUtils.getGanttByUser({ usuarioId, modo });
         let allIds = [];
@@ -77,7 +90,7 @@ const getGanttByUser = async (req, res) => {
 
         return res.status(200).json({ success: true, tasks: { allIds, byId } });
     } catch (e) {
-        console.error(e); 
+        console.error(e);
         return res.status(500).json({ success: false, debug: e.message });
     }
 };
@@ -86,6 +99,11 @@ const deleteGantt = async (req, res) => {
     const { id: projectId, taskId } = req.params;
 
     try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.GANTT_GEST);
+        if (!ok) return;
+
         const deleted = await GanttUtils.deleteGantt({ projectId, taskId });
 
         if (!deleted) {

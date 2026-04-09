@@ -9,7 +9,7 @@ const logger = require('../logger/logger');
 
 const file = path.basename(__filename);
 
-const TIPO_LICENCIA_DEMO_ID = 3;
+const { PLAN_PERSONAL_ID } = require('../constants/plan-licencia');
 
 const getUsuarioById = async (req, res) => {
   try {
@@ -33,7 +33,8 @@ const getUsuarioById = async (req, res) => {
 };
 
 const createUsuario = async (req, res) => {
-  const data = req.body;
+  const data = { ...req.body };
+  delete data.tipoLicencia;
   try {
     const { username } = data;
     if (await UsuarioUtils.getUsuarioByEmail(username)) {
@@ -68,6 +69,7 @@ const generateToken = async (req, res) => {
   const { email, clave, awsId } = req.body;
 
   try {
+    let actionType = 'USER_LOGIN_EMAIL';
     let usuario = await UsuarioUtils.getUsuarioByEmail(email);
 
     if (!usuario) {
@@ -81,6 +83,9 @@ const generateToken = async (req, res) => {
       actionType = 'USER_CREATED_VIA_SSO';
     } else if (awsId) {
       actionType = 'USER_LOGIN_SSO'; // Si existe y usa AWS, es un login SSO
+      usuario = await UsuarioUtils.getUsuarioById(usuario.id);
+    } else {
+      usuario = await UsuarioUtils.getUsuarioById(usuario.id);
     }
 
     const page = UsuarioUtils.getOnbStep(usuario);
@@ -119,8 +124,11 @@ const setMembresia = async (req, res) => {
 
     let result = false;
     if (usuario != null) {
-      // TODO: put demo in a configuration table
-      result = await UsuarioUtils.setTipoLicencia(usuario, TIPO_LICENCIA_DEMO_ID);
+      if (usuario.tipo_licencia == null) {
+        result = await UsuarioUtils.setTipoLicencia(usuario, PLAN_PERSONAL_ID);
+      } else {
+        result = true;
+      }
     }
 
     return res.status(200).json({ success: result });
@@ -161,7 +169,7 @@ const updatePersonaProfile = async (req, res) => {
           fields: Object.keys(body),
         }
       });
-    }   
+    }
 
     persona = await PersonaUtils.getPersonaById(persona.id);
     return res.status(200).json({ success: true, data: persona });

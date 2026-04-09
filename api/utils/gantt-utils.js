@@ -241,7 +241,7 @@ const syncGantt = async ({ tasks, projectId }) => {
             message: e.message,
             source: file,
             method: "syncGantt()",
-            params: { projectId, taskCount: tasks?.length }
+            params: { projectId, taskCount: tasks && tasks.length }
         });
         await transaction.rollback();
         throw e;

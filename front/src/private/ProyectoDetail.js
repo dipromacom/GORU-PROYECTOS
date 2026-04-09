@@ -31,7 +31,7 @@ import { AnalisisAmbiental } from '../components/ProyectoDetailAnalisis/Analisis
 import { ViewAnalisisAmbiental } from '../components/ProyectoDetailAnalisis/ViewAnalisisAmbiental'
 import { selectors as sessionSelectors } from "../reducers/session";
 import { selectors as personaSelectors, actions as personaActions } from "../reducers/persona";
-import {ViewInteresados} from "../components/ProyectoDetailMatriz/ViewInteresados";
+import { ViewInteresados } from "../components/ProyectoDetailMatriz/ViewInteresados";
 import { CreateInteresados } from "../components/ProyectoDetailMatriz/CreateInteresados";
 import SummaryChart from '../components/summaryChart/SummaryChart';
 
@@ -53,7 +53,7 @@ import Whiteboard from "../components/pizarra/Whiteboard";
 //Importar el Modal de Configuración
 import RoleSettingsModal from "../components/proyectoDetails/RoleSettingsModal";
 //sesion action
-import { actions as sessionActions} from "../reducers/session";
+import { actions as sessionActions } from "../reducers/session";
 
 import { actions as rolProyectoActions } from "../reducers/rolProyecto";
 
@@ -77,15 +77,23 @@ import ChangeControlPdf from "../components/controlCambio/ChangeControlPdf";
 import ProgramaProyectos from "../components/programaProyectos/ProgramaProyectos";
 
 import { actions as programaActions, selectors as programaSelectors } from "../reducers/programa";
+import {
+    defaultMembershipNavFromPlan,
+    isPersonalOnlyPlanUser,
+    MEMBERSHIP_DEMO,
+    MEMBERSHIP_PROFESIONAL,
+} from "../libs/planLicencia";
+import { selectors as rolProyectoSelectors } from "../reducers/rolProyecto";
+import { proyectoPuede, P as PermProy } from "../libs/proyectoPermiso";
 
 
-function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, }) {
+function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, membershipNavMode, userProjectPermisos, isLoadingUserRol }) {
     const routeParams = useParams();
     const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
     const [taskFilter, setTaskFilter] = useState("");
     const esActividad = projectDetail?.modo === "A";
-    const esPrograma= projectDetail?.modo === "PR";
+    const esPrograma = projectDetail?.modo === "PR";
     const esProyecto = projectDetail?.modo === "P";
     const mostrarPestanasEstandar = esProyecto || esPrograma; // Muestra todas las pestañas excepto las restringidas para PR
     const ocultarAnalisisAmbientalCalidadPizarra = esActividad || esPrograma;
@@ -94,24 +102,31 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const iniciado = projectDetail?.estado === "S";
     const planificado = projectDetail?.estado === "P";
     const ejecutado = projectDetail?.estado === "X";
-    const [projectId, setProjectId] = useState(null) 
-
-    if (localStorage.getItem("modo") === "Demo" && !esActividad) {
-        dispatch(routesActions.goTo(`membership`));
-    }
-
+    const [projectId, setProjectId] = useState(null)
 
     const [editMode, setEditMode] = useState(false);
 
+    const puede = useCallback(
+        (clave) => proyectoPuede(userProjectPermisos, clave),
+        [userProjectPermisos]
+    );
+
+    useEffect(() => {
+        if (isLoadingUserRol) return;
+        if (!proyectoPuede(userProjectPermisos, PermProy.PROYECTO_CONFIG_GEST) && editMode) {
+            setEditMode(false);
+        }
+    }, [userProjectPermisos, editMode, isLoadingUserRol]);
+
     // Combos Seccion Descripcion del proyecto a alto nivel - periodo de tiempo
     const values = [
-        {clave: "D", valor: "Día"},
-        {clave: "M", valor: "Mes"},
-        {clave: "A", valor: "Año"},
+        { clave: "D", valor: "Día" },
+        { clave: "M", valor: "Mes" },
+        { clave: "A", valor: "Año" },
     ]
 
     const numericId = parseInt(routeParams.id, 10);
-    
+
     useEffect(() => {
         return () => {
             dispatch(surveyActions.clearSurveyState());
@@ -127,7 +142,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             dispatch(projectActions.getInteresadoList(numericId));
             dispatch(projectActions.getAnalisisAmbientalRequest(numericId));
         }
-    }, [numericId, dispatch]); 
+    }, [numericId, dispatch]);
 
 
     useEffect(() => {
@@ -136,6 +151,22 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
 
     }, [numericId, dispatch, usuario]);
+
+    useEffect(() => {
+        if (!usuario || !projectDetail) return;
+        if (isPersonalOnlyPlanUser(usuario) && projectDetail.modo !== "A") {
+            dispatch(routesActions.goTo("membership"));
+            return;
+        }
+        const nav = membershipNavMode ?? defaultMembershipNavFromPlan(usuario);
+        if (nav === MEMBERSHIP_DEMO && projectDetail.modo !== "A") {
+            dispatch(routesActions.goTo("activities"));
+            return;
+        }
+        if (nav === MEMBERSHIP_PROFESIONAL && projectDetail.modo === "PR") {
+            dispatch(routesActions.goTo("projects"));
+        }
+    }, [usuario, projectDetail, membershipNavMode, dispatch]);
 
     // console.log({ interesados });
 
@@ -158,7 +189,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
         // Campos de texto simples
         setPrograma("");
-        setProgramaId(null); 
+        setProgramaId(null);
         setJustificacion("");
         setDescripcion("");
         setAnalisisViabilidad("");
@@ -195,14 +226,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         if (projectDetail?.DirectorProyecto?.Persona) {
             const nombreDirectorProyecto = `${projectDetail?.DirectorProyecto?.Persona?.nombre} ${projectDetail?.DirectorProyecto?.Persona?.apellido}`
             setDirectorProyecto(nombreDirectorProyecto);
-        }  
+        }
 
 
         setPatrocinadorProyecto("")
         if (projectDetail?.Patrocinador?.Persona) {
             const nombrePatrocinador = `${projectDetail?.Patrocinador?.Persona?.nombre} ${projectDetail?.Patrocinador?.Persona?.apellido}`
             setPatrocinadorProyecto(nombrePatrocinador);
-        }        
+        }
         setDepartamento(projectDetail?.Departamento?.nombre)
         setInformacionBreve(projectDetail?.informacion)
         setPendienteAsignacion(projectDetail?.pendiente_asignacion)
@@ -341,7 +372,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     };
 
     const [showInvitation, setShowInvitation] = useState(false);
-    const surveyCheckedRef = useRef(false); 
+    const surveyCheckedRef = useRef(false);
 
     const [isLoadingProject, setIsLoadingProject] = useState(true);
 
@@ -410,6 +441,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
     }, [projectDetail, numericId]);
 
+    const pageLoading =
+        isLoadingProject || (Boolean(usuario?.id && numericId) && isLoadingUserRol);
+
     // Cargar informe de avance
     useEffect(() => {
         if (numericId && (planificado || ejecutado || cerrado)) {
@@ -436,7 +470,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     }, [numericId, dispatch, esPrograma]);
 
     const handleOpenInformeModal = () => {
-        setInformeEditar(null); 
+        setInformeEditar(null);
         setShowInformeModal(true);
     };
 
@@ -476,7 +510,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                 return {
                     tiempo: acc.tiempo + Number(impacto.tiempo || 0),
                     dolares: acc.dolares + Number(impacto.dolares || 0),
-                    cantidad: aprobadas.length 
+                    cantidad: aprobadas.length
                 };
             }, { tiempo: 0, dolares: 0 });
     }, [listaSolicitudes]);
@@ -526,7 +560,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         try {
             // Generamos el blob manualmente solo al hacer click
             const blob = await pdf(
-                <ChangeControlPdf data={solicitud} proyecto={projectDetail} directorProyecto={directorProyecto}/>
+                <ChangeControlPdf data={solicitud} proyecto={projectDetail} directorProyecto={directorProyecto} />
             ).toBlob();
 
             const url = URL.createObjectURL(blob);
@@ -567,7 +601,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
     const calculateTotalCost = () => {
         let total = 0
-        if (costoEntregable){
+        if (costoEntregable) {
             costoEntregable.forEach((cost) => {
                 total += parseFloat(cost.costo || 0)
             });
@@ -692,7 +726,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             informacionBreve,
         };
         payload = appendActaDeInicio(payload);
-        dispatch(projectActions.updateProject(routeParams.id,payload));
+        dispatch(projectActions.updateProject(routeParams.id, payload));
     }
 
     function handleSubmitLeccionesAprendidas(payloadLecciones) {
@@ -713,8 +747,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             informacionBreve,
             tipoProyecto,
         };
-        
-        dispatch(projectActions.updateProjectGeneralData(routeParams.id,payload));
+
+        dispatch(projectActions.updateProjectGeneralData(routeParams.id, payload));
     }
 
     useEffect(() => {
@@ -774,8 +808,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             ...(tareasFunciones && { tareasFunciones }),
             ...(tiposInformes && { tiposInformes }),
             ...(incentivo && { incentivo }),
-            ...(plazoPeriodo && {plazoPeriodo}),
-            ...(maxDesviacionPeriodo && {maxDesviacionPeriodo}),
+            ...(plazoPeriodo && { plazoPeriodo }),
+            ...(maxDesviacionPeriodo && { maxDesviacionPeriodo }),
             ...(leccionesAprendidas && { leccionesAprendidas }),
             ...(beneficios && { beneficios }),
             autoridadControlCambios
@@ -787,7 +821,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const handleChangeTab = (key) => {
         setActiveKey(key)
         if (key === 'to-do') {
-            dispatch(projectActions.getTasksById({ idProject: routeParams.id, done: false}))
+            dispatch(projectActions.getTasksById({ idProject: routeParams.id, done: false }))
         }
         if (key === 'project-management') {
             dispatch(kanbanActions.fetch({ projectId: routeParams.id }))
@@ -812,9 +846,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
     function validateForm() {
         return nombreProyecto.length > 0
-            && directorProyecto.length > 0 
+            && directorProyecto.length > 0
             && patrocinadorProyecto.length > 0
-            && departamento.length > 0 
+            && departamento.length > 0
             && informacionBreve.length > 0
             && tipoProyecto;
     }
@@ -837,12 +871,12 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         return durationString;
     }
 
-    const toggleEdit = ()=>{
+    const toggleEdit = () => {
         setEditMode(!editMode)
     }
 
     const addTaskHandler = task => {
-        dispatch(projectActions.insertToDoTask({...task, proyectoId: routeParams.id, dueDate: moment(task.dueDate,'DD/MM/YYYY').format('YYYY-MM-DD')}))
+        dispatch(projectActions.insertToDoTask({ ...task, proyectoId: routeParams.id, dueDate: moment(task.dueDate, 'DD/MM/YYYY').format('YYYY-MM-DD') }))
         setTaskFilter("false");
     }
 
@@ -851,12 +885,12 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     };
 
     const getPlazoPeriodoTitle = () => {
-        const title = values.filter( val => val.clave === plazoPeriodo)[0]?.valor
+        const title = values.filter(val => val.clave === plazoPeriodo)[0]?.valor
         return title;
     }
 
     const getDesviacionPeriodoTitle = () => {
-        const title = values.filter( val => val.clave === maxDesviacionPeriodo)[0]?.valor
+        const title = values.filter(val => val.clave === maxDesviacionPeriodo)[0]?.valor
         return title;
     }
 
@@ -903,16 +937,19 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
     // Handler para abrir modal
     const handleOpenConfig = () => {
-        // ASUMIMOS que usuario.userSystem ya fue poblado con la empresa_id/Empresa
-        if (usuario) {
-            const empresaId = usuario.empresa;
-
-            // Lógica para cargar usuarios de la empresa del usuario autenticado
-            dispatch(sessionActions.getUsuariosByEmpresa(empresaId));
-        } else {
-            // Manejo de error si no se encuentra la empresa (opcional)
-            console.error("Usuario autenticado no tiene una empresa asociada.");
+        if (!usuario) {
+            console.error("Usuario autenticado no disponible.");
+            setShowRoleModal(true);
+            return;
         }
+        const empresaIdRaw = usuario.empresa ?? usuario.Empresa?.id ?? usuario.empresa_id;
+        const empresaId = empresaIdRaw != null && empresaIdRaw !== "" ? Number(empresaIdRaw) : NaN;
+        if (!Number.isFinite(empresaId)) {
+            toast.error("Su usuario no tiene empresa asignada. Asigne una empresa al perfil para invitar colaboradores.");
+            setShowRoleModal(true);
+            return;
+        }
+        dispatch(sessionActions.getUsuariosByEmpresa(empresaId));
         setShowRoleModal(true);
     };
 
@@ -924,7 +961,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     return (
         <div className="page-menu-container">
 
-            {isLoadingProject ? (
+            {pageLoading ? (
                 <div className="d-flex justify-content-center align-items-center" style={{ minHeight: '400px' }}>
                     <div className="spinner-border text-primary" role="status" style={{ width: '3rem', height: '3rem' }}>
                         <span className="sr-only">Cargando proyecto...</span>
@@ -954,7 +991,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                 {/* Botones de Acción (widget-container) */}
                                 <div className="widget-container d-inline-flex align-items-center flex-wrap flex-shrink-0 gap-2">
                                     {/* Botón de Configuración */}
-                                    {!cerrado && (
+                                    {!cerrado && puede(PermProy.PROYECTO_MIEMBROS_VER) && (
                                         <>
                                             <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={handleOpenConfig}>
                                                 <i className="bi bi-gear-fill mr-2" />
@@ -966,7 +1003,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                                     {!isTodoOrKanban() && !(activeKey === 'Crear-Interesado' || activeKey === 'Matriz-Interesados') && (
                                         <>
-                                            {!cerrado && (
+                                            {!cerrado && puede(PermProy.PROYECTO_CONFIG_GEST) && (
                                                 <>
                                                     <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => toggleEdit()}>
                                                         <i className={`bi ${!editMode ? 'bi-pencil-square' : 'bi-eye'} mr-2`} />
@@ -989,7 +1026,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     )}
 
                                     {/* Botones de Interesados */}
-                                    {activeKey === 'Matriz-Interesados' && !cerrado && (
+                                    {activeKey === 'Matriz-Interesados' && !cerrado && puede(PermProy.INTERESADOS_GEST) && (
                                         <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={() => setActiveKey('Crear-Interesado')}>
                                             <i className="bi bi-plus-circle mr-2" /> Crear Interesado
                                         </div>
@@ -1013,51 +1050,69 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     className="nav-tabs blue nav-responsive-scroll"
                                     onSelect={handleChangeTab}
                                 >
-                                    <Nav.Item>
-                                        <Nav.Link eventKey="general">Datos Generales</Nav.Link>
-                                    </Nav.Item>
+                                    {puede(PermProy.PROYECTO_CONFIG_VER) && (
+                                        <Nav.Item>
+                                            <Nav.Link eventKey="general">Datos Generales</Nav.Link>
+                                        </Nav.Item>
+                                    )}
                                     {(planificado || ejecutado || cerrado) && (
                                         <>
-                                            {(esPrograma) && (
+                                            {(esPrograma) && puede(PermProy.BENEFICIOS_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="beneficios">Beneficios</Nav.Link></Nav.Item>
                                             )}
                                         </>
                                     )}
-                                    <Nav.Item>
-                                        <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
-                                    </Nav.Item>
+                                    {puede(PermProy.CONSTITUCION_VER) && (
+                                        <Nav.Item>
+                                            <Nav.Link eventKey="constitution">Acta de Constitución</Nav.Link>
+                                        </Nav.Item>
+                                    )}
                                     {(planificado || ejecutado || cerrado) && (
                                         <>
-                                            <Nav.Item><Nav.Link eventKey="Matriz-Interesados">Interesados</Nav.Link></Nav.Item>
-                                            {(!esActividad && !esPrograma) && (
+                                            {puede(PermProy.INTERESADOS_VER) && (
+                                                <Nav.Item><Nav.Link eventKey="Matriz-Interesados">Interesados</Nav.Link></Nav.Item>
+                                            )}
+                                            {(!esActividad && !esPrograma) && puede(PermProy.ANALISIS_AMBIENTAL_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link></Nav.Item>
                                             )}
                                             {mostrarPestanasEstandar && (
                                                 <>
-                                                    <Nav.Item><Nav.Link eventKey="alcance">Alcance</Nav.Link></Nav.Item>
-                                                    <Nav.Item><Nav.Link eventKey="hitos">Hitos</Nav.Link></Nav.Item>
-                                                    <Nav.Item><Nav.Link eventKey="costos">Costos</Nav.Link></Nav.Item>
+                                                    {puede(PermProy.ALCANCE_VER) && (
+                                                        <Nav.Item><Nav.Link eventKey="alcance">Alcance</Nav.Link></Nav.Item>
+                                                    )}
+                                                    {puede(PermProy.HITOS_VER) && (
+                                                        <Nav.Item><Nav.Link eventKey="hitos">Hitos</Nav.Link></Nav.Item>
+                                                    )}
+                                                    {puede(PermProy.COSTOS_VER) && (
+                                                        <Nav.Item><Nav.Link eventKey="costos">Costos</Nav.Link></Nav.Item>
+                                                    )}
                                                 </>
                                             )}
-                                            {(!esActividad && !esPrograma) && (
+                                            {(!esActividad && !esPrograma) && puede(PermProy.CALIDAD_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="calidad">Calidad</Nav.Link></Nav.Item>
                                             )}
-                                            {mostrarPestanasEstandar && (
+                                            {mostrarPestanasEstandar && puede(PermProy.RIESGOS_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="riesgos">Riesgos</Nav.Link></Nav.Item>
                                             )}
-                                            <Nav.Item><Nav.Link eventKey="gantt">{esPrograma? "Roadmap" : "Gantt"}</Nav.Link></Nav.Item>
-                                            <Nav.Item><Nav.Link eventKey="to-do" >To Do</Nav.Link></Nav.Item>
-                                            <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
-                                            {esPrograma && (
+                                            {puede(PermProy.GANTT_VER) && (
+                                                <Nav.Item><Nav.Link eventKey="gantt">{esPrograma ? "Roadmap" : "Gantt"}</Nav.Link></Nav.Item>
+                                            )}
+                                            {puede(PermProy.TODO_VER) && (
+                                                <Nav.Item><Nav.Link eventKey="to-do" >To Do</Nav.Link></Nav.Item>
+                                            )}
+                                            {puede(PermProy.KANBAN_VER) && (
+                                                <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
+                                            )}
+                                            {esPrograma && puede(PermProy.PROGRAMA_PROYECTOS_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="proyectos-programa">Proyectos</Nav.Link></Nav.Item>
                                             )}
 
-                                            {(!esActividad && !esPrograma) && (
+                                            {(!esActividad && !esPrograma) && puede(PermProy.PIZARRA_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
-                                            )} 
+                                            )}
                                         </>
                                     )}
-                                    {(cerrado) && (
+                                    {(cerrado) && puede(PermProy.LECCIONES_VER) && (
                                         <Nav.Item><Nav.Link eventKey="leccionesAprendidas">Lecciones Aprendidas</Nav.Link></Nav.Item>
                                     )}
                                 </Nav>
@@ -1134,7 +1189,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 as="select"
                                                 className="form-select"
                                                 value={tipoProyecto}
-                                                onChange={(e) => { setTipoProyecto(e.target.value)}}
+                                                onChange={(e) => { setTipoProyecto(e.target.value) }}
                                             >
                                                 <option value="">Elija el tipo de {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"}...</option>
                                                 {tipoProyectoList.map(tipo => (
@@ -1162,29 +1217,37 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                             </Nav.Item>
                                                         </>
                                                     )}
-                                                    
-                                                    <Nav.Item>
-                                                        <Nav.Link eventKey="encuesta" className="px-4 py-2">
-                                                            <i className="bi bi-journal-bookmark mr-2"></i>Encuesta de satisfacción
-                                                        </Nav.Link>
-                                                    </Nav.Item>
-                                                    
-                                                    <Nav.Item>
-                                                        <Nav.Link eventKey="historial" className="px-4 py-2">
-                                                            <i className="bi bi-clock-history me-2"></i>Historial de Estados
-                                                        </Nav.Link>
-                                                    </Nav.Item>
-                                                    <Nav.Item>
-                                                        <Nav.Link eventKey="controlCambio" className="px-4 py-2">
-                                                            <i className="bi bi-arrow-left-right mr-2"></i>Control de Cambios
-                                                        </Nav.Link>
-                                                    </Nav.Item>
-                                                    <Nav.Item>
-                                                        <Nav.Link eventKey="informe" className="px-4 py-2">
-                                                            <i className="bi bi-file-earmark-text me-2"></i>Informe de Avance
-                                                        </Nav.Link>
-                                                    </Nav.Item>
-                                                    
+
+                                                    {puede(PermProy.ENCUESTAS_VER) && (
+                                                        <Nav.Item>
+                                                            <Nav.Link eventKey="encuesta" className="px-4 py-2">
+                                                                <i className="bi bi-journal-bookmark mr-2"></i>Encuesta de satisfacción
+                                                            </Nav.Link>
+                                                        </Nav.Item>
+                                                    )}
+
+                                                    {puede(PermProy.HISTORIAL_VER) && (
+                                                        <Nav.Item>
+                                                            <Nav.Link eventKey="historial" className="px-4 py-2">
+                                                                <i className="bi bi-clock-history me-2"></i>Historial de Estados
+                                                            </Nav.Link>
+                                                        </Nav.Item>
+                                                    )}
+                                                    {puede(PermProy.CONTROL_CAMBIO_VER) && (
+                                                        <Nav.Item>
+                                                            <Nav.Link eventKey="controlCambio" className="px-4 py-2">
+                                                                <i className="bi bi-arrow-left-right mr-2"></i>Control de Cambios
+                                                            </Nav.Link>
+                                                        </Nav.Item>
+                                                    )}
+                                                    {puede(PermProy.INFORMES_VER) && (
+                                                        <Nav.Item>
+                                                            <Nav.Link eventKey="informe" className="px-4 py-2">
+                                                                <i className="bi bi-file-earmark-text me-2"></i>Informe de Avance
+                                                            </Nav.Link>
+                                                        </Nav.Item>
+                                                    )}
+
                                                 </Nav>
 
                                                 <Tab.Content>
@@ -1248,7 +1311,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         <div className="survey-container mt-4 p-3 border rounded bg-light">
                                                             <div className="d-flex justify-content-between align-items-center mb-3">
                                                                 <h4>Encuesta de Satisfacción - {projectDetail?.nombre}</h4>
-                                                            
+
                                                                 <Button
                                                                     variant="outline-primary"
                                                                     onClick={() => {
@@ -1258,7 +1321,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                                 >
                                                                     Realizar Encuesta
                                                                 </Button>
-                                                            
+
                                                             </div>
 
                                                             {estadisticas && estadisticas.totalEncuestas > 0 && (
@@ -1306,9 +1369,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                                                     })}
                                                                                 </td>
                                                                                 <td className="text-center">
-                                                                                    
-                                                                                        {calcularPromedioEncuesta(enc)} / 5
-                                                                                    
+
+                                                                                    {calcularPromedioEncuesta(enc)} / 5
+
                                                                                 </td>
                                                                                 <td className="text-center">
                                                                                     <Button
@@ -1352,37 +1415,37 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                                 </Button>
                                                             </div>
 
-                                                                <Row className="mb-4">
-                                                                    <Col md={12}>
-                                                                        <div className="p-3 border rounded bg-light d-flex align-items-center shadow-sm">
-                                                                            <div className="me-4">
-                                                                                <i className="bi bi-exclamation-triangle-fill text-warning fs-3"></i>
-                                                                            </div>
-                                                                            <div className="flex-grow-1">
-                                                                                <small className="text-muted fw-bold text-uppercase d-block" style={{ fontSize: '0.7rem' }}>
-                                                                                    Total Desvío Acumulado (Aprobado)
-                                                                                </small>
-                                                                                <div className="d-flex gap-4">
-                                                                                    <div>
-                                                                                        <span className="text-dark h5 mb-0">{totalesAprobados.tiempo}</span>
-                                                                                        <span className="text-muted ms-1">días laborables</span>
-                                                                                    </div>
-                                                                                    <div className="border-start ps-4">
-                                                                                        <span className="text-success h5 mb-0 font-monospace">
-                                                                                            {formatCurrency(totalesAprobados.dolares)}
-                                                                                        </span>
-                                                                                        <span className="text-muted ms-1 small">USD adicionales</span>
-                                                                                    </div>
+                                                            <Row className="mb-4">
+                                                                <Col md={12}>
+                                                                    <div className="p-3 border rounded bg-light d-flex align-items-center shadow-sm">
+                                                                        <div className="me-4">
+                                                                            <i className="bi bi-exclamation-triangle-fill text-warning fs-3"></i>
+                                                                        </div>
+                                                                        <div className="flex-grow-1">
+                                                                            <small className="text-muted fw-bold text-uppercase d-block" style={{ fontSize: '0.7rem' }}>
+                                                                                Total Desvío Acumulado (Aprobado)
+                                                                            </small>
+                                                                            <div className="d-flex gap-4">
+                                                                                <div>
+                                                                                    <span className="text-dark h5 mb-0">{totalesAprobados.tiempo}</span>
+                                                                                    <span className="text-muted ms-1">días laborables</span>
+                                                                                </div>
+                                                                                <div className="border-start ps-4">
+                                                                                    <span className="text-success h5 mb-0 font-monospace">
+                                                                                        {formatCurrency(totalesAprobados.dolares)}
+                                                                                    </span>
+                                                                                    <span className="text-muted ms-1 small">USD adicionales</span>
                                                                                 </div>
                                                                             </div>
-                                                                            <div className="text-end">
-                                                                                <Badge bg="info" className="p-2">
-                                                                                    {listaSolicitudes.filter(s => s.estado === 'Aprobado').length} Solicitudes Aprobadas
-                                                                                </Badge>
-                                                                            </div>
                                                                         </div>
-                                                                    </Col>
-                                                                </Row>
+                                                                        <div className="text-end">
+                                                                            <Badge bg="info" className="p-2">
+                                                                                {listaSolicitudes.filter(s => s.estado === 'Aprobado').length} Solicitudes Aprobadas
+                                                                            </Badge>
+                                                                        </div>
+                                                                    </div>
+                                                                </Col>
+                                                            </Row>
 
                                                             {/* Resumen de Estados */}
                                                             <div className="row mb-4">
@@ -1441,22 +1504,24 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                                                             <i className="bi bi-eye"></i>
                                                                                         </Button>
 
-                                                                                    
-                                                                                        
-                                                                                        <DropdownButton
-                                                                                            size="sm"
-                                                                                            variant="outline-secondary"
-                                                                                            title={<i className="bi bi-arrow-left-right"></i>}
-                                                                                            onSelect={(nuevoEstado) => {
-                                                                                                dispatch(changeActions.updateStatus(sol.id, { ...sol, estado: nuevoEstado }, numericId));
-                                                                                            }}
-                                                                                        >
-                                                                                            <Dropdown.Item eventKey="Creado">Creado</Dropdown.Item>
-                                                                                            <Dropdown.Item eventKey="En Revisión">En Revisión</Dropdown.Item>
-                                                                                            <Dropdown.Item eventKey="Aprobado">Aprobado</Dropdown.Item>
-                                                                                            <Dropdown.Item eventKey="No Aprobado">No Aprobado</Dropdown.Item>
-                                                                                        </DropdownButton>
-                                                                                        
+
+
+                                                                                        {puede(PermProy.CONTROL_CAMBIO_GEST) && (
+                                                                                            <DropdownButton
+                                                                                                size="sm"
+                                                                                                variant="outline-secondary"
+                                                                                                title={<i className="bi bi-arrow-left-right"></i>}
+                                                                                                onSelect={(nuevoEstado) => {
+                                                                                                    dispatch(changeActions.updateStatus(sol.id, { ...sol, estado: nuevoEstado }, numericId));
+                                                                                                }}
+                                                                                            >
+                                                                                                <Dropdown.Item eventKey="Creado">Creado</Dropdown.Item>
+                                                                                                <Dropdown.Item eventKey="En Revisión">En Revisión</Dropdown.Item>
+                                                                                                <Dropdown.Item eventKey="Aprobado">Aprobado</Dropdown.Item>
+                                                                                                <Dropdown.Item eventKey="No Aprobado">No Aprobado</Dropdown.Item>
+                                                                                            </DropdownButton>
+                                                                                        )}
+
 
                                                                                         <Button
                                                                                             variant="outline-danger"
@@ -1490,14 +1555,16 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                                         }
                                                                     </p>
                                                                 </div>
-                                                                <Button
-                                                                    variant="primary"
-                                                                    onClick={handleOpenInformeModal}
-                                                                    className="d-flex align-items-center"
-                                                                >
-                                                                    <i className="bi bi-plus-circle me-2"></i>
-                                                                    Generar Nuevo Informe
-                                                                </Button>
+                                                                {puede(PermProy.INFORMES_GEST) && (
+                                                                    <Button
+                                                                        variant="primary"
+                                                                        onClick={handleOpenInformeModal}
+                                                                        className="d-flex align-items-center"
+                                                                    >
+                                                                        <i className="bi bi-plus-circle me-2"></i>
+                                                                        Generar Nuevo Informe
+                                                                    </Button>
+                                                                )}
                                                             </div>
 
                                                             <InformeAvanceList
@@ -1525,10 +1592,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         show={showVoluntarySurvey}
                                                         onHide={() => {
                                                             setShowVoluntarySurvey(false);
-                                                            setModoEdicion(false); 
+                                                            setModoEdicion(false);
                                                         }}
                                                         proyectoId={numericId}
-                                                        encuestaPrevia={modoEdicion ? encuestaActual : null} 
+                                                        encuestaPrevia={modoEdicion ? encuestaActual : null}
                                                         nombreProyecto={nombreProyecto}
                                                         tipoProyecto="proyecto"
                                                     />
@@ -1539,7 +1606,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         encuesta={selectedEncuesta}
                                                     />
 
-                                                        {/* Modal de Informe de Avance */}
+                                                    {/* Modal de Informe de Avance */}
                                                     <InformeAvanceModal
                                                         show={showInformeModal}
                                                         onHide={handleCloseInformeModal}
@@ -1550,7 +1617,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         informeEditar={informeEditar}
                                                         estadisticas={estadisticas}
                                                         logs={logs}
-                                                        riesgosList={riesgos}                 
+                                                        riesgosList={riesgos}
                                                         leccionesAprendidas={leccionesAprendidas}
                                                         usuario={usuario}
 
@@ -1584,7 +1651,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                             </Button>
                                                         </Modal.Footer>
                                                     </Modal>
-                                                    
+
                                                 </Tab.Content>
                                             </Tab.Container>
                                         </div>
@@ -1606,8 +1673,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         )
                                     }
                                     </div>
-                                    </Form>
-                                
+                                </Form>
+
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="constitution">
                                     <Form.Group>
@@ -1670,58 +1737,58 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             onChange={e => setPortafolio(e.target.value)}
                                         />
                                     </Form.Group>*/}
-                                        {esPrograma ? (
-                                            // Para programas: campo texto libre "Portafolio" (sin cambios)
-                                            <Form.Group controlId="portafolio-programa">
-                                                <Form.Label>Portafolio</Form.Label>
-                                                <Form.Control
-                                                    disabled={!editMode}
-                                                    autoComplete="off"
-                                                    type="text"                       // este campo queda como texto libre
-                                                    value={portafolio ?? ''}
-                                                    onChange={e => setPortafolio(e.target.value)}
-                                                />
-                                            </Form.Group>
-                                        ) : (
-                                            // Para proyectos P y A: combobox de programas
-                                            <Form.Group controlId="programa">
-                                                <Form.Label>Programa</Form.Label>
-                                                <Form.Control
-                                                    as="select"
-                                                    disabled={!editMode}
-                                                    value={programaId ?? ''}
-                                                    onChange={e => {
-                                                        const id = e.target.value ? Number(e.target.value) : null;
-                                                        setProgramaId(id);
-                                                        const nombrePrograma = id
-                                                            ? (programasLista || []).find(p => p.id === id)?.nombre ?? ''
-                                                            : '';
-                                                        setPrograma(nombrePrograma);
-                                                    }}
-                                                >
-                                                    <option value="">— Sin programa —</option>
-                                                    {(programasLista || []).map(p => (
-                                                        <option key={p.id} value={p.id}>
-                                                            {p.nombre}
-                                                            {p.Empresa?.nombre ? ` (${p.Empresa.nombre})` : ''}
-                                                        </option>
-                                                    ))}
-                                                </Form.Control>
-                                                {/* Indicador visual del programa actual si ya tiene uno asignado */}
-                                                {!editMode && programaId && (
-                                                    <Form.Text className="text-muted">
-                                                        <i className="bi bi-diagram-3 me-1" />
-                                                        Este proyecto forma parte de un programa.
-                                                    </Form.Text>
-                                                )}
-                                                {editMode && programaId && (
-                                                    <Form.Text className="text-muted">
-                                                        Al guardar, el proyecto quedará asignado al programa seleccionado.
-                                                        Para desvincularlo seleccioná "— Sin programa —".
-                                                    </Form.Text>
-                                                )}
-                                            </Form.Group>
-                                        )}
+                                    {esPrograma ? (
+                                        // Para programas: campo texto libre "Portafolio" (sin cambios)
+                                        <Form.Group controlId="portafolio-programa">
+                                            <Form.Label>Portafolio</Form.Label>
+                                            <Form.Control
+                                                disabled={!editMode}
+                                                autoComplete="off"
+                                                type="text"                       // este campo queda como texto libre
+                                                value={portafolio ?? ''}
+                                                onChange={e => setPortafolio(e.target.value)}
+                                            />
+                                        </Form.Group>
+                                    ) : (
+                                        // Para proyectos P y A: combobox de programas
+                                        <Form.Group controlId="programa">
+                                            <Form.Label>Programa</Form.Label>
+                                            <Form.Control
+                                                as="select"
+                                                disabled={!editMode}
+                                                value={programaId ?? ''}
+                                                onChange={e => {
+                                                    const id = e.target.value ? Number(e.target.value) : null;
+                                                    setProgramaId(id);
+                                                    const nombrePrograma = id
+                                                        ? (programasLista || []).find(p => p.id === id)?.nombre ?? ''
+                                                        : '';
+                                                    setPrograma(nombrePrograma);
+                                                }}
+                                            >
+                                                <option value="">— Sin programa —</option>
+                                                {(programasLista || []).map(p => (
+                                                    <option key={p.id} value={p.id}>
+                                                        {p.nombre}
+                                                        {p.Empresa?.nombre ? ` (${p.Empresa.nombre})` : ''}
+                                                    </option>
+                                                ))}
+                                            </Form.Control>
+                                            {/* Indicador visual del programa actual si ya tiene uno asignado */}
+                                            {!editMode && programaId && (
+                                                <Form.Text className="text-muted">
+                                                    <i className="bi bi-diagram-3 me-1" />
+                                                    Este proyecto forma parte de un programa.
+                                                </Form.Text>
+                                            )}
+                                            {editMode && programaId && (
+                                                <Form.Text className="text-muted">
+                                                    Al guardar, el proyecto quedará asignado al programa seleccionado.
+                                                    Para desvincularlo seleccioná "— Sin programa —".
+                                                </Form.Text>
+                                            )}
+                                        </Form.Group>
+                                    )}
                                     <h2
                                         onClick={() => setOpenPrimeraParte(!openPrimeraParte)}
                                         aria-controls="primera-parte-expand"
@@ -1911,7 +1978,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         onClick={() => setOpenSextaParte(!openSextaParte)}
                                         aria-controls="quinta-parte-expand"
                                         aria-expanded={openSextaParte}
-                                    >Nivel De Autoridad Y Decisión Del Director De {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"} 
+                                    >Nivel De Autoridad Y Decisión Del Director De {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto Equipo"}
 
                                         <span className={`bi ${openSextaParte ? "bi-chevron-up" : "bi-chevron-down"} pull-end`}></span></h2>
                                     <Collapse in={openSextaParte} >
@@ -1956,16 +2023,16 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                                 onSelect={(e) => {
                                                                     setMaxDesviacionPeriodo(e)
 
-                                                                }}   
+                                                                }}
                                                             >
-                                                                {values.map( val => (
+                                                                {values.map(val => (
                                                                     <Dropdown.Item eventKey={val.clave}>{val.valor}</Dropdown.Item>
                                                                 ))}
                                                             </DropdownButton>
                                                         </InputGroup>
                                                     </Form.Group>
                                                 </Col>
-                                                <Col style={{flexDirection: 'column'}} className="d-flex align-items-start justify-content-center">
+                                                <Col style={{ flexDirection: 'column' }} className="d-flex align-items-start justify-content-center">
                                                     <Form.Group controlId="autorizadoFirmasExternas">
                                                         <Form.Check disabled={!editMode} inline type="checkbox" label="Autorizado para firmas externos al proyecto"
                                                             value={autorizadoFirmasExternas} onChange={e => setAutorizadoFirmasExternas(e.target.checked)} checked={autorizadoFirmasExternas}></Form.Check>
@@ -2043,8 +2110,8 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         </div>
                                     </Collapse>
 
-                                        {/* Boton Guardar*/}
-                                        <div className="mt-5 pb-5"> 
+                                    {/* Boton Guardar*/}
+                                    <div className="mt-5 pb-5">
                                         {
                                             editMode && (
                                                 <LoaderButton
@@ -2057,14 +2124,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 </LoaderButton>
                                             )
                                         }
-                                        </div>
+                                    </div>
 
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="Matriz-Interesados">
                                     <ViewInteresados interesados={interesado} toDo={todo} markAsDoneCallback={id => doneTask(id)} cerrado={cerrado} esPrograma={esPrograma} />
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="Crear-Interesado">
-                                    <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} esPrograma={esPrograma}/>
+                                    <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} esPrograma={esPrograma} />
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="to-do">
                                     <div className="to-do-container border rounded p-4 bg-white shadow-sm">
@@ -2077,32 +2144,32 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         {/* 🔽 Combobox filtro antes del TodoList */}
                                         <div style={{ marginBottom: "20px" }}>
                                             <strong>Filtrar Tareas</strong>{" "}
-                                            <select value={taskFilter} onChange={handleFilterChange} class="dropdown-toggle btn btn-outline-primary">                                   
+                                            <select value={taskFilter} onChange={handleFilterChange} class="dropdown-toggle btn btn-outline-primary">
                                                 <option value="false">Abiertas</option>
                                                 <option value="true">Cerradas</option>
                                                 <option value="null">Todas</option>
                                             </select>
-                                        </div>  
-                                        <TodoList setTaskFilter={setTaskFilter} toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue}></TodoList> 
-                                    </div>                    
+                                        </div>
+                                        <TodoList setTaskFilter={setTaskFilter} toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue}></TodoList>
+                                    </div>
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="project-management">
                                     {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_AGIL || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
                                         ? <Kanban interesados={interesado} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue} />
                                         : <p>El tipo de proyecto no es apto para usar el Kanban</p>
-                                    }    
+                                    }
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="Analisis-ambiental">
                                     {
-                                    (analysisData && analysisData.length > 0) || (respuestaAnalisisAmbiental && respuestaAnalisisAmbiental.length > 0) ? (
-                                        <ViewAnalisisAmbiental analysisData={analysisData} respuestaAnalisisAmbiental={respuestaAnalisisAmbiental} projectID={numericId} cerrado={cerrado}/>
-                                    ) : (
-                                        <AnalisisAmbiental projectID={numericId} cerrado={cerrado}/>
-                                    )
+                                        (analysisData && analysisData.length > 0) || (respuestaAnalisisAmbiental && respuestaAnalisisAmbiental.length > 0) ? (
+                                            <ViewAnalisisAmbiental analysisData={analysisData} respuestaAnalisisAmbiental={respuestaAnalisisAmbiental} projectID={numericId} cerrado={cerrado} />
+                                        ) : (
+                                            <AnalisisAmbiental projectID={numericId} cerrado={cerrado} />
+                                        )
                                     }
 
                                 </Tab.Pane>
-                                
+
                                 {/* --- programa --- */}
                                 {esPrograma && (
                                     <Tab.Pane eventKey="proyectos-programa">
@@ -2246,7 +2313,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         }
                                     </div>
                                 </Tab.Pane>
-                                
+
                                 {/* --- Riesgos --- */}
                                 <Tab.Pane eventKey="riesgos">
                                     {!editMode && !cerrado && (
@@ -2332,7 +2399,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             )
                                         }
                                     </div>
-                                </Tab.Pane>  
+                                </Tab.Pane>
                                 <Tab.Pane eventKey="leccionesAprendidas">
                                     <LeccionesAprendidas
                                         data={leccionesAprendidas}
@@ -2344,7 +2411,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                         </div>
                     </Tab.Container>
                 </>
-            )}                        
+            )}
         </div>
     )
 }
@@ -2356,6 +2423,7 @@ const mapStateToProps = state => ({
     batchLoading: batchSelectors.getIsLoading(state),
     todo: selectors.getToDo(state),
     usuario: sessionSelectors.getUser(state),
+    membershipNavMode: sessionSelectors.getMembershipNavMode(state),
     persona: personaSelectors.getPersona(state),
     analysisData: selectors.getAnalysisData(state),
     respuestaAnalisisAmbiental: selectors.getRespuestaAnalysisData(state),
@@ -2383,6 +2451,9 @@ const mapStateToProps = state => ({
     // --- CONTROL DE CAMBIOS ---
     listaSolicitudes: changeSelectors.getSolicitudes(state),
     programasLista: programaSelectors.getProgramasLista(state),
+
+    userProjectPermisos: rolProyectoSelectors.getUserProjectPermisos(state),
+    isLoadingUserRol: rolProyectoSelectors.getIsLoadingUserRol(state),
 });
 
 export default connect(mapStateToProps)(ProyectoDetail);

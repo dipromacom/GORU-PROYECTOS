@@ -5,6 +5,7 @@ import { push } from "connected-react-router"
 import { onError } from "../libs/errorLib";
 import * as Api from "../api"
 import moment from "moment";
+import { toast } from "react-toastify";
 
 const sagas = [
     takeLatest(types.START_PROJECT_REQUEST, handleStartProject),
@@ -21,7 +22,7 @@ const sagas = [
     takeLatest(types.GET_PROJECT_INTERESADOS_REQUEST, handleGetProjectInteresados),
     takeLatest(types.CREATE_INTERESADO_REQUEST, handleInsertInteresado), // Nueva saga para crear interesado
     takeLatest(types.UPDATE_INTERESADO_REQUEST, handleUpdateInteresado),
-    takeLatest(types.GET_LIST_INTERESADOS_REQUEST, handleGetListInteresados), 
+    takeLatest(types.GET_LIST_INTERESADOS_REQUEST, handleGetListInteresados),
     takeLatest(types.GET_ANALISIS_AMBIENTAL_REQUEST, handleGetAnalisisAmbiental),
     takeLatest(types.GET_CRITERIOS_ANALISIS_AMBIENTAL_REQUEST, handleGetCriteriosAnalisisAmbiental),
     takeLatest(types.CREATE_ANALISIS_AMBIENTAL_REQUEST, handleCreateAnalisisAmbiental),
@@ -150,7 +151,16 @@ function* handleCreateProject({ payload }) {
         }
     } catch (e) {
         yield put({ type: types.CREATE_PROJECT_ERROR })
-        onError(e)
+        const status = e.response?.status
+        const serverMsg = e.response?.data?.message
+        if (status === 403) {
+            toast.error(
+                serverMsg ||
+                'No se puede crear el proyecto: ha alcanzado el límite de su plan o no tiene permiso para este tipo de proyecto.'
+            )
+        } else {
+            onError(e)
+        }
     }
 }
 
@@ -160,13 +170,22 @@ function* handleCreateGeneralDataProject({ payload }) {
         const { success, data } = response.data
         if (success) {
             yield put({ type: types.CREATE_PROJECT_GENERAL_DATA_SUCCESS, success })
-            if(payload.modo == "P") yield put(push(`/projects`));
+            if (payload.modo == "P") yield put(push(`/projects`));
             else if (payload.modo == "PR") yield put(push(`/programs`));
             else yield put(push(`/activities`));
         }
     } catch (e) {
         yield put({ type: types.CREATE_PROJECT_GENERAL_DATA_ERROR })
-        onError(e)
+        const status = e.response?.status
+        const serverMsg = e.response?.data?.message
+        if (status === 403) {
+            toast.error(
+                serverMsg ||
+                'No se puede crear el proyecto: ha alcanzado el límite de su plan o no tiene permiso para este tipo de proyecto.'
+            )
+        } else {
+            onError(e)
+        }
     }
 }
 

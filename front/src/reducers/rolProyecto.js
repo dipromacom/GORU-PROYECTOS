@@ -136,6 +136,15 @@ const rolProyectoReducer = (state = defaultState, action = {}) => {
                 userProjectRol: action.data,
                 userProjectPermisos: permisosClaves,
             };
+        
+        case types.GET_USER_PROJECT_ROL_ERROR:
+            return {
+                ...state,
+                isLoadingUserRol: false,
+                userProjectRol: null,
+                userProjectPermisos: [],
+                errorMessage: action.errorMessage || state.errorMessage,
+            };
 
         case types.ASSIGN_ROL_SUCCESS:
             return { ...state, isSavingRol: false, /* No actualizamos la lista aquí directamente, se hace en el front */ };

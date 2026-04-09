@@ -51,6 +51,7 @@ module.exports = (db, Sequelize) => {
     lecciones_aprendidas: { type: Sequelize.JSONB },
     beneficios: { type: Sequelize.JSONB },
     programa_id: { type: Sequelize.INTEGER, allowNull: true },
+    usuario_creador: { type: Sequelize.INTEGER, allowNull: true },
   }, {
     freezeTableName: true,
     tableName: 'proyecto',

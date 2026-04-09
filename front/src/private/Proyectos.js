@@ -28,11 +28,19 @@ import { FaLock } from "react-icons/fa"; // ícono de cerrado
 import Modal from "react-bootstrap/Modal";
 import ChangeControlModal from "../components/controlCambio/ChangeControlModal";
 import { selectors as sessionSelectors } from "../reducers/session";
+import {
+  defaultMembershipNavFromPlan,
+  getTipoLicenciaIdFromUser,
+  isRouteAllowedForUserPlan,
+  MEMBERSHIP_CORPORATIVO,
+  MEMBERSHIP_DEMO,
+  MEMBERSHIP_PROFESIONAL,
+} from "../libs/planLicencia";
 
 import DashboardModal from "../components/dashboard/dashboardModal";
 
 
-function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, dateFilterInput, filtersExpanded, jwtToken, usuario }) {
+function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, dateFilterInput, filtersExpanded, jwtToken, usuario, membershipNavMode }) {
 
   const MODO_CONFIG = {
     "/activities": { modo: "A", isDemoRestricted: false, newLabel: "Nuevo Proyecto Personal", title: "Proyectos Personales" },
@@ -97,15 +105,18 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
 
   useEffect(() => {
     async function onLoad() {
-
-      const modeFromStorage = localStorage.getItem("modo");
-
-      if (!modeFromStorage) {
-        dispatch(routesActions.goTo(`membership`));
-        return; // Salimos si no hay modo
+      if (!usuario) {
+        return;
       }
 
-      setSubscriptionMode(modeFromStorage);
+      const licenciaId = getTipoLicenciaIdFromUser(usuario);
+      if (licenciaId == null) {
+        dispatch(routesActions.goTo("membership"));
+        return;
+      }
+
+      const effectiveNavMode = membershipNavMode ?? defaultMembershipNavFromPlan(usuario);
+      setSubscriptionMode(effectiveNavMode);
 
       try {
         let queryParams = getFilter();
@@ -115,47 +126,43 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
         for (const pathKey in MODO_CONFIG) {
           if (currentPath.includes(pathKey)) {
             foundConfig = MODO_CONFIG[pathKey];
-            break; // Salimos tan pronto como encontramos una coincidencia
+            break;
           }
         }
- 
+
         let shouldRestrict = false;
         if (foundConfig) {
-          if (modeFromStorage === "Demo") {
+          if (!isRouteAllowedForUserPlan(currentPath, usuario)) {
+            shouldRestrict = true;
+          } else if (effectiveNavMode === MEMBERSHIP_DEMO) {
             shouldRestrict = foundConfig.isDemoRestricted;
-
-          } else if (modeFromStorage === "Profesional") {
+          } else if (effectiveNavMode === MEMBERSHIP_PROFESIONAL) {
             shouldRestrict = currentPath.includes("/programs");
-
-          } else if (modeFromStorage === "Corporativo") {
+          } else if (effectiveNavMode === MEMBERSHIP_CORPORATIVO) {
             shouldRestrict = false;
           }
-          setIsRestricted(shouldRestrict); 
+          setIsRestricted(shouldRestrict);
           queryParams = { ...queryParams, modo: foundConfig.modo };
         } else {
-          dispatch(routesActions.goTo("Membership"))
+          dispatch(routesActions.goTo("membership"));
         }
-
 
         if (!shouldRestrict) {
-          const { name, startDateFrom, startDateTo, estado, responsable } = queryParams
-          if (name || null)
-            setNombreProyecto(name)
-          if (estado || null)
-            setEstado(estado)
-          if (responsable || null)
-            setResponsable(responsable)
+          const { name, startDateFrom, startDateTo, estado, responsable } = queryParams;
+          if (name || null) { setNombreProyecto(name); }
+          if (estado || null) { setEstado(estado); }
+          if (responsable || null) { setResponsable(responsable); }
 
-          dispatch(actions.getProjectsByFilter(queryParams))
-          dispatch(actions.handleClearDateFilter())
+          dispatch(actions.getProjectsByFilter(queryParams));
+          dispatch(actions.handleClearDateFilter());
         }
       } catch (e) {
-        onError(e)
+        onError(e);
       }
     }
 
     onLoad();
-  }, [location])
+  }, [location, usuario, membershipNavMode, dispatch])
 
   const handleClickNewProyect = () => {
     const currentPath = location.pathname;
@@ -328,11 +335,11 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
                   </a>
                 </OverlayTrigger>
 
-                  <OverlayTrigger
-                    placement="top"
-                    overlay={<Tooltip id={`tooltip-regresar-${proyecto.id}`}>{getCambiarEstadoTooltip('X')}</Tooltip>}
-                  >
-                    {/*<a
+                <OverlayTrigger
+                  placement="top"
+                  overlay={<Tooltip id={`tooltip-regresar-${proyecto.id}`}>{getCambiarEstadoTooltip('X')}</Tooltip>}
+                >
+                  {/*<a
                       className="btn info"                    
                       onClick={() => {
                         const confirmResult = window.confirm("¿Desea regresar el estado del proyecto a 'Planificado'?");
@@ -341,13 +348,13 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
                         }
                       }}
                     >*/}
-                    <a
-                      className="btn info"
-                      onClick={() => handleOpenChangeControl(proyecto)} // <-- Llama al modal en lugar del confirm
-                    >
-                      <MdSettingsBackupRestore size={16} />
-                    </a>
-                  </OverlayTrigger>
+                  <a
+                    className="btn info"
+                    onClick={() => handleOpenChangeControl(proyecto)} // <-- Llama al modal en lugar del confirm
+                  >
+                    <MdSettingsBackupRestore size={16} />
+                  </a>
+                </OverlayTrigger>
 
               </div>
             ) : proyecto.estado === 'P' ? (
@@ -495,7 +502,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
   }
 
   function handleApplyFilter(e) {
-    if(e!="") e.preventDefault();
+    if (e != "") e.preventDefault();
     //const search = getFilter()?.toString()?? ''
     let search = {}
     if (nombreProyecto || null)
@@ -507,7 +514,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
     if (responsable || null)
       search = { ...search, responsable }
     const searchUrl = new URLSearchParams(search)
-    if(location.pathname.includes("/projects")) {
+    if (location.pathname.includes("/projects")) {
       dispatch(routesActions.goTo(`projects?${searchUrl.toString()}`))
     }
     else if (location.pathname.includes("/activities")) {
@@ -548,7 +555,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
               DashboardButtonAction={() => setShowDashboard(true)}
             />
 
-          {/* <SubMenu
+            {/* <SubMenu
             title="Dashboard"
             newLabel="Ver Dashboard"
             // total={dashboardList.length}  // Definir bien dashboardList
@@ -738,7 +745,7 @@ function Proyectos({ dispatch, projectList, dashboardList, endDate, startDate, d
         projectList={projectList}
         modo={getCurrentMode()}
         apiBaseUrl={process.env.REACT_APP_API_URL}
-        jwtToken={jwtToken}            
+        jwtToken={jwtToken}
       />
 
     </div>
@@ -755,6 +762,7 @@ const mapStateToProps = state => ({
   filtersExpanded: selectors.getFilterExpanded(state),
   jwtToken: state.session.jwtToken,
   usuario: sessionSelectors.getUser(state),
+  membershipNavMode: sessionSelectors.getMembershipNavMode(state),
 });
 
 export default connect(mapStateToProps)(Proyectos);

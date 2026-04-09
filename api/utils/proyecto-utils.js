@@ -8,6 +8,8 @@ const {
 const DateUtils = require("./date-utils");
 const { getNombreApellidoFromStr } = require('./string-utils');
 const { saveLog } = require('./log-service');
+const { getAllowedModos } = require('../constants/plan-licencia');
+const PlanLicenciaUtils = require('./plan-licencia-utils');
 
 // ─────────────────────────────────────────────
 // 🔹 CONSTANTE COMPARTIDA: includes base para proyectos
@@ -142,8 +144,22 @@ const getProyectoById = async (id) => {
 const getFilteredProjects = async (query, usuarioId) => {
   const { startDateFrom, startDateTo, responsable, status, name, modo } = query;
 
+  const tipoLicenciaId = await PlanLicenciaUtils.getTipoLicenciaIdUsuario(usuarioId);
+  const modosPermitidos = getAllowedModos(tipoLicenciaId);
+
   // Construir filtros dinámicos
   const where = { ...usuarioOrCondition(usuarioId) };
+
+  if (modo) {
+    if (!modosPermitidos.includes(modo)) {
+      const err = new Error('Su plan no permite listar proyectos de este tipo.');
+      err.statusCode = 403;
+      throw err;
+    }
+    where.modo = modo;
+  } else {
+    where.modo = { [Op.in]: modosPermitidos };
+  }
 
   if (startDateFrom && startDateTo) {
     where.fecha_inicio = {
@@ -152,7 +168,6 @@ const getFilteredProjects = async (query, usuarioId) => {
     };
   }
   if (status) where.estado = status;
-  if (modo) where.modo = modo;
   if (name) where.nombre = { [Op.iLike]: `%${name}%` };
 
   // Filtro de persona (director) si viene responsable
@@ -197,6 +212,8 @@ const getFilteredProjects = async (query, usuarioId) => {
 
 // 🔹 Creación simple de proyecto (sin datos completos)
 const createProyecto = async (data, usuarioId) => {
+  await PlanLicenciaUtils.assertUsuarioPuedeCrearProyecto(usuarioId, data.modo);
+
   const proyecto = await Proyecto.create({
     ...data,
     estado: 'C',
@@ -274,6 +291,8 @@ const createProyectoGeneralData = async (data, usuarioId) => {
     });
   }
 
+  await PlanLicenciaUtils.assertUsuarioPuedeCrearProyecto(usuarioId, modo);
+
   const proyecto = await Proyecto.create({
     nombre: nombreProyecto,
     informacion: informacionBreve,
@@ -283,9 +302,9 @@ const createProyectoGeneralData = async (data, usuarioId) => {
     fecha_creacion: DateUtils.getLocalDate(),
     usuario_creador: usuarioId,
     modo,
-    director: directorProyecto?.id || null,
-    patrocinador: patrocinador?.id || null,
-    departamento: departamento?.id || null,
+    director: (directorProyecto && directorProyecto.id) || null,
+    patrocinador: (patrocinador && patrocinador.id) || null,
+    departamento: (departamento && departamento.id) || null,
     ...toSnakeCase(rest),
   });
 
@@ -330,6 +349,9 @@ const updateProyecto = async (data, id, usuarioId) => {
   });
 
   if (!proyecto) throw new Error('Proyecto no encontrado');
+
+  await PlanLicenciaUtils.assertPuedeAsignarProgramaId(usuarioId, data.programa_id);
+  await PlanLicenciaUtils.assertUsuarioPuedeUsarModoEnActualizacion(usuarioId, data.modo);
 
   // Validación de programa_id si viene en los datos
   if (data.programa_id !== undefined) {
@@ -398,13 +420,13 @@ const updateProyectoGeneralData = async (data, id, usuarioId) => {
     trackChange('departamento', proyecto.Departamento.nombre, data.departamento);
   }
 
-  if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
+  if (data.directorProyecto && proyecto.DirectorProyecto && proyecto.DirectorProyecto.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
     const oldName = `${proyecto.DirectorProyecto.Persona.nombre} ${proyecto.DirectorProyecto.Persona.apellido}`.trim();
     trackChange('director', oldName, `${nombre} ${apellido}`.trim());
   }
 
-  if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
+  if (data.patrocinadorProyecto && proyecto.Patrocinador && proyecto.Patrocinador.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
     const oldName = `${proyecto.Patrocinador.Persona.nombre} ${proyecto.Patrocinador.Persona.apellido}`.trim();
     trackChange('patrocinador', oldName, `${nombre} ${apellido}`.trim());
@@ -421,13 +443,13 @@ const updateProyectoGeneralData = async (data, id, usuarioId) => {
     await proyecto.Departamento.update({ nombre: data.departamento });
   }
 
-  if (data.directorProyecto && proyecto.DirectorProyecto?.Persona) {
+  if (data.directorProyecto && proyecto.DirectorProyecto && proyecto.DirectorProyecto.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.directorProyecto);
     await proyecto.DirectorProyecto.Persona.update({ nombre, apellido });
   }
 
   // FIX: antes usaba directorProyectoDetails en la condición — ahora usa patrocinadorProyecto
-  if (data.patrocinadorProyecto && proyecto.Patrocinador?.Persona) {
+  if (data.patrocinadorProyecto && proyecto.Patrocinador && proyecto.Patrocinador.Persona) {
     const { nombre, apellido } = getNombreApellidoFromStr(data.patrocinadorProyecto);
     await proyecto.Patrocinador.Persona.update({ nombre, apellido });
   }

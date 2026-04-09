@@ -1,9 +1,17 @@
 const WhiteboardUtils = require('../utils/whiteboard-utils');
+const { decodeToken } = require('../utils/security-utils');
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
+const { P } = PermisoProyectoUtils;
 
 const getWhiteboard = async (req, res) => {
     const { id: projectId } = req.params;
 
     try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.PIZARRA_VER);
+        if (!ok) return;
+
         const whiteboard = await WhiteboardUtils.getWhiteboardByProject({ projectId });
 
         if (!whiteboard) {
@@ -28,6 +36,11 @@ const setWhiteboard = async (req, res) => {
     const { title, content } = req.body;
 
     try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.PIZARRA_GEST);
+        if (!ok) return;
+
         await WhiteboardUtils.setWhiteboard({ projectId, title, content });
         return res.status(200).json({ success: true });
     } catch (e) {
@@ -40,6 +53,11 @@ const deleteWhiteboard = async (req, res) => {
     const { id: projectId } = req.params;
 
     try {
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.PIZARRA_GEST);
+        if (!ok) return;
+
         const deleted = await WhiteboardUtils.deleteWhiteboardByProject({ projectId });
 
         if (!deleted) {

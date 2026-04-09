@@ -3,6 +3,9 @@ const LogUtils = require('../utils/log-service');
 const path = require('path');
 const file = path.basename(__filename);
 const logger = require('../logger/logger');
+const { decodeToken } = require('../utils/security-utils');
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
+const { P } = PermisoProyectoUtils;
 
 const getHistorialEstados = async (req, res) => {
     try {
@@ -14,6 +17,11 @@ const getHistorialEstados = async (req, res) => {
                 message: 'El ID del proyecto es requerido'
             });
         }
+
+        const { authorization } = req.headers;
+        const { id: usuarioId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, proyectoId, P.HISTORIAL_VER);
+        if (!ok) return;
 
         const historial = await LogUtils.getProjectStatusHistory(parseInt(proyectoId));
 
