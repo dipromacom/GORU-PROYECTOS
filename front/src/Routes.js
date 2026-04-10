@@ -30,6 +30,7 @@ import ProyectoDetail from "./private/ProyectoDetail";
 import Interesado from "./components/ProyectoDetailMatriz/Interesado";
 import Interesados from "./components/ProyectoDetailMatriz/ViewInteresados";
 import Dashboard from "./private/Dashboard";
+import AdminPlatform from "./private/AdminPlatform";
 
 const ExternalRedirect = ({ url }) => {
   useEffect(() => {
@@ -83,6 +84,7 @@ export default function Routes() {
       <Desktop exact path="/batch/:id/print" component={PrintBatch} />
       <Desktop exact path="/Interesado/:id" component={Interesado} />
       <Desktop exact path="/Dashboard" component={Dashboard} />
+      <Desktop exact path="/admin" component={AdminPlatform} />
       {/* <Desktop exact path="/Interesados" component={Interesados}/> */}
       <Route>
         <NotFound />

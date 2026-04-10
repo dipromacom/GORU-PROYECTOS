@@ -5,7 +5,7 @@ import "./TopMenu.css";
 import Form from "react-bootstrap/Form";
 import { connect } from "react-redux";
 import { actions as sessionActions, selectors as sessionSelectors } from "../../reducers/session";
-import { actions as routesActions} from "../../reducers/routes";
+import { actions as routesActions } from "../../reducers/routes";
 import { actions as personaActions, selectors as personaSelectors } from "../../reducers/persona";
 import GoogleAppsMenu from "../GoogleAppsMenu/GoogleAppsMenu";
 
@@ -66,9 +66,9 @@ function TopMenu({ dispatch, persona, user }) {
         }
       }
 
-      const userEmail = user !== null 
-                    ? user.username.length > 21 ? user.username.substring(0, 20) : user.username 
-                    : '';
+      const userEmail = user !== null
+        ? user.username.length > 21 ? user.username.substring(0, 20) : user.username
+        : '';
       setEmail(userEmail);
     }
 
@@ -99,23 +99,23 @@ function TopMenu({ dispatch, persona, user }) {
 
 
   return (
-    <div className="top-menu">  
+    <div className="top-menu">
       <div className="float-left search-container">
         <div className="search-placeholder center">
           <Form className="search-form">
-          <Form.Group controlId="email">
-          <Form.Control
-            placeholder="Buscar"
-            className="search-input"
-            autoFocus
-            type="text"
-            value={txtBuscar}
-            onChange={e => setTxtBuscar(e.target.value)}
-          />
-          <img src={`/icons/Search-icon.svg`} alt="Buscar" className="search-icon"></img>
-        </Form.Group>
+            <Form.Group controlId="email">
+              <Form.Control
+                placeholder="Buscar"
+                className="search-input"
+                autoFocus
+                type="text"
+                value={txtBuscar}
+                onChange={e => setTxtBuscar(e.target.value)}
+              />
+              <img src={`/icons/Search-icon.svg`} alt="Buscar" className="search-icon"></img>
+            </Form.Group>
 
-        </Form>
+          </Form>
         </div>
       </div>
 
@@ -124,7 +124,7 @@ function TopMenu({ dispatch, persona, user }) {
           <div className="float-left top-menu-item top-menu-text disabled">
             <GoogleAppsMenu />
           </div>
-          
+
           {/*<div className="float-left top-menu-item top-menu-text disabled">
             <p>Herramientas</p>
           </div>*/}
@@ -136,7 +136,7 @@ function TopMenu({ dispatch, persona, user }) {
           </div>
 
           <div className="float-left top-menu-item">
-          <button className="center menu-profile-button" onClick={clickProfileMenu}>
+            <button className="center menu-profile-button" onClick={clickProfileMenu}>
               <div className="float-left top-menu-text">
                 <p>{nombre}</p>
               </div>
@@ -150,36 +150,43 @@ function TopMenu({ dispatch, persona, user }) {
                 <img src={`/icons/Arrow-icon.svg`} alt="User Profile"></img>
               </div>
             </button>
-              
+
             {
               isProfileMenuClicked &&
               <div ref={divRef} className="profile-container box-shadow blue">
-              <div className="sub-item-container">
-                <p className="user-name-text">{email}</p>
-              </div>
+                <div className="sub-item-container">
+                  <p className="user-name-text">{email}</p>
+                </div>
 
-              <div className="sub-item-container">
-                <button type="button" className="btn btn-profile-menu blue-br btn-lg" onClick={handleEditProfile}>Mi Perfil</button>
-              </div>
+                <div className="sub-item-container">
+                  <button type="button" className="btn btn-profile-menu blue-br btn-lg" onClick={handleEditProfile}>Mi Perfil</button>
+                </div>
 
-              <div className="sub-separator-container">
-                <hr className="separator-menu"></hr>
-              </div>
+                {user && user.es_super_admin && (
+                  <div className="sub-item-container">
+                    <button
+                      type="button"
+                      className="btn btn-profile-menu blue-br btn-lg"
+                      onClick={() => {
+                        setProfileMenuClicked(false);
+                        handleMenuItemClick("admin");
+                      }}
+                    >
+                      Admin
+                    </button>
+                  </div>
+                )}
 
-              <div className="sub-item-container">
-                <p className="sub-item-text disabled">Administrar Usuarios</p>
-              </div>
+                <div className="sub-item-container disabled">
+                  <p className="sub-item-text disabled">Actualizar Plan</p>
+                </div>
 
-              <div className="sub-item-container disabled">
-                <p className="sub-item-text disabled">Actualizar Plan</p>
+                <div className="sub-item-container">
+                  <p onClick={handleLogout} className="sub-item-text">Cerrar Sesion</p>
+                </div>
               </div>
-
-              <div className="sub-item-container">
-                <p onClick={handleLogout} className="sub-item-text">Cerrar Sesion</p>
-              </div>
-            </div>
             }
-              
+
           </div>
         </div>
       </div>

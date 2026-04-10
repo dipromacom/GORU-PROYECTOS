@@ -1,0 +1,38 @@
+/* Contenedor principal: centrado en el área de trabajo (evita todo pegado a la izquierda) */
+.admin-platform {
+    width: 100%;
+    min-height: calc(100vh - 80px);
+    padding: 1.25rem 0 3rem;
+    box-sizing: border-box;
+}
+
+.admin-platform-content {
+    max-width: 1180px;
+    margin-left: auto;
+    margin-right: auto;
+    padding-left: clamp(1.25rem, 4vw, 3rem);
+    padding-right: clamp(1.25rem, 4vw, 3rem);
+}
+
+.admin-platform .admin-intro {
+    max-width: 52rem;
+}
+
+.admin-platform .card {
+    border-radius: 8px;
+}
+
+.admin-platform .table-responsive {
+    max-height: 70vh;
+    overflow-y: auto;
+    border-radius: 6px;
+}
+
+.admin-platform .admin-table {
+    width: 100%;
+    margin-bottom: 0;
+}
+
+.admin-platform .admin-search-row .form-group {
+    margin-bottom: 0;
+}

@@ -130,7 +130,7 @@ function Nosotros({ dipatch }) {
         />
 
         <StaffCard
-          title="Master en Administración de Empresas"
+          title="Master en ón de Empresas"
           photo="persona.jpg"
         />
 

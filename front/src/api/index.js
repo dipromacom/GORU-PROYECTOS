@@ -266,6 +266,16 @@ export const deleteWhiteboard = ({ projectId }) => {
 // Usuarios por Empresa
 export const getUsuariosByEmpresa = empresaId => apiWithToken.get(`/empresa/${empresaId}/usuarios`);
 
+// Administración plataforma (requiere usuario.es_super_admin en BD)
+export const getAdminUsuarios = (params) => apiWithToken.get('/admin/usuarios', { params });
+export const patchAdminUsuarioTipoLicencia = (usuarioId, tipoLicenciaId) =>
+  apiWithToken.patch(`/admin/usuarios/${usuarioId}/tipo-licencia`, { tipoLicenciaId });
+export const patchAdminUsuarioEmpresa = (usuarioId, empresaId) =>
+  apiWithToken.patch(`/admin/usuarios/${usuarioId}/empresa`, { empresaId });
+export const postAdminEmpresa = (payload) => apiWithToken.post('/admin/empresas', payload);
+export const getAllTipoLicenciaCatalogo = () => api.get('/tipo-licencia');
+export const getAllEmpresasCatalogo = () => api.get('/empresa');
+
 
 // --- CRUD Roles de Proyecto ---
 

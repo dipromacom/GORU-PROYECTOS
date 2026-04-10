@@ -3,6 +3,7 @@
 require("dotenv").config({ path: `.env.${process.env.NODE_ENV}` });
 const bcrypt = require('bcrypt');
 const path = require('path');
+const { Op } = require('sequelize');
 const { Usuario } = require('../models/index');
 const {
   Empresa, Persona, TipoLicencia, NivelPermiso, DirectorProyecto,
@@ -39,7 +40,7 @@ const getUsuarioById = async (id) => {
     where: {
       id, suspendido: false, eliminado: false,
     },
-    attributes: ['id', 'username', 'persona', 'tipo_licencia', 'empresa'],
+    attributes: ['id', 'username', 'persona', 'tipo_licencia', 'empresa', 'es_super_admin'],
     include: [
       {
         model: Persona,
@@ -265,6 +266,43 @@ const setTipoLicencia = async (usuario, tipoLicenciaId) => {
   }
 };
 
+/**
+ * Asigna tipo de licencia por id de usuario (p. ej. panel admin).
+ */
+const setTipoLicenciaForUsuarioId = async (userId, tipoLicenciaId) => {
+  const usuario = await Usuario.findByPk(userId);
+  if (!usuario) {
+    throw new Error(`Usuario con ID ${userId} no encontrado.`);
+  }
+  await setTipoLicencia(usuario, tipoLicenciaId);
+  return getUsuarioById(userId);
+};
+
+/**
+ * Listado paginado para administración de plataforma.
+ */
+const listUsuariosForAdmin = async ({ limit, offset, q }) => {
+  const lim = Math.min(Math.max(parseInt(limit, 10) || 50, 1), 100);
+  const off = Math.max(parseInt(offset, 10) || 0, 0);
+  const where = { suspendido: false, eliminado: false };
+  const trimmed = q != null && String(q).trim() !== '' ? String(q).trim() : '';
+  if (trimmed) {
+    where.username = { [Op.iLike]: `%${trimmed}%` };
+  }
+  const { count, rows } = await Usuario.findAndCountAll({
+    where,
+    limit: lim,
+    offset: off,
+    attributes: ['id', 'username', 'tipo_licencia', 'empresa', 'es_super_admin', 'fecha_creacion'],
+    include: [
+      { model: TipoLicencia, as: 'TipoLicencia', attributes: ['id', 'nombre'], required: false },
+      { model: Empresa, as: 'Empresa', attributes: ['id', 'nombre'], required: false },
+    ],
+    order: [['id', 'DESC']],
+  });
+  return { total: count, limit: lim, offset: off, rows };
+};
+
 const updatePassword = async (usuario, password) => {
   try {
     const hashedPassword = bcrypt.hashSync(password, Number(process.env.SALT_ROUNDS));
@@ -368,8 +406,7 @@ const updateUsuarioEmpresa = async (userId, empresaId) => {
       throw new Error(`Empresa con ID ${empresaId} no encontrado.`);
     }
 
-    // Actualizar el empresa_id
-    await usuario.update({ empresa_id: empresaId });
+    await usuario.update({ empresa: empresaId });
 
     // Obtener el usuario completo con las nuevas asociaciones
     const updatedUsuario = await getUsuarioById(userId);
@@ -426,6 +463,8 @@ module.exports = {
   getUsuarioByEmail,
   getOnbStep,
   setTipoLicencia,
+  setTipoLicenciaForUsuarioId,
+  listUsuariosForAdmin,
   updatePassword,
   getUsuarioByAwsId,
   updateUsuarioRol,

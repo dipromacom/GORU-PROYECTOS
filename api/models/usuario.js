@@ -22,7 +22,12 @@ module.exports = (db, Sequelize) => {
         model: 'rol', // Nombre de la tabla
         key: 'id'
       }
-    }
+    },
+    es_super_admin: {
+      type: Sequelize.BOOLEAN,
+      allowNull: false,
+      defaultValue: false,
+    },
   }, {
     freezeTableName: true,
     tableName: 'usuario',
