@@ -1,8 +1,25 @@
 import React, { useState, useEffect } from 'react';
 import { Modal, Button, Form, Row, Col, Alert, Badge, Table } from 'react-bootstrap';
 import { useDispatch } from 'react-redux';
+import { toast } from 'react-toastify';
 import { actions as informeActions } from "../../reducers/informe-avance";
 import RiskHeatmapMatrix from '../summaryChart/RiskHeatmapMatrix';
+import { buildNovaStructuredDump, NOVA_DUMP_MAX_CHARS } from './novaInformeDump';
+
+/** GPT personalizado NOVA (sin API; el usuario conversa en ChatGPT y pega la respuesta en GORU). */
+const NOVA_GPT_URL = 'https://chatgpt.com/g/g-6994b0ba071c8191abacf65b2da3deca-nova';
+
+/** Alineado a NOVA opción 1.1 — evaluación de proyecto en marcha / informe de avance. */
+const NOVA_INSTR_RECOMENDACIONES =
+    'Usá en NOVA la opción "1.1 Evaluación de un proyecto en marcha" si la tenés a mano. '
+    + 'Evaluá el estado del proyecto basándote en el siguiente informe de avance y volcado de datos desde GORU. '
+    + 'Analizá alcance, cronograma, costos, riesgos y salud general del proyecto; identificá desviaciones, riesgos críticos '
+    + 'y recomendaciones ejecutivas. Respondé en español, con viñetas o secciones breves.\n\n';
+
+const NOVA_INSTR_PLAN =
+    'Usá en NOVA la opción "1.1 Evaluación de un proyecto en marcha" cuando aplique. '
+    + 'Con el volcado estructurado de GORU y el borrador del informe, proponé un plan concreto: qué hacer ahora, prioridades, '
+    + 'responsables sugeridos si aplica, y próximos pasos en orden lógico. Español, tono profesional, secciones numeradas.\n\n';
 
 const InformeAvanceModal = ({
     show,
@@ -35,6 +52,9 @@ const InformeAvanceModal = ({
         conclusiones: '',
         proximosPasos: ''
     });
+    const [recomendacionesIa, setRecomendacionesIa] = useState('');
+    const [planSugeridoIa, setPlanSugeridoIa] = useState('');
+    const [showIaPlanModal, setShowIaPlanModal] = useState(false);
     const [errors, setErrors] = useState({});
 
     useEffect(() => {
@@ -47,6 +67,8 @@ const InformeAvanceModal = ({
                 conclusiones: informeEditar.conclusiones || '',
                 proximosPasos: informeEditar.proximos_pasos || ''
             });
+            setRecomendacionesIa(informeEditar.recomendaciones_ia || '');
+            setPlanSugeridoIa(informeEditar.plan_sugerido_ia || '');
         } else {
             setFormData({
                 nombrePersona: '',
@@ -54,6 +76,8 @@ const InformeAvanceModal = ({
                 conclusiones: '',
                 proximosPasos: ''
             });
+            setRecomendacionesIa('');
+            setPlanSugeridoIa('');
         }
     }, [informeEditar, show]);
 
@@ -88,7 +112,9 @@ const InformeAvanceModal = ({
             nombrePersona: formData.nombrePersona.trim(),
             fechaInforme: formData.fechaInforme,
             conclusiones: formData.conclusiones.trim(),
-            proximosPasos: formData.proximosPasos.trim()
+            proximosPasos: formData.proximosPasos.trim(),
+            recomendacionesIa: recomendacionesIa.trim(),
+            planSugeridoIa: planSugeridoIa.trim(),
         };
 
         if (informeEditar) {
@@ -193,197 +219,261 @@ const InformeAvanceModal = ({
         }
     };
 
+    const openNovaEnNuevaPestana = () => {
+        window.open(NOVA_GPT_URL, '_blank', 'noopener,noreferrer');
+    };
+
+    const copiarPortapapeles = async (texto) => {
+        try {
+            await navigator.clipboard.writeText(texto);
+            const truncado = texto.includes('[--- GORU: volcado truncado');
+            toast.success(
+                truncado
+                    ? 'Texto copiado (el volcado llegó al tope y se truncó al final). Pégalo en NOVA.'
+                    : 'Texto copiado al portapapeles. Pégalo en NOVA (ChatGPT).',
+            );
+        } catch {
+            toast.warn('No se pudo copiar automáticamente. Seleccione y copie el texto manualmente.');
+        }
+    };
+
+    const getNovaDumpTexto = () =>
+        buildNovaStructuredDump({
+            proyectoId,
+            projectDetail,
+            formData,
+            recomendacionesIa,
+            resumenEjecucion,
+            resumenDesempeno,
+            estadisticas,
+            logs,
+            riesgosList,
+            listaSolicitudes,
+            listaEncuestas,
+            alcanceEntregables,
+            tiempoFechasCriticas,
+            costoEntregable,
+            calidadMetricas,
+            todo,
+            totalesAprobados,
+            presupuesto,
+            ganttSummary,
+            leccionesAprendidas,
+            hayRetrasos,
+            hayCualquierAlerta,
+            impactoDolares,
+            totalImpactoTiempo,
+            solicitudesAprobadasCount: solicitudesAprobadas.length,
+        });
+
+    const handleRecomendacionesIa = () => {
+        openNovaEnNuevaPestana();
+        copiarPortapapeles(NOVA_INSTR_RECOMENDACIONES + getNovaDumpTexto());
+    };
+
+    const handleQueHacemosAhora = () => {
+        setShowIaPlanModal(true);
+        openNovaEnNuevaPestana();
+        copiarPortapapeles(NOVA_INSTR_PLAN + getNovaDumpTexto());
+    };
+
+    const handleReabrirNovaPlan = () => {
+        openNovaEnNuevaPestana();
+        copiarPortapapeles(NOVA_INSTR_PLAN + getNovaDumpTexto());
+    };
+
     return (
-        <Modal show={show} onHide={onHide} size="xl" backdrop="static" centered>
-            <Modal.Header closeButton>
-                <Modal.Title>
-                    {informeEditar ? 'Editar Informe de Avance' : 'Nuevo Informe de Avance'}
-                </Modal.Title>
-            </Modal.Header>
-            <Modal.Body style={{ maxHeight: '75vh', overflowY: 'auto' }}>
-                {Object.keys(errors).length > 0 && (
-                    <Alert variant="danger" className="mb-3">
-                        Por favor, complete todos los campos obligatorios.
-                    </Alert>
-                )}
+        <>
+            <Modal show={show} onHide={onHide} size="xl" backdrop="static" centered enforceFocus={false}>
+                <Modal.Header closeButton>
+                    <Modal.Title>
+                        {informeEditar ? 'Editar Informe de Avance' : 'Nuevo Informe de Avance'}
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body style={{ maxHeight: '75vh', overflowY: 'auto' }}>
+                    {Object.keys(errors).length > 0 && (
+                        <Alert variant="danger" className="mb-3">
+                            Por favor, complete todos los campos obligatorios.
+                        </Alert>
+                    )}
 
-                {/* Nombre */}
-                <Form.Group className="mb-4">
-                    <Form.Label className="fw-bold">
-                        Nombre de la Persona <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                        type="text"
-                        placeholder="Ingrese el nombre completo de quien genera el informe"
-                        value={formData.nombrePersona}
-                        onChange={(e) => handleChange('nombrePersona', e.target.value)}
-                        isInvalid={!!errors.nombrePersona}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.nombrePersona}</Form.Control.Feedback>
-                </Form.Group>
+                    {/* Nombre */}
+                    <Form.Group className="mb-4">
+                        <Form.Label className="fw-bold">
+                            Nombre de la Persona <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                            type="text"
+                            placeholder="Ingrese el nombre completo de quien genera el informe"
+                            value={formData.nombrePersona}
+                            onChange={(e) => handleChange('nombrePersona', e.target.value)}
+                            isInvalid={!!errors.nombrePersona}
+                        />
+                        <Form.Control.Feedback type="invalid">{errors.nombrePersona}</Form.Control.Feedback>
+                    </Form.Group>
 
-                {/* Fecha */}
-                <Form.Group className="mb-4">
-                    <Form.Label className="fw-bold">Fecha del Informe</Form.Label>
-                    <Form.Control
-                        type="date"
-                        value={formData.fechaInforme}
-                        onChange={(e) => handleChange('fechaInforme', e.target.value)}
-                    />
-                </Form.Group>
+                    {/* Fecha */}
+                    <Form.Group className="mb-4">
+                        <Form.Label className="fw-bold">Fecha del Informe</Form.Label>
+                        <Form.Control
+                            type="date"
+                            value={formData.fechaInforme}
+                            onChange={(e) => handleChange('fechaInforme', e.target.value)}
+                        />
+                    </Form.Group>
 
-                <hr className="my-4" />
+                    <hr className="my-4" />
 
-                {/* Info del proyecto */}
-                <h5 className="mb-3 text-primary">
-                    <i className="bi bi-info-circle me-2"></i>
-                    Información del {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto"}
-                </h5>
-                <Row className="mb-4">
-                    <Col md={6}>
-                        <div className="p-3 bg-light rounded">
-                            <strong>Nombre:</strong>
-                            <p className="mb-0">{projectDetail?.nombre}</p>
-                        </div>
-                    </Col>
-                    <Col md={6}>
-                        <div className="p-3 bg-light rounded">
-                            <strong>Estado:</strong>
-                            <p className="mb-0">
-                                {projectDetail?.estado === 'P' && 'Planificado'}
-                                {projectDetail?.estado === 'S' && 'Iniciado'}
-                                {projectDetail?.estado === 'X' && 'En Ejecución'}
-                                {projectDetail?.estado === 'E' && 'Cerrado'}
-                            </p>
-                        </div>
-                    </Col>
-                </Row>
-                <Row className="mb-4">
-                    <Col md={6}>
-                        <div className="p-3 bg-light rounded">
-                            <strong>Director:</strong>
-                            <p className="mb-0">
-                                {projectDetail?.DirectorProyecto?.Persona
-                                    ? `${projectDetail.DirectorProyecto.Persona.nombre} ${projectDetail.DirectorProyecto.Persona.apellido}`
-                                    : 'No asignado'}
-                            </p>
-                        </div>
-                    </Col>
-                    <Col md={6}>
-                        <div className="p-3 bg-light rounded">
-                            <strong>Patrocinador:</strong>
-                            <p className="mb-0">
-                                {projectDetail?.Patrocinador?.Persona
-                                    ? `${projectDetail.Patrocinador.Persona.nombre} ${projectDetail.Patrocinador.Persona.apellido}`
-                                    : 'No asignado'}
-                            </p>
-                        </div>
-                    </Col>
-                </Row>
-                <Row className="mb-4">
-                    <Col md={6}>
-                        <div className="p-3 bg-light rounded">
-                            <strong>Departamento:</strong>
-                            <p className="mb-0">{projectDetail?.Departamento?.nombre}</p>
-                        </div>
-                    </Col>
-                    <Col md={6}>
-                        <div className="p-3 bg-light rounded">
-                            <strong>Información breve:</strong>
-                            <p className="mb-0">{projectDetail?.informacion}</p>
-                        </div>
-                    </Col>
-                </Row>
-                {!esPrograma && (
+                    {/* Info del proyecto */}
+                    <h5 className="mb-3 text-primary">
+                        <i className="bi bi-info-circle me-2"></i>
+                        Información del {esActividad ? "Proyecto Personal" : esPrograma ? "Programa" : "Proyecto"}
+                    </h5>
                     <Row className="mb-4">
                         <Col md={6}>
                             <div className="p-3 bg-light rounded">
-                                <strong>Tipo de proyecto:</strong>
+                                <strong>Nombre:</strong>
+                                <p className="mb-0">{projectDetail?.nombre}</p>
+                            </div>
+                        </Col>
+                        <Col md={6}>
+                            <div className="p-3 bg-light rounded">
+                                <strong>Estado:</strong>
                                 <p className="mb-0">
-                                    {projectDetail?.tipo_proyecto === 1 && 'Ágil'}
-                                    {projectDetail?.tipo_proyecto === 2 && 'Predictivo'}
-                                    {projectDetail?.tipo_proyecto === 3 && 'Híbrido'}
+                                    {projectDetail?.estado === 'P' && 'Planificado'}
+                                    {projectDetail?.estado === 'S' && 'Iniciado'}
+                                    {projectDetail?.estado === 'X' && 'En Ejecución'}
+                                    {projectDetail?.estado === 'E' && 'Cerrado'}
                                 </p>
                             </div>
                         </Col>
                     </Row>
-                )}
-
-                {/* Datos financieros y temporales para análisis */}
-                <Row className="mb-4">
-                    <Col md={4}>
-                        <div className="p-3 bg-light rounded text-center">
-                            <strong className="d-block mb-1">Presupuesto Planificado</strong>
-                            <h5 className="text-primary mb-0">{formatCurrency(presupuesto)}</h5>
-                        </div>
-                    </Col>
-                    <Col md={4}>
-                        <div className="p-3 bg-light rounded text-center">
-                            <strong className="d-block mb-1">Fecha de Inicio</strong>
-                            <p className="mb-0">{formatDate(projectDetail?.fecha_inicio)}</p>
-                        </div>
-                    </Col>
-                    <Col md={4}>
-                        <div className="p-3 bg-light rounded text-center">
-                            <strong className="d-block mb-1">Fecha de Cierre</strong>
-                            <p className="mb-0">{formatDate(projectDetail?.fecha_cierre)}</p>
-                        </div>
-                    </Col>
-                </Row>
-                {ganttSummary && (
                     <Row className="mb-4">
-                        <Col md={4}>
-                            <div className="p-3 bg-light rounded text-center">
-                                <strong className="d-block mb-1">Inicio (Gantt)</strong>
-                                <p className="mb-0">{ganttSummary.start}</p>
+                        <Col md={6}>
+                            <div className="p-3 bg-light rounded">
+                                <strong>Director:</strong>
+                                <p className="mb-0">
+                                    {projectDetail?.DirectorProyecto?.Persona
+                                        ? `${projectDetail.DirectorProyecto.Persona.nombre} ${projectDetail.DirectorProyecto.Persona.apellido}`
+                                        : 'No asignado'}
+                                </p>
                             </div>
                         </Col>
-                        <Col md={4}>
-                            <div className="p-3 bg-light rounded text-center">
-                                <strong className="d-block mb-1">Fin (Gantt)</strong>
-                                <p className="mb-0">{ganttSummary.end}</p>
-                            </div>
-                        </Col>
-                        <Col md={4}>
-                            <div className="p-3 bg-light rounded text-center">
-                                <strong className="d-block mb-1">Total Días (Gantt)</strong>
-                                <h5 className="text-info mb-0">{ganttSummary.totalDays} días</h5>
+                        <Col md={6}>
+                            <div className="p-3 bg-light rounded">
+                                <strong>Patrocinador:</strong>
+                                <p className="mb-0">
+                                    {projectDetail?.Patrocinador?.Persona
+                                        ? `${projectDetail.Patrocinador.Persona.nombre} ${projectDetail.Patrocinador.Persona.apellido}`
+                                        : 'No asignado'}
+                                </p>
                             </div>
                         </Col>
                     </Row>
-                )}
+                    <Row className="mb-4">
+                        <Col md={6}>
+                            <div className="p-3 bg-light rounded">
+                                <strong>Departamento:</strong>
+                                <p className="mb-0">{projectDetail?.Departamento?.nombre}</p>
+                            </div>
+                        </Col>
+                        <Col md={6}>
+                            <div className="p-3 bg-light rounded">
+                                <strong>Información breve:</strong>
+                                <p className="mb-0">{projectDetail?.informacion}</p>
+                            </div>
+                        </Col>
+                    </Row>
+                    {!esPrograma && (
+                        <Row className="mb-4">
+                            <Col md={6}>
+                                <div className="p-3 bg-light rounded">
+                                    <strong>Tipo de proyecto:</strong>
+                                    <p className="mb-0">
+                                        {projectDetail?.tipo_proyecto === 1 && 'Ágil'}
+                                        {projectDetail?.tipo_proyecto === 2 && 'Predictivo'}
+                                        {projectDetail?.tipo_proyecto === 3 && 'Híbrido'}
+                                    </p>
+                                </div>
+                            </Col>
+                        </Row>
+                    )}
 
-                <hr className="my-4" />
+                    {/* Datos financieros y temporales para análisis */}
+                    <Row className="mb-4">
+                        <Col md={4}>
+                            <div className="p-3 bg-light rounded text-center">
+                                <strong className="d-block mb-1">Presupuesto Planificado</strong>
+                                <h5 className="text-primary mb-0">{formatCurrency(presupuesto)}</h5>
+                            </div>
+                        </Col>
+                        <Col md={4}>
+                            <div className="p-3 bg-light rounded text-center">
+                                <strong className="d-block mb-1">Fecha de Inicio</strong>
+                                <p className="mb-0">{formatDate(projectDetail?.fecha_inicio)}</p>
+                            </div>
+                        </Col>
+                        <Col md={4}>
+                            <div className="p-3 bg-light rounded text-center">
+                                <strong className="d-block mb-1">Fecha de Cierre</strong>
+                                <p className="mb-0">{formatDate(projectDetail?.fecha_cierre)}</p>
+                            </div>
+                        </Col>
+                    </Row>
+                    {ganttSummary && (
+                        <Row className="mb-4">
+                            <Col md={4}>
+                                <div className="p-3 bg-light rounded text-center">
+                                    <strong className="d-block mb-1">Inicio (Gantt)</strong>
+                                    <p className="mb-0">{ganttSummary.start}</p>
+                                </div>
+                            </Col>
+                            <Col md={4}>
+                                <div className="p-3 bg-light rounded text-center">
+                                    <strong className="d-block mb-1">Fin (Gantt)</strong>
+                                    <p className="mb-0">{ganttSummary.end}</p>
+                                </div>
+                            </Col>
+                            <Col md={4}>
+                                <div className="p-3 bg-light rounded text-center">
+                                    <strong className="d-block mb-1">Total Días (Gantt)</strong>
+                                    <h5 className="text-info mb-0">{ganttSummary.totalDays} días</h5>
+                                </div>
+                            </Col>
+                        </Row>
+                    )}
 
-                {/* ── RESUMEN SATISFACCIÓN Y CONTROL DE CAMBIOS ── */}
-                <h5 className="mb-3 text-primary">
-                    <i className="bi bi-graph-up-arrow me-2"></i>
-                    Resumen de Satisfacción y Control de Cambios
-                </h5>
-                <Row className="mb-3">
-                    <Col md={4}>
-                        <div className="p-3 bg-light rounded text-center">
-                            <strong>Promedio Encuestas de Satisfacción:</strong>
-                            <h4 className="text-success mb-0">{estadisticas?.satisfaccionGeneral} / 5</h4>
-                            <small className="text-muted">Basado en {estadisticas?.totalEncuestas || 0} encuesta(s)</small>
-                        </div>
-                    </Col>
-                    <Col md={4}>
-                        <div className="p-3 bg-light rounded text-center">
-                            <strong>Total Cambios de Estados:</strong>
-                            <h4 className="text-success mb-0">{logs?.length || 0}</h4>
-                        </div>
-                    </Col>
-                    <Col md={4}>
-                        <div className="p-3 bg-light rounded text-center">
-                            <strong>Solicitudes Aprobadas:</strong>
-                            <h4 className="text-primary mb-0">{totalesAprobados.cantidad}</h4>
-                            <small className="text-muted">de {listaSolicitudes.length} solicitudes</small>
-                        </div>
-                    </Col>
-                </Row>
+                    <hr className="my-4" />
 
-                {/* Desvío acumulado aprobado 
+                    {/* ── RESUMEN SATISFACCIÓN Y CONTROL DE CAMBIOS ── */}
+                    <h5 className="mb-3 text-primary">
+                        <i className="bi bi-graph-up-arrow me-2"></i>
+                        Resumen de Satisfacción y Control de Cambios
+                    </h5>
+                    <Row className="mb-3">
+                        <Col md={4}>
+                            <div className="p-3 bg-light rounded text-center">
+                                <strong>Promedio Encuestas de Satisfacción:</strong>
+                                <h4 className="text-success mb-0">{estadisticas?.satisfaccionGeneral} / 5</h4>
+                                <small className="text-muted">Basado en {estadisticas?.totalEncuestas || 0} encuesta(s)</small>
+                            </div>
+                        </Col>
+                        <Col md={4}>
+                            <div className="p-3 bg-light rounded text-center">
+                                <strong>Total Cambios de Estados:</strong>
+                                <h4 className="text-success mb-0">{logs?.length || 0}</h4>
+                            </div>
+                        </Col>
+                        <Col md={4}>
+                            <div className="p-3 bg-light rounded text-center">
+                                <strong>Solicitudes Aprobadas:</strong>
+                                <h4 className="text-primary mb-0">{totalesAprobados.cantidad}</h4>
+                                <small className="text-muted">de {listaSolicitudes.length} solicitudes</small>
+                            </div>
+                        </Col>
+                    </Row>
+
+                    {/* Desvío acumulado aprobado 
                 {totalesAprobados.cantidad > 0 && (
                     <div className="p-3 border border-warning rounded bg-white mb-4 d-flex align-items-center shadow-sm">
                         <i className="bi bi-exclamation-triangle-fill text-warning fs-4 me-3"></i>
@@ -407,492 +497,575 @@ const InformeAvanceModal = ({
                     </div>
                 )}*/}
 
-                {/* ── DETALLE ENCUESTAS DE SATISFACCIÓN ── */}
-                {listaEncuestas && listaEncuestas.length > 0 && (
-                    <>
-                        <hr className="my-4" />
-                        <h5 className="mb-3 text-primary">
-                            <i className="bi bi-journal-check me-2"></i>
-                            Detalle de Encuestas de Satisfacción
-                        </h5>
-                        <div className="table-responsive mb-3">
-                            <Table striped bordered hover size="sm">
-                                <thead className="table-light">
-                                    <tr>
-                                        <th>Nombre</th>
-                                        <th>Fecha</th>
-                                        <th className="text-center">Comunicación</th>
-                                        <th className="text-center">Plazos</th>
-                                        <th className="text-center">Alcance</th>
-                                        <th className="text-center">Calidad</th>
-                                        <th className="text-center">Promedio</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {listaEncuestas.map(enc => {
-                                        const promedio = parseFloat(calcularPromedioEncuesta(enc));
-                                        return (
-                                            <tr key={enc.id}>
-                                                <td><strong>{enc.nombre}</strong></td>
-                                                <td>{new Date(enc.createdAt).toLocaleDateString('es-ES')}</td>
-                                                <td className="text-center">{enc.comunicacion || '-'}</td>
-                                                <td className="text-center">{enc.cumplimiento_plazos || '-'}</td>
-                                                <td className="text-center">{enc.cumplimiento_alcance || '-'}</td>
-                                                <td className="text-center">{enc.calidad_entregado || '-'}</td>
+                    {/* ── DETALLE ENCUESTAS DE SATISFACCIÓN ── */}
+                    {listaEncuestas && listaEncuestas.length > 0 && (
+                        <>
+                            <hr className="my-4" />
+                            <h5 className="mb-3 text-primary">
+                                <i className="bi bi-journal-check me-2"></i>
+                                Detalle de Encuestas de Satisfacción
+                            </h5>
+                            <div className="table-responsive mb-3">
+                                <Table striped bordered hover size="sm">
+                                    <thead className="table-light">
+                                        <tr>
+                                            <th>Nombre</th>
+                                            <th>Fecha</th>
+                                            <th className="text-center">Comunicación</th>
+                                            <th className="text-center">Plazos</th>
+                                            <th className="text-center">Alcance</th>
+                                            <th className="text-center">Calidad</th>
+                                            <th className="text-center">Promedio</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {listaEncuestas.map(enc => {
+                                            const promedio = parseFloat(calcularPromedioEncuesta(enc));
+                                            return (
+                                                <tr key={enc.id}>
+                                                    <td><strong>{enc.nombre}</strong></td>
+                                                    <td>{new Date(enc.createdAt).toLocaleDateString('es-ES')}</td>
+                                                    <td className="text-center">{enc.comunicacion || '-'}</td>
+                                                    <td className="text-center">{enc.cumplimiento_plazos || '-'}</td>
+                                                    <td className="text-center">{enc.cumplimiento_alcance || '-'}</td>
+                                                    <td className="text-center">{enc.calidad_entregado || '-'}</td>
+                                                    <td className="text-center">
+                                                        <Badge bg={promedio >= 4 ? 'success' : promedio >= 3 ? 'warning' : 'danger'}>
+                                                            {promedio} / 5
+                                                        </Badge>
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </Table>
+                            </div>
+                        </>
+                    )}
+
+                    {/* ── DETALLE CONTROLES DE CAMBIO ── */}
+                    {listaSolicitudes && listaSolicitudes.length > 0 && (
+                        <>
+                            <hr className="my-4" />
+                            <h5 className="mb-3 text-primary">
+                                <i className="bi bi-arrow-left-right me-2"></i>
+                                Detalle de Solicitudes de Control de Cambios
+                            </h5>
+                            <div className="table-responsive mb-3">
+                                <Table striped bordered hover size="sm">
+                                    <thead className="table-light">
+                                        <tr>
+                                            <th>#</th>
+                                            <th>Nombre del Cambio</th>
+                                            <th>Solicitante</th>
+                                            <th className="text-center">Impacto</th>
+                                            <th className="text-center">Estado</th>
+                                            <th>Resolución</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {listaSolicitudes.map(sol => (
+                                            <tr key={sol.id}>
+                                                <td>{sol.id}</td>
+                                                <td><strong>{sol.nombre_cambio}</strong></td>
+                                                <td>{sol.nombre_solicitante}</td>
                                                 <td className="text-center">
-                                                    <Badge bg={promedio >= 4 ? 'success' : promedio >= 3 ? 'warning' : 'danger'}>
-                                                        {promedio} / 5
+                                                    <Badge bg={getBadgeImpacto(sol.impacto_proyecto)}>
+                                                        {sol.impacto_proyecto}
                                                     </Badge>
                                                 </td>
+                                                <td className="text-center">
+                                                    <Badge bg={getBadgeEstadoCambio(sol.estado)}>
+                                                        {sol.estado}
+                                                    </Badge>
+                                                </td>
+                                                <td style={{ maxWidth: '200px', fontSize: '0.8rem' }}>
+                                                    {sol.resolucion || <span className="text-muted">Sin resolución</span>}
+                                                </td>
                                             </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </Table>
-                        </div>
-                    </>
-                )}
+                                        ))}
+                                    </tbody>
+                                </Table>
+                            </div>
 
-                {/* ── DETALLE CONTROLES DE CAMBIO ── */}
-                {listaSolicitudes && listaSolicitudes.length > 0 && (
-                    <>
-                        <hr className="my-4" />
-                        <h5 className="mb-3 text-primary">
-                            <i className="bi bi-arrow-left-right me-2"></i>
-                            Detalle de Solicitudes de Control de Cambios
-                        </h5>
-                        <div className="table-responsive mb-3">
-                            <Table striped bordered hover size="sm">
-                                <thead className="table-light">
-                                    <tr>
-                                        <th>#</th>
-                                        <th>Nombre del Cambio</th>
-                                        <th>Solicitante</th>
-                                        <th className="text-center">Impacto</th>
-                                        <th className="text-center">Estado</th>
-                                        <th>Resolución</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {listaSolicitudes.map(sol => (
-                                        <tr key={sol.id}>
-                                            <td>{sol.id}</td>
-                                            <td><strong>{sol.nombre_cambio}</strong></td>
-                                            <td>{sol.nombre_solicitante}</td>
-                                            <td className="text-center">
-                                                <Badge bg={getBadgeImpacto(sol.impacto_proyecto)}>
-                                                    {sol.impacto_proyecto}
-                                                </Badge>
-                                            </td>
-                                            <td className="text-center">
-                                                <Badge bg={getBadgeEstadoCambio(sol.estado)}>
-                                                    {sol.estado}
-                                                </Badge>
-                                            </td>
-                                            <td style={{ maxWidth: '200px', fontSize: '0.8rem' }}>
-                                                {sol.resolucion || <span className="text-muted">Sin resolución</span>}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </Table>
-                        </div>
+                            {/* Impacto acumulado de aprobados */}
+                            {solicitudesAprobadas.length > 0 && (
+                                <>
+                                    <small className="text-muted fw-bold text-uppercase d-block mb-2">
+                                        <i className="bi bi-check-circle-fill text-success me-1"></i>
+                                        Impacto acumulado de cambios aprobados ({solicitudesAprobadas.length})
+                                    </small>
+                                    <Row>
+                                        <Col md={6}>
+                                            <div className="p-3 rounded text-center border border-success border-opacity-50">
+                                                <strong className="d-block mb-1 text-muted">
+                                                    <i className="bi bi-currency-dollar me-1"></i>
+                                                    Impacto Económico Total
+                                                </strong>
+                                                <h4 className="text-success mb-0">
+                                                    ${impactoDolares.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                                                </h4>
+                                                <small className="text-muted">
+                                                    suma de {solicitudesAprobadas.length} solicitud{solicitudesAprobadas.length !== 1 ? 'es' : ''} aprobada{solicitudesAprobadas.length !== 1 ? 's' : ''}
+                                                </small>
+                                            </div>
+                                        </Col>
+                                        <Col md={6}>
+                                            <div className="p-3 rounded text-center border border-success border-opacity-50">
+                                                <strong className="d-block mb-1 text-muted">
+                                                    <i className="bi bi-clock me-1"></i>
+                                                    Impacto en Tiempo
+                                                </strong>
+                                                {totalImpactoTiempo > 0 ? (
+                                                    <>
+                                                        <h4 className="text-success fw-bold mb-0">{totalImpactoTiempo}</h4>
+                                                        <small className="text-muted">días laborables acumulados</small>
+                                                    </>
+                                                ) : (
+                                                    <p className="text-muted mb-0 mt-2 small">Sin impacto en tiempo registrado</p>
+                                                )}
+                                            </div>
+                                        </Col>
+                                    </Row>
+                                </>
+                            )}
+                        </>
+                    )}
 
-                        {/* Impacto acumulado de aprobados */}
-                        {solicitudesAprobadas.length > 0 && (
-                            <>
-                                <small className="text-muted fw-bold text-uppercase d-block mb-2">
-                                    <i className="bi bi-check-circle-fill text-success me-1"></i>
-                                    Impacto acumulado de cambios aprobados ({solicitudesAprobadas.length})
-                                </small>
-                                <Row>
-                                    <Col md={6}>
-                                        <div className="p-3 rounded text-center border border-success border-opacity-50">
-                                            <strong className="d-block mb-1 text-muted">
-                                                <i className="bi bi-currency-dollar me-1"></i>
-                                                Impacto Económico Total
-                                            </strong>
-                                            <h4 className="text-success mb-0">
-                                                ${impactoDolares.toLocaleString('es-ES', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
-                                            </h4>
-                                            <small className="text-muted">
-                                                suma de {solicitudesAprobadas.length} solicitud{solicitudesAprobadas.length !== 1 ? 'es' : ''} aprobada{solicitudesAprobadas.length !== 1 ? 's' : ''}
-                                            </small>
-                                        </div>
-                                    </Col>
-                                    <Col md={6}>
-                                        <div className="p-3 rounded text-center border border-success border-opacity-50">
-                                            <strong className="d-block mb-1 text-muted">
-                                                <i className="bi bi-clock me-1"></i>
-                                                Impacto en Tiempo
-                                            </strong>
-                                            {totalImpactoTiempo > 0 ? (
-                                                <>
-                                                    <h4 className="text-success fw-bold mb-0">{totalImpactoTiempo}</h4>
-                                                    <small className="text-muted">días laborables acumulados</small>
-                                                </>
-                                            ) : (
-                                                <p className="text-muted mb-0 mt-2 small">Sin impacto en tiempo registrado</p>
-                                            )}
-                                        </div>
-                                    </Col>
-                                </Row>
-                            </>
-                        )}
-                    </>
-                )}
-
-                {/* ── ELEMENTOS RETRASADOS / PENDIENTES ──
+                    {/* ── ELEMENTOS RETRASADOS / PENDIENTES ──
                     Retrasado = tiene deadline pasado Y completado !== true
                     Calidad: no tiene deadline, se muestran solo las no completadas aparte
                 */}
-                {hayCualquierAlerta && (
-                    <>
-                        <hr className="my-4" />
-                        <h5 className="mb-3 text-danger">
-                            <i className="bi bi-exclamation-triangle-fill me-2"></i>
-                            Elementos Retrasados / Pendientes
-                        </h5>
+                    {hayCualquierAlerta && (
+                        <>
+                            <hr className="my-4" />
+                            <h5 className="mb-3 text-danger">
+                                <i className="bi bi-exclamation-triangle-fill me-2"></i>
+                                Elementos Retrasados / Pendientes
+                            </h5>
 
-                        {/* Alcance: { nombre, deadline, completado } */}
-                        {alcanceRetrasado.length > 0 && (
-                            <div className="mb-4">
-                                <h6 className="fw-bold text-secondary">
-                                    <i className="bi bi-diagram-3 me-2"></i>
-                                    Alcance retrasado ({alcanceRetrasado.length})
-                                </h6>
-                                <div className="table-responsive">
-                                    <Table bordered size="sm">
-                                        <thead className="table-danger">
-                                            <tr>
-                                                <th>Entregable</th>
-                                                <th className="text-center">Fecha Límite</th>
-                                                <th className="text-center">Fecha Entregable Real</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {alcanceRetrasado.map((ent, i) => (
-                                                <tr key={i}>
-                                                    <td>{ent.nombre}</td>
-                                                    <td className="text-center text-danger fw-bold">
-                                                        {ent.deadline ? new Date(ent.deadline).toLocaleDateString('es-ES') : '-'}
-                                                    </td>
-                                                    <td className="text-center text-muted">
-                                                        {ent.fecha_entregable ? new Date(ent.fecha_entregable).toLocaleDateString('es-ES') : '-'}
-                                                    </td>
+                            {/* Alcance: { nombre, deadline, completado } */}
+                            {alcanceRetrasado.length > 0 && (
+                                <div className="mb-4">
+                                    <h6 className="fw-bold text-secondary">
+                                        <i className="bi bi-diagram-3 me-2"></i>
+                                        Alcance retrasado ({alcanceRetrasado.length})
+                                    </h6>
+                                    <div className="table-responsive">
+                                        <Table bordered size="sm">
+                                            <thead className="table-danger">
+                                                <tr>
+                                                    <th>Entregable</th>
+                                                    <th className="text-center">Fecha Límite</th>
+                                                    <th className="text-center">Fecha Entregable Real</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </Table>
+                                            </thead>
+                                            <tbody>
+                                                {alcanceRetrasado.map((ent, i) => (
+                                                    <tr key={i}>
+                                                        <td>{ent.nombre}</td>
+                                                        <td className="text-center text-danger fw-bold">
+                                                            {ent.deadline ? new Date(ent.deadline).toLocaleDateString('es-ES') : '-'}
+                                                        </td>
+                                                        <td className="text-center text-muted">
+                                                            {ent.fecha_entregable ? new Date(ent.fecha_entregable).toLocaleDateString('es-ES') : '-'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </Table>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Hitos: { description, date, completado, fecha_hito } */}
-                        {hitosRetrasados.length > 0 && (
-                            <div className="mb-4">
-                                <h6 className="fw-bold text-secondary">
-                                    <i className="bi bi-flag me-2"></i>
-                                    Hitos retrasados ({hitosRetrasados.length})
-                                </h6>
-                                <div className="table-responsive">
-                                    <Table bordered size="sm">
-                                        <thead className="table-danger">
-                                            <tr>
-                                                <th>Hito</th>
-                                                <th className="text-center">Fecha Planificada</th>
-                                                <th className="text-center">Fecha Real del Hito</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {hitosRetrasados.map((h, i) => (
-                                                <tr key={i}>
-                                                    <td>{h.description}</td>
-                                                    <td className="text-center text-danger fw-bold">
-                                                        {h.date ? new Date(h.date).toLocaleDateString('es-ES') : '-'}
-                                                    </td>
-                                                    <td className="text-center text-muted">
-                                                        {h.fecha_hito ? new Date(h.fecha_hito).toLocaleDateString('es-ES') : '-'}
-                                                    </td>
+                            {/* Hitos: { description, date, completado, fecha_hito } */}
+                            {hitosRetrasados.length > 0 && (
+                                <div className="mb-4">
+                                    <h6 className="fw-bold text-secondary">
+                                        <i className="bi bi-flag me-2"></i>
+                                        Hitos retrasados ({hitosRetrasados.length})
+                                    </h6>
+                                    <div className="table-responsive">
+                                        <Table bordered size="sm">
+                                            <thead className="table-danger">
+                                                <tr>
+                                                    <th>Hito</th>
+                                                    <th className="text-center">Fecha Planificada</th>
+                                                    <th className="text-center">Fecha Real del Hito</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </Table>
+                                            </thead>
+                                            <tbody>
+                                                {hitosRetrasados.map((h, i) => (
+                                                    <tr key={i}>
+                                                        <td>{h.description}</td>
+                                                        <td className="text-center text-danger fw-bold">
+                                                            {h.date ? new Date(h.date).toLocaleDateString('es-ES') : '-'}
+                                                        </td>
+                                                        <td className="text-center text-muted">
+                                                            {h.fecha_hito ? new Date(h.fecha_hito).toLocaleDateString('es-ES') : '-'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </Table>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Costos: { entregable, costo, costoReal, deadline, completado, fecha_cerrado } */}
-                        {costosRetrasados.length > 0 && (
-                            <div className="mb-4">
-                                <h6 className="fw-bold text-secondary">
-                                    <i className="bi bi-currency-dollar me-2"></i>
-                                    Costos retrasados ({costosRetrasados.length})
-                                </h6>
-                                <div className="table-responsive">
-                                    <Table bordered size="sm">
-                                        <thead className="table-danger">
-                                            <tr>
-                                                <th>Entregable</th>
-                                                <th className="text-center">Costo Planificado ($)</th>
-                                                <th className="text-center">Costo Real ($)</th>
-                                                <th className="text-center">Fecha Límite</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {costosRetrasados.map((c, i) => (
-                                                <tr key={i}>
-                                                    <td>{c.entregable}</td>
-                                                    <td className="text-center">{c.costo ?? '-'}</td>
-                                                    <td className="text-center">{c.costoReal ?? '-'}</td>
-                                                    <td className="text-center text-danger fw-bold">
-                                                        {c.deadline ? new Date(c.deadline).toLocaleDateString('es-ES') : '-'}
-                                                    </td>
+                            {/* Costos: { entregable, costo, costoReal, deadline, completado, fecha_cerrado } */}
+                            {costosRetrasados.length > 0 && (
+                                <div className="mb-4">
+                                    <h6 className="fw-bold text-secondary">
+                                        <i className="bi bi-currency-dollar me-2"></i>
+                                        Costos retrasados ({costosRetrasados.length})
+                                    </h6>
+                                    <div className="table-responsive">
+                                        <Table bordered size="sm">
+                                            <thead className="table-danger">
+                                                <tr>
+                                                    <th>Entregable</th>
+                                                    <th className="text-center">Costo Planificado ($)</th>
+                                                    <th className="text-center">Costo Real ($)</th>
+                                                    <th className="text-center">Fecha Límite</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </Table>
+                                            </thead>
+                                            <tbody>
+                                                {costosRetrasados.map((c, i) => (
+                                                    <tr key={i}>
+                                                        <td>{c.entregable}</td>
+                                                        <td className="text-center">{c.costo ?? '-'}</td>
+                                                        <td className="text-center">{c.costoReal ?? '-'}</td>
+                                                        <td className="text-center text-danger fw-bold">
+                                                            {c.deadline ? new Date(c.deadline).toLocaleDateString('es-ES') : '-'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </Table>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Calidad: { entregable, metrica, completado } — sin deadline, se muestran pendientes */}
-                        {calidadPendiente.length > 0 && (
-                            <div className="mb-4">
-                                <h6 className="fw-bold text-secondary">
-                                    <i className="bi bi-patch-check me-2"></i>
-                                    Calidad pendiente ({calidadPendiente.length})
-                                    <small className="fw-normal text-muted ms-2">(sin fecha de cierre registrada)</small>
-                                </h6>
-                                <div className="table-responsive">
-                                    <Table bordered size="sm">
-                                        <thead className="table-warning">
-                                            <tr>
-                                                <th>Entregable</th>
-                                                <th>Métrica</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {calidadPendiente.map((c, i) => (
-                                                <tr key={i}>
-                                                    <td>{c.entregable}</td>
-                                                    <td>{c.metrica || <span className="text-muted">Sin métrica definida</span>}</td>
+                            {/* Calidad: { entregable, metrica, completado } — sin deadline, se muestran pendientes */}
+                            {calidadPendiente.length > 0 && (
+                                <div className="mb-4">
+                                    <h6 className="fw-bold text-secondary">
+                                        <i className="bi bi-patch-check me-2"></i>
+                                        Calidad pendiente ({calidadPendiente.length})
+                                        <small className="fw-normal text-muted ms-2">(sin fecha de cierre registrada)</small>
+                                    </h6>
+                                    <div className="table-responsive">
+                                        <Table bordered size="sm">
+                                            <thead className="table-warning">
+                                                <tr>
+                                                    <th>Entregable</th>
+                                                    <th>Métrica</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </Table>
+                                            </thead>
+                                            <tbody>
+                                                {calidadPendiente.map((c, i) => (
+                                                    <tr key={i}>
+                                                        <td>{c.entregable}</td>
+                                                        <td>{c.metrica || <span className="text-muted">Sin métrica definida</span>}</td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </Table>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
+                            )}
 
-                        {/* Tareas: { task, dueDate, done } */}
-                        {tareasAtrasadas.length > 0 && (
-                            <div className="mb-4">
-                                <h6 className="fw-bold text-secondary">
-                                    <i className="bi bi-check2-square me-2"></i>
-                                    Tareas retrasadas ({tareasAtrasadas.length})
-                                </h6>
-                                <div className="table-responsive">
-                                    <Table bordered size="sm">
-                                        <thead className="table-danger">
-                                            <tr>
-                                                <th>Tarea</th>
-                                                <th className="text-center">Fecha Límite</th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {tareasAtrasadas.map((t, i) => (
-                                                <tr key={i}>
-                                                    <td>{t.task || t.name || t.descripcion}</td>
-                                                    <td className="text-center text-danger fw-bold">
-                                                        {t.dueDate ? new Date(t.dueDate).toLocaleDateString('es-ES') : '-'}
-                                                    </td>
+                            {/* Tareas: { task, dueDate, done } */}
+                            {tareasAtrasadas.length > 0 && (
+                                <div className="mb-4">
+                                    <h6 className="fw-bold text-secondary">
+                                        <i className="bi bi-check2-square me-2"></i>
+                                        Tareas retrasadas ({tareasAtrasadas.length})
+                                    </h6>
+                                    <div className="table-responsive">
+                                        <Table bordered size="sm">
+                                            <thead className="table-danger">
+                                                <tr>
+                                                    <th>Tarea</th>
+                                                    <th className="text-center">Fecha Límite</th>
                                                 </tr>
-                                            ))}
-                                        </tbody>
-                                    </Table>
+                                            </thead>
+                                            <tbody>
+                                                {tareasAtrasadas.map((t, i) => (
+                                                    <tr key={i}>
+                                                        <td>{t.task || t.name || t.descripcion}</td>
+                                                        <td className="text-center text-danger fw-bold">
+                                                            {t.dueDate ? new Date(t.dueDate).toLocaleDateString('es-ES') : '-'}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </Table>
+                                    </div>
                                 </div>
-                            </div>
-                        )}
-                    </>
-                )}
+                            )}
+                        </>
+                    )}
 
-                {/* ── RESUMEN DE EJECUCIÓN ── */}
-                {(projectDetail?.estado === 'X' || projectDetail?.estado === 'E') && resumenEjecucion && (
-                    <>
-                        <hr className="my-4" />
-                        <h5 className="mb-3 text-primary">
-                            <i className="bi bi-graph-up-arrow me-2"></i>
-                            Resumen de Ejecución
-                        </h5>
-                        <Row className="mb-4">
-                            {!esActividad && (
-                                <>
-                                    <Col md={4} className="mb-3">
-                                        <div className="p-3 bg-light rounded text-center">
-                                            <strong className="d-block mb-2">Avance de Alcance</strong>
-                                            <h4 className="text-success mb-0">{resumenEjecucion.alcance}%</h4>
-                                        </div>
-                                    </Col>
-                                    <Col md={4} className="mb-3">
-                                        <div className="p-3 bg-light rounded text-center">
-                                            <strong className="d-block mb-2">Avance de Hitos</strong>
-                                            <h4 className="text-success mb-0">{resumenEjecucion.hitos}%</h4>
-                                        </div>
-                                    </Col>
-                                    <Col md={4} className="mb-3">
-                                        <div className="p-3 bg-light rounded text-center">
-                                            <strong className="d-block mb-2">Desviación de Costos</strong>
-                                            <h4 className={resumenEjecucion.costoDesviacion >= 0 ? 'text-success' : 'text-danger'} mb-0>
-                                                {resumenEjecucion.costoDesviacion}%
-                                            </h4>
-                                        </div>
-                                    </Col>
-                                    <Col md={4} className="mb-3">
-                                        <div className="p-3 bg-light rounded text-center">
-                                            <strong className="d-block mb-2">
-                                                {esPrograma ? 'Avance de Beneficios' : 'Avance de Calidad'}
-                                            </strong>
-                                            <h4 className="text-success mb-0">
-                                                {esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad}%
-                                            </h4>
-                                        </div>
-                                    </Col>
-                                    <Col md={4} className="mb-3">
-                                        <div className="p-3 bg-light rounded text-center">
-                                            <strong className="d-block mb-2">Nivel de Riesgo</strong>
-                                            <h4 className="text-success mb-0">{resumenEjecucion.riesgoPromedio}%</h4>
-                                        </div>
-                                    </Col>
-                                    {resumenEjecucion.gantt > 0 && (
+                    {/* ── RESUMEN DE EJECUCIÓN ── */}
+                    {(projectDetail?.estado === 'X' || projectDetail?.estado === 'E') && resumenEjecucion && (
+                        <>
+                            <hr className="my-4" />
+                            <h5 className="mb-3 text-primary">
+                                <i className="bi bi-graph-up-arrow me-2"></i>
+                                Resumen de Ejecución
+                            </h5>
+                            <Row className="mb-4">
+                                {!esActividad && (
+                                    <>
                                         <Col md={4} className="mb-3">
                                             <div className="p-3 bg-light rounded text-center">
-                                                <strong className="d-block mb-2">Avance de Gantt</strong>
-                                                <h4 className="text-success mb-0">{resumenEjecucion.gantt}%</h4>
+                                                <strong className="d-block mb-2">Avance de Alcance</strong>
+                                                <h4 className="text-success mb-0">{resumenEjecucion.alcance}%</h4>
                                             </div>
                                         </Col>
+                                        <Col md={4} className="mb-3">
+                                            <div className="p-3 bg-light rounded text-center">
+                                                <strong className="d-block mb-2">Avance de Hitos</strong>
+                                                <h4 className="text-success mb-0">{resumenEjecucion.hitos}%</h4>
+                                            </div>
+                                        </Col>
+                                        <Col md={4} className="mb-3">
+                                            <div className="p-3 bg-light rounded text-center">
+                                                <strong className="d-block mb-2">Desviación de Costos</strong>
+                                                <h4 className={resumenEjecucion.costoDesviacion >= 0 ? 'text-success' : 'text-danger'} mb-0>
+                                                    {resumenEjecucion.costoDesviacion}%
+                                                </h4>
+                                            </div>
+                                        </Col>
+                                        <Col md={4} className="mb-3">
+                                            <div className="p-3 bg-light rounded text-center">
+                                                <strong className="d-block mb-2">
+                                                    {esPrograma ? 'Avance de Beneficios' : 'Avance de Calidad'}
+                                                </strong>
+                                                <h4 className="text-success mb-0">
+                                                    {esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad}%
+                                                </h4>
+                                            </div>
+                                        </Col>
+                                        <Col md={4} className="mb-3">
+                                            <div className="p-3 bg-light rounded text-center">
+                                                <strong className="d-block mb-2">Nivel de Riesgo</strong>
+                                                <h4 className="text-success mb-0">{resumenEjecucion.riesgoPromedio}%</h4>
+                                            </div>
+                                        </Col>
+                                        {resumenEjecucion.gantt > 0 && (
+                                            <Col md={4} className="mb-3">
+                                                <div className="p-3 bg-light rounded text-center">
+                                                    <strong className="d-block mb-2">Avance de Gantt</strong>
+                                                    <h4 className="text-success mb-0">{resumenEjecucion.gantt}%</h4>
+                                                </div>
+                                            </Col>
+                                        )}
+                                    </>
+                                )}
+                            </Row>
+                        </>
+                    )}
+
+                    {/* ── RESUMEN DE DESEMPEÑO ── */}
+                    {(projectDetail?.estado === 'X' || projectDetail?.estado === 'E') && resumenDesempeno && (
+                        <>
+                            <hr className="my-4" />
+                            <h5 className="mb-3 text-primary">
+                                <i className="bi bi-speedometer2 me-2"></i>
+                                Resumen de Desempeño
+                            </h5>
+                            <Row className="mb-4">
+                                {[
+                                    { label: 'Alcance', key: 'alcance' },
+                                    { label: 'Hitos', key: 'hitos' },
+                                    { label: 'Costos', key: 'costos' },
+                                    { label: 'Todo', key: 'todo' },
+                                    { label: 'Kanban', key: 'eficiencia' },
+                                    { label: 'Cronograma', key: 'cronograma' },
+                                ].map(({ label, key }) => (
+                                    <Col md={4} className="mb-3" key={key}>
+                                        <div className="p-3 bg-light rounded text-center">
+                                            <strong className="d-block mb-2">{label}</strong>
+                                            <h4 className={resumenDesempeno[key] >= 1 ? 'text-success mb-0' : 'text-danger mb-0'}>
+                                                {resumenDesempeno[key]?.toFixed(2)}
+                                            </h4>
+                                        </div>
+                                    </Col>
+                                ))}
+                            </Row>
+
+                            {/* Matriz de Riesgos */}
+                            {riesgosList && riesgosList.length > 0 && (
+                                <>
+                                    <hr className="my-4" />
+                                    <h5 className="mb-3 text-primary">
+                                        <i className="bi bi-exclamation-triangle me-2"></i>
+                                        Matriz de Calor de Riesgos
+                                    </h5>
+                                    <div className="mb-4">
+                                        <h6 className="text-muted mb-3">Riesgos Iniciales</h6>
+                                        <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={false} />
+                                    </div>
+                                    {riesgosList.some(r => r.completado) && (
+                                        <div className="mb-4">
+                                            <h6 className="text-muted mb-3">Riesgos Residuales</h6>
+                                            <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={true} />
+                                            <div className="alert alert-info mt-3">
+                                                <i className="bi bi-info-circle me-2"></i>
+                                                <strong>Riesgos con plan completado:</strong> {riesgosList.filter(r => r.completado).length} de {riesgosList.length}
+                                            </div>
+                                        </div>
                                     )}
                                 </>
                             )}
-                        </Row>
-                    </>
-                )}
+                        </>
+                    )}
 
-                {/* ── RESUMEN DE DESEMPEÑO ── */}
-                {(projectDetail?.estado === 'X' || projectDetail?.estado === 'E') && resumenDesempeno && (
-                    <>
-                        <hr className="my-4" />
-                        <h5 className="mb-3 text-primary">
-                            <i className="bi bi-speedometer2 me-2"></i>
-                            Resumen de Desempeño
-                        </h5>
-                        <Row className="mb-4">
-                            {[
-                                { label: 'Alcance', key: 'alcance' },
-                                { label: 'Hitos', key: 'hitos' },
-                                { label: 'Costos', key: 'costos' },
-                                { label: 'Todo', key: 'todo' },
-                                { label: 'Kanban', key: 'eficiencia' },
-                                { label: 'Cronograma', key: 'cronograma' },
-                            ].map(({ label, key }) => (
-                                <Col md={4} className="mb-3" key={key}>
-                                    <div className="p-3 bg-light rounded text-center">
-                                        <strong className="d-block mb-2">{label}</strong>
-                                        <h4 className={resumenDesempeno[key] >= 1 ? 'text-success mb-0' : 'text-danger mb-0'}>
-                                            {resumenDesempeno[key]?.toFixed(2)}
-                                        </h4>
-                                    </div>
-                                </Col>
-                            ))}
-                        </Row>
+                    {/* ── LECCIONES APRENDIDAS ── */}
+                    {projectDetail?.estado === 'E' && (
+                        <>
+                            <hr className="my-4" />
+                            <h5 className="mb-3 text-primary">
+                                <i className="bi bi-book me-2"></i>
+                                Lecciones Aprendidas
+                            </h5>
+                            <div className="p-3 bg-light rounded">
+                                {leccionesAprendidas
+                                    ? <p style={{ whiteSpace: 'pre-wrap' }}>{leccionesAprendidas}</p>
+                                    : <p className="text-muted mb-0">No disponible por el momento</p>
+                                }
+                            </div>
+                        </>
+                    )}
 
-                        {/* Matriz de Riesgos */}
-                        {riesgosList && riesgosList.length > 0 && (
-                            <>
-                                <hr className="my-4" />
-                                <h5 className="mb-3 text-primary">
-                                    <i className="bi bi-exclamation-triangle me-2"></i>
-                                    Matriz de Calor de Riesgos
-                                </h5>
-                                <div className="mb-4">
-                                    <h6 className="text-muted mb-3">Riesgos Iniciales</h6>
-                                    <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={false} />
-                                </div>
-                                {riesgosList.some(r => r.completado) && (
-                                    <div className="mb-4">
-                                        <h6 className="text-muted mb-3">Riesgos Residuales</h6>
-                                        <RiskHeatmapMatrix riesgosList={riesgosList} showResidual={true} />
-                                        <div className="alert alert-info mt-3">
-                                            <i className="bi bi-info-circle me-2"></i>
-                                            <strong>Riesgos con plan completado:</strong> {riesgosList.filter(r => r.completado).length} de {riesgosList.length}
-                                        </div>
-                                    </div>
-                                )}
-                            </>
-                        )}
-                    </>
-                )}
+                    <hr className="my-4" />
 
-                {/* ── LECCIONES APRENDIDAS ── */}
-                {projectDetail?.estado === 'E' && (
-                    <>
-                        <hr className="my-4" />
-                        <h5 className="mb-3 text-primary">
-                            <i className="bi bi-book me-2"></i>
-                            Lecciones Aprendidas
-                        </h5>
-                        <div className="p-3 bg-light rounded">
-                            {leccionesAprendidas
-                                ? <p style={{ whiteSpace: 'pre-wrap' }}>{leccionesAprendidas}</p>
-                                : <p className="text-muted mb-0">No disponible por el momento</p>
-                            }
+                    {/* ── ASISTENTE NOVA (ChatGPT, sin API) ── */}
+                    <h5 className="mb-3 text-primary">
+                        <span className="me-2" role="img" aria-label="asistente">🤖</span>
+                        Asistente NOVA
+                    </h5>
+                    <Alert variant="light" className="border mb-4">
+                        <p className="mb-2 small">
+                            NOVA es un asistente en ChatGPT (nueva pestaña). Los botones copian al portapapeles la{' '}
+                            <strong>instrucción (modo 1.1 informe en marcha)</strong> más un{' '}
+                            <strong>volcado estructurado</strong> del proyecto (cabecera, métricas, alcance, hitos, costos,
+                            calidad, tareas, riesgos, solicitudes, historial de estados, borrador de conclusiones/próximos pasos, etc.).
+                            Si el volcado es muy grande, se corta alrededor de {NOVA_DUMP_MAX_CHARS.toLocaleString('es-ES')} caracteres
+                            y se avisa al final del texto. Elegí la opción 1.1 en NOVA si la ves en la interfaz. Luego pegá la
+                            respuesta en GORU; podés editarla antes de guardar el PDF.
+                        </p>
+                        <div className="d-flex flex-wrap gap-2 align-items-center">
+                            <Button variant="primary" size="sm" type="button" onClick={handleRecomendacionesIa}>
+                                <i className="bi bi-stars me-1" aria-hidden />
+                                Recomendaciones de IA
+                            </Button>
+                            <Button
+                                variant="outline-primary"
+                                size="sm"
+                                type="button"
+                                className="d-flex align-items-center"
+                                onClick={handleQueHacemosAhora}
+                            >
+                                <span className="me-1" role="img" aria-hidden>👋</span>
+                                ¿Qué hacemos ahora?
+                            </Button>
                         </div>
-                    </>
-                )}
+                    </Alert>
+                    <Form.Group className="mb-4">
+                        <Form.Label className="fw-bold">Recomendaciones de IA (opcional)</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={4}
+                            placeholder="Pegá aquí la respuesta de NOVA para recomendaciones. Podés editarla o dejarla vacía."
+                            value={recomendacionesIa}
+                            onChange={(e) => setRecomendacionesIa(e.target.value)}
+                        />
+                    </Form.Group>
 
-                <hr className="my-4" />
+                    <hr className="my-4" />
 
-                {/* ── ANÁLISIS Y PRÓXIMOS PASOS ── */}
-                <h5 className="mb-3 text-primary">
-                    <i className="bi bi-pencil-square me-2"></i>
-                    Análisis y Próximos Pasos
-                </h5>
-                <Form.Group className="mb-4">
-                    <Form.Label className="fw-bold">
-                        Conclusiones del Informe <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                        as="textarea"
-                        rows={5}
-                        placeholder="Describa las conclusiones principales del período reportado..."
-                        value={formData.conclusiones}
-                        onChange={(e) => handleChange('conclusiones', e.target.value)}
-                        isInvalid={!!errors.conclusiones}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.conclusiones}</Form.Control.Feedback>
-                </Form.Group>
-                <Form.Group className="mb-4">
-                    <Form.Label className="fw-bold">
-                        Próximos Pasos <span className="text-danger">*</span>
-                    </Form.Label>
-                    <Form.Control
-                        as="textarea"
-                        rows={5}
-                        placeholder="Describa las actividades y acciones planificadas para el siguiente período..."
-                        value={formData.proximosPasos}
-                        onChange={(e) => handleChange('proximosPasos', e.target.value)}
-                        isInvalid={!!errors.proximosPasos}
-                    />
-                    <Form.Control.Feedback type="invalid">{errors.proximosPasos}</Form.Control.Feedback>
-                </Form.Group>
-            </Modal.Body>
-            <Modal.Footer>
-                <Button variant="secondary" onClick={onHide}>Cancelar</Button>
-                <Button variant="success" onClick={handleSubmit}>
-                    {informeEditar ? 'Actualizar Informe' : 'Guardar Informe'}
-                </Button>
-            </Modal.Footer>
-        </Modal>
+                    {/* ── ANÁLISIS Y PRÓXIMOS PASOS ── */}
+                    <h5 className="mb-3 text-primary">
+                        <i className="bi bi-pencil-square me-2"></i>
+                        Análisis y Próximos Pasos
+                    </h5>
+                    <Form.Group className="mb-4">
+                        <Form.Label className="fw-bold">
+                            Conclusiones del Informe <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={5}
+                            placeholder="Describa las conclusiones principales del período reportado..."
+                            value={formData.conclusiones}
+                            onChange={(e) => handleChange('conclusiones', e.target.value)}
+                            isInvalid={!!errors.conclusiones}
+                        />
+                        <Form.Control.Feedback type="invalid">{errors.conclusiones}</Form.Control.Feedback>
+                    </Form.Group>
+                    <Form.Group className="mb-4">
+                        <Form.Label className="fw-bold">
+                            Próximos Pasos <span className="text-danger">*</span>
+                        </Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={5}
+                            placeholder="Describa las actividades y acciones planificadas para el siguiente período..."
+                            value={formData.proximosPasos}
+                            onChange={(e) => handleChange('proximosPasos', e.target.value)}
+                            isInvalid={!!errors.proximosPasos}
+                        />
+                        <Form.Control.Feedback type="invalid">{errors.proximosPasos}</Form.Control.Feedback>
+                    </Form.Group>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={onHide}>Cancelar</Button>
+                    <Button variant="success" onClick={handleSubmit}>
+                        {informeEditar ? 'Actualizar Informe' : 'Guardar Informe'}
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+
+            <Modal show={showIaPlanModal} onHide={() => setShowIaPlanModal(false)} size="lg" centered backdrop="static">
+                <Modal.Header closeButton>
+                    <Modal.Title className="d-flex align-items-center">
+                        <span className="me-2" role="img" aria-label="asistente">🤖</span>
+                        ¿Qué hacemos ahora?
+                    </Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <Alert variant="info" className="small">
+                        Si NOVA no se abrió antes, usá el botón de abajo (vuelve a copiar instrucción + volcado estructurado).
+                        Pegá la respuesta del asistente en el cuadro; queda guardada al pulsar &quot;Guardar informe&quot; en la
+                        ventana principal del informe.
+                    </Alert>
+                    <div className="d-flex flex-wrap gap-2 mb-3">
+                        <Button variant="outline-primary" size="sm" type="button" onClick={handleReabrirNovaPlan}>
+                            <i className="bi bi-box-arrow-up-right me-1" aria-hidden />
+                            Abrir NOVA y copiar contexto otra vez
+                        </Button>
+                    </div>
+                    <Form.Group className="mb-0">
+                        <Form.Label className="fw-bold">Sugerencias de NOVA (editables)</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={12}
+                            placeholder="Pegá aquí el plan de acción que te devolvió NOVA…"
+                            value={planSugeridoIa}
+                            onChange={(e) => setPlanSugeridoIa(e.target.value)}
+                        />
+                    </Form.Group>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" type="button" onClick={() => setShowIaPlanModal(false)}>
+                        Cerrar
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+        </>
     );
 };
 

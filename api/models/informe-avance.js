@@ -30,6 +30,14 @@ module.exports = (db, Sequelize) => {
             type: Sequelize.TEXT,
             allowNull: true,
         },
+        recomendaciones_ia: {
+            type: Sequelize.TEXT,
+            allowNull: true,
+        },
+        plan_sugerido_ia: {
+            type: Sequelize.TEXT,
+            allowNull: true,
+        },
         creado_por: {
             type: Sequelize.INTEGER,
             allowNull: false,

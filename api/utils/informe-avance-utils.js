@@ -58,6 +58,8 @@ const createInforme = async (data, usuarioId) => {
             fecha_informe: data.fechaInforme || new Date(),
             conclusiones: data.conclusiones,
             proximos_pasos: data.proximosPasos,
+            recomendaciones_ia: data.recomendacionesIa != null ? data.recomendacionesIa : null,
+            plan_sugerido_ia: data.planSugeridoIa != null ? data.planSugeridoIa : null,
             creado_por: usuarioId,
         });
 
@@ -82,10 +84,12 @@ const updateInforme = async (id, data) => {
         }
 
         await informe.update({
-            nombre_persona: data.nombrePersona, 
+            nombre_persona: data.nombrePersona,
             conclusiones: data.conclusiones,
             proximos_pasos: data.proximosPasos,
             fecha_informe: data.fechaInforme,
+            recomendaciones_ia: data.recomendacionesIa !== undefined ? data.recomendacionesIa : informe.recomendaciones_ia,
+            plan_sugerido_ia: data.planSugeridoIa !== undefined ? data.planSugeridoIa : informe.plan_sugerido_ia,
         });
 
         return informe;

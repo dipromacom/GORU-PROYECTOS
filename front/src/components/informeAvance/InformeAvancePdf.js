@@ -1016,6 +1016,20 @@ const InformeAvancePdf = ({
                     <View style={styles.textBlock}><Text>{informe.proximos_pasos}</Text></View>
                 </View>
 
+                {informe.recomendaciones_ia && String(informe.recomendaciones_ia).trim() !== '' && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>Recomendaciones de IA (NOVA)</Text>
+                        <View style={styles.textBlock}><Text>{informe.recomendaciones_ia}</Text></View>
+                    </View>
+                )}
+
+                {informe.plan_sugerido_ia && String(informe.plan_sugerido_ia).trim() !== '' && (
+                    <View style={styles.section}>
+                        <Text style={styles.sectionTitle}>¿Qué hacemos ahora? — Sugerencias de IA (NOVA)</Text>
+                        <View style={styles.textBlock}><Text>{informe.plan_sugerido_ia}</Text></View>
+                    </View>
+                )}
+
                 <Text style={styles.footer}>
                     Documento generado automáticamente el {new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
                 </Text>
