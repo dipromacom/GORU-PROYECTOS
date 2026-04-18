@@ -4,22 +4,23 @@ import { useDispatch } from 'react-redux';
 import { toast } from 'react-toastify';
 import { actions as informeActions } from "../../reducers/informe-avance";
 import RiskHeatmapMatrix from '../summaryChart/RiskHeatmapMatrix';
-import { buildNovaStructuredDump, NOVA_DUMP_MAX_CHARS } from './novaInformeDump';
+import { buildNovaStructuredDump, NOVA_DUMP_MAX_CHARS, openNovaPopup } from './novaInformeDump';
 
-/** GPT personalizado NOVA (sin API; el usuario conversa en ChatGPT y pega la respuesta en GORU). */
-const NOVA_GPT_URL = 'https://chatgpt.com/g/g-6994b0ba071c8191abacf65b2da3deca-nova';
-
-/** Alineado a NOVA opción 1.1 — evaluación de proyecto en marcha / informe de avance. */
+/** Recomendaciones de IA (informe de avance guardado): instrucción + bloque --- Cabecera GORU --- en el volcado. */
 const NOVA_INSTR_RECOMENDACIONES =
-    'Usá en NOVA la opción "1.1 Evaluación de un proyecto en marcha" si la tenés a mano. '
-    + 'Evaluá el estado del proyecto basándote en el siguiente informe de avance y volcado de datos desde GORU. '
-    + 'Analizá alcance, cronograma, costos, riesgos y salud general del proyecto; identificá desviaciones, riesgos críticos '
-    + 'y recomendaciones ejecutivas. Respondé en español, con viñetas o secciones breves.\n\n';
+    'Evaluá el estado del proyecto basándote en la información de abajo del avance del proyecto. '
+    + 'Analizá la información del proyecto y dame: '
+    + '1) Un resumen ejecutivo de estado, pronóstico de cómo culminará el proyecto en tiempo y costos si se mantienen '
+    + 'los índices actuales del proyecto, y recomendaciones en un párrafo de hasta 5 líneas. '
+    + '2) Conclusiones del proyecto para ser presentadas a la gerencia. '
+    + '3) Siete acciones en forma de lista para hacer la siguiente semana. '
+    + '4) Lista de 5 posibles riesgos indicando causa–evento–efecto. '
+    + 'Español, estructura clara por apartados.\n\n';
 
 const NOVA_INSTR_PLAN =
-    'Usá en NOVA la opción "1.1 Evaluación de un proyecto en marcha" cuando aplique. '
-    + 'Con el volcado estructurado de GORU y el borrador del informe, proponé un plan concreto: qué hacer ahora, prioridades, '
-    + 'responsables sugeridos si aplica, y próximos pasos en orden lógico. Español, tono profesional, secciones numeradas.\n\n';
+    'Evaluá el estado del proyecto basándote en el informe de avance y el volcado siguiente. '
+    + 'Proponé un plan ejecutivo de próximos pasos: prioridades, responsables sugeridos cuando aplique, y alertas. '
+    + 'Español, secciones numeradas.\n\n';
 
 const InformeAvanceModal = ({
     show,
@@ -219,8 +220,11 @@ const InformeAvanceModal = ({
         }
     };
 
-    const openNovaEnNuevaPestana = () => {
-        window.open(NOVA_GPT_URL, '_blank', 'noopener,noreferrer');
+    const abrirNovaVentanaEmergente = () => {
+        const win = openNovaPopup();
+        if (!win) {
+            toast.warn('El navegador bloqueó la ventana emergente. Permití ventanas para este sitio y probá de nuevo.');
+        }
     };
 
     const copiarPortapapeles = async (texto) => {
@@ -229,8 +233,8 @@ const InformeAvanceModal = ({
             const truncado = texto.includes('[--- GORU: volcado truncado');
             toast.success(
                 truncado
-                    ? 'Texto copiado (el volcado llegó al tope y se truncó al final). Pégalo en NOVA.'
-                    : 'Texto copiado al portapapeles. Pégalo en NOVA (ChatGPT).',
+                    ? 'Texto copiado (volcado truncado al final). Pegá en la ventana de NOVA.'
+                    : 'Texto copiado. Pegá en la ventana emergente de NOVA (Ctrl+V).',
             );
         } catch {
             toast.warn('No se pudo copiar automáticamente. Seleccione y copie el texto manualmente.');
@@ -267,18 +271,18 @@ const InformeAvanceModal = ({
         });
 
     const handleRecomendacionesIa = () => {
-        openNovaEnNuevaPestana();
+        abrirNovaVentanaEmergente();
         copiarPortapapeles(NOVA_INSTR_RECOMENDACIONES + getNovaDumpTexto());
     };
 
     const handleQueHacemosAhora = () => {
         setShowIaPlanModal(true);
-        openNovaEnNuevaPestana();
+        abrirNovaVentanaEmergente();
         copiarPortapapeles(NOVA_INSTR_PLAN + getNovaDumpTexto());
     };
 
     const handleReabrirNovaPlan = () => {
-        openNovaEnNuevaPestana();
+        abrirNovaVentanaEmergente();
         copiarPortapapeles(NOVA_INSTR_PLAN + getNovaDumpTexto());
     };
 
@@ -949,13 +953,11 @@ const InformeAvanceModal = ({
                     </h5>
                     <Alert variant="light" className="border mb-4">
                         <p className="mb-2 small">
-                            NOVA es un asistente en ChatGPT (nueva pestaña). Los botones copian al portapapeles la{' '}
-                            <strong>instrucción (modo 1.1 informe en marcha)</strong> más un{' '}
-                            <strong>volcado estructurado</strong> del proyecto (cabecera, métricas, alcance, hitos, costos,
-                            calidad, tareas, riesgos, solicitudes, historial de estados, borrador de conclusiones/próximos pasos, etc.).
-                            Si el volcado es muy grande, se corta alrededor de {NOVA_DUMP_MAX_CHARS.toLocaleString('es-ES')} caracteres
-                            y se avisa al final del texto. Elegí la opción 1.1 en NOVA si la ves en la interfaz. Luego pegá la
-                            respuesta en GORU; podés editarla antes de guardar el PDF.
+                            NOVA se abre en una <strong>ventana emergente</strong> (tamaño reducido). Los botones copian al
+                            portapapeles la <strong>instrucción</strong> más un <strong>volcado estructurado</strong> (incluye
+                            --- Cabecera GORU --- y el resto de secciones) del proyecto. Si el volcado es muy grande, se corta
+                            alrededor de {NOVA_DUMP_MAX_CHARS.toLocaleString('es-ES')} caracteres y se avisa al final. Pegá la
+                            respuesta en NOVA; podés editarla antes de guardar el PDF.
                         </p>
                         <div className="d-flex flex-wrap gap-2 align-items-center">
                             <Button variant="primary" size="sm" type="button" onClick={handleRecomendacionesIa}>
@@ -1038,7 +1040,7 @@ const InformeAvanceModal = ({
                 </Modal.Header>
                 <Modal.Body>
                     <Alert variant="info" className="small">
-                        Si NOVA no se abrió antes, usá el botón de abajo (vuelve a copiar instrucción + volcado estructurado).
+                        Si NOVA no se abrió antes, usá el botón de abajo (vuelve a abrir la ventana y copiar instrucción + volcado).
                         Pegá la respuesta del asistente en el cuadro; queda guardada al pulsar &quot;Guardar informe&quot; en la
                         ventana principal del informe.
                     </Alert>

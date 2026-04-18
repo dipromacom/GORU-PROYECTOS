@@ -85,6 +85,7 @@ import {
 } from "../libs/planLicencia";
 import { selectors as rolProyectoSelectors } from "../reducers/rolProyecto";
 import { proyectoPuede, P as PermProy } from "../libs/proyectoPermiso";
+import GoruQueHacemosHoyPanel from "../components/goruAssistant/GoruQueHacemosHoyPanel";
 
 
 function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, membershipNavMode, userProjectPermisos, isLoadingUserRol }) {
@@ -935,6 +936,51 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setGanttSummary(summary);
     }, []);
 
+    const goruHoyPanelProps = useMemo(
+        () => ({
+            proyectoId: numericId,
+            usuario,
+            projectDetail,
+            resumenEjecucion,
+            resumenDesempeno,
+            estadisticas,
+            logs,
+            riesgosList: riesgos,
+            listaSolicitudes: listaSolicitudes || [],
+            listaEncuestas: listaEncuestas || [],
+            alcanceEntregables: alcanceEntregables || [],
+            tiempoFechasCriticas: tiempoFechasCriticas || [],
+            costoEntregable: costoEntregable || [],
+            calidadMetricas: calidadMetricas || [],
+            todo: todo || [],
+            totalesAprobados,
+            presupuesto,
+            ganttSummary,
+            leccionesAprendidas,
+        }),
+        [
+            numericId,
+            usuario,
+            projectDetail,
+            resumenEjecucion,
+            resumenDesempeno,
+            estadisticas,
+            logs,
+            riesgos,
+            listaSolicitudes,
+            listaEncuestas,
+            alcanceEntregables,
+            tiempoFechasCriticas,
+            costoEntregable,
+            calidadMetricas,
+            todo,
+            totalesAprobados,
+            presupuesto,
+            ganttSummary,
+            leccionesAprendidas,
+        ],
+    );
+
     // Handler para abrir modal
     const handleOpenConfig = () => {
         if (!usuario) {
@@ -1181,6 +1227,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         />
                                     </Form.Group>
 
+                                    {!(planificado || ejecutado || cerrado) && (
+                                        <GoruQueHacemosHoyPanel {...goruHoyPanelProps} compact />
+                                    )}
+
                                     {!esPrograma && (
                                         <Form.Group controlId="tipoProyecto">
                                             <Form.Label>{esActividad ? "Tipo de Proyecto Personal" : esPrograma ? "Tipo de Programa" : "Tipo de Proyecto Equipo"}</Form.Label>
@@ -1201,6 +1251,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                     {(planificado || ejecutado || cerrado) && (
                                         <div className="summary-section mt-5">
                                             <hr className="mb-4" />
+                                            <GoruQueHacemosHoyPanel {...goruHoyPanelProps} />
                                             <Tab.Container activeKey={activeTabSummary} onSelect={(k) => setActiveTabSummary(k)}>
                                                 <Nav variant="tabs" className="justify-content-start mb-4 custom-tabs-style">
                                                     {!esActividad && (ejecutado || cerrado) && (

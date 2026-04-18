@@ -2,7 +2,57 @@
  * Texto plano para portapapeles → NOVA (ChatGPT), alineado al informe de avance en GORU.
  * Tope global para no saturar el chat ni el portapapeles.
  */
+export const NOVA_GPT_URL = 'https://chatgpt.com/g/g-6994b0ba071c8191abacf65b2da3deca-nova';
+
 export const NOVA_DUMP_MAX_CHARS = 28000;
+
+/**
+ * Abre NOVA en una ventana emergente (tamaño reducido, centrada).
+ * Nombre de ventana fijo para reutilizar la misma al repetir clic.
+ */
+export function openNovaPopup() {
+    const w = 920;
+    const h = 780;
+    const left = Math.max(0, Math.round((window.screen.availWidth - w) / 2));
+    const top = Math.max(0, Math.round((window.screen.availHeight - h) / 5));
+    const features = [
+        `width=${w}`,
+        `height=${h}`,
+        `left=${left}`,
+        `top=${top}`,
+        'scrollbars=yes',
+        'resizable=yes',
+        'menubar=no',
+        'toolbar=no',
+        'location=yes',
+        'status=no',
+    ].join(',');
+    const win = window.open(NOVA_GPT_URL, 'goru_nova_gpt', features);
+    try {
+        if (win) win.opener = null;
+    } catch {
+        /* noop */
+    }
+    return win;
+}
+
+/** Instrucción para el asistente «¿Qué hacemos hoy?» — solo día actual; respuesta breve. */
+export const NOVA_INSTR_GORU_HOY =
+    'Rol: asistente Goru vía NOVA. El proyecto está en marcha: evaluá su estado basándote en la información de abajo. '
+    + 'Analizá esa información y respondé de forma muy breve con: '
+    + '(1) las 5 acciones críticas que debo hacer el día de hoy; '
+    + '(2) una lista de 3 posibles riesgos críticos que identifiques hoy; '
+    + '(3) una conclusión del estado del proyecto en tono ejecutivo, en un solo párrafo de hasta 5 líneas. '
+    + 'Solo el día actual; no planees más allá de hoy. Español.\n\n';
+
+export function novaInstrGoruSeguimiento(preguntaUsuario) {
+    const q = (preguntaUsuario || '').trim() || '(sin texto adicional)';
+    return (
+        'Seguimiento en la conversación con Goru / NOVA. Mensaje del usuario en GORU:\n'
+        + `${q}\n\n`
+        + 'Respondé con foco en el día actual. Datos de referencia del proyecto a continuación.\n\n'
+    );
+}
 
 function trunc(s, max = 600) {
     if (s == null || s === '') return '';
@@ -56,10 +106,162 @@ function promEncuesta(encuesta) {
     return (suma / campos.length).toFixed(1);
 }
 
+export function computeNovaSolicitudesImpact(listaSolicitudes) {
+    const solicitudesAprobadas = (listaSolicitudes || []).filter((s) => s.estado === 'Aprobado');
+    const getAnalisisImpacto = (s) =>
+        typeof s.analisis_impacto === 'string' ? {} : (s.analisis_impacto || {});
+    const impactoDolares = solicitudesAprobadas.reduce((acc, s) => {
+        const val = parseFloat(getAnalisisImpacto(s).dolares);
+        return acc + (isNaN(val) ? 0 : val);
+    }, 0);
+    const totalImpactoTiempo = solicitudesAprobadas.reduce((acc, s) => {
+        const ai =
+            typeof s.analisis_impacto === 'string'
+                ? (() => {
+                    try {
+                        return JSON.parse(s.analisis_impacto);
+                    } catch {
+                        return {};
+                    }
+                })()
+                : (s.analisis_impacto || {});
+        return acc + Number(ai.tiempo || 0);
+    }, 0);
+    return {
+        solicitudesAprobadasCount: solicitudesAprobadas.length,
+        impactoDolares,
+        totalImpactoTiempo,
+    };
+}
+
+export function computeNovaRetrasosFlags({
+    alcanceEntregables = [],
+    tiempoFechasCriticas = [],
+    costoEntregable = [],
+    calidadMetricas = [],
+    todo = [],
+}) {
+    const hoy = new Date();
+    hoy.setHours(0, 0, 0, 0);
+
+    const alcanceRetrasado = alcanceEntregables.filter((ent) => {
+        const deadline = ent.deadline ? new Date(ent.deadline) : null;
+        return deadline && deadline < hoy && !ent.completado;
+    });
+    const hitosRetrasados = tiempoFechasCriticas.filter((h) => {
+        const fecha = h.date ? new Date(h.date) : null;
+        return fecha && fecha < hoy && !h.completado;
+    });
+    const costosRetrasados = costoEntregable.filter((c) => {
+        const deadline = c.deadline ? new Date(c.deadline) : null;
+        return deadline && deadline < hoy && !c.completado;
+    });
+    const calidadPendiente = calidadMetricas.filter((c) => !c.completado);
+    const tareasAtrasadas = todo.filter((t) => {
+        const fecha = t.dueDate ? new Date(t.dueDate) : null;
+        return fecha && fecha < hoy && !t.done;
+    });
+
+    const hayRetrasos =
+        alcanceRetrasado.length > 0 ||
+        hitosRetrasados.length > 0 ||
+        costosRetrasados.length > 0 ||
+        tareasAtrasadas.length > 0;
+    const hayCualquierAlerta = hayRetrasos || calidadPendiente.length > 0;
+
+    return { hayRetrasos, hayCualquierAlerta };
+}
+
+/**
+ * Volcado para «¿Qué hacemos hoy?»: mismo cuerpo que el informe, pero sin guardar en BD.
+ * @param {object} p — incluye `usuario` (sesión) para el nombre en cabecera.
+ */
+export function buildNovaHoyDump(p) {
+    const {
+        usuario,
+        listaSolicitudes,
+        proyectoId,
+        projectDetail,
+        resumenEjecucion,
+        resumenDesempeno,
+        estadisticas,
+        logs,
+        riesgosList,
+        listaEncuestas,
+        alcanceEntregables,
+        tiempoFechasCriticas,
+        costoEntregable,
+        calidadMetricas,
+        todo,
+        totalesAprobados,
+        presupuesto,
+        ganttSummary,
+        leccionesAprendidas,
+    } = p;
+
+    const { impactoDolares, totalImpactoTiempo, solicitudesAprobadasCount } =
+        computeNovaSolicitudesImpact(listaSolicitudes);
+    const { hayRetrasos, hayCualquierAlerta } = computeNovaRetrasosFlags({
+        alcanceEntregables,
+        tiempoFechasCriticas,
+        costoEntregable,
+        calidadMetricas,
+        todo,
+    });
+
+    const today = new Date().toISOString().split('T')[0];
+    let nombrePersona = '—';
+    if (usuario?.Persona) {
+        nombrePersona = `${usuario.Persona.nombre || ''} ${usuario.Persona.apellido || ''}`.trim() || usuario?.username || '—';
+    } else if (usuario?.username) {
+        nombrePersona = usuario.username;
+    }
+
+    return buildNovaStructuredDump(
+        {
+            proyectoId,
+            projectDetail,
+            formData: {
+                nombrePersona,
+                fechaInforme: today,
+                conclusiones:
+                    '(Volcado efímero generado por GORU para NOVA — no es un informe de avance guardado.)',
+                proximosPasos: '(Asistente del día: prioridades solo para la fecha actual.)',
+            },
+            recomendacionesIa: '',
+            resumenEjecucion,
+            resumenDesempeno,
+            estadisticas,
+            logs,
+            riesgosList,
+            listaSolicitudes,
+            listaEncuestas,
+            alcanceEntregables,
+            tiempoFechasCriticas,
+            costoEntregable,
+            calidadMetricas,
+            todo,
+            totalesAprobados,
+            presupuesto,
+            ganttSummary,
+            leccionesAprendidas,
+            hayRetrasos,
+            hayCualquierAlerta,
+            impactoDolares,
+            totalImpactoTiempo,
+            solicitudesAprobadasCount,
+        },
+        { mode: 'hoy' },
+    );
+}
+
 /**
  * @param {object} p - mismos datos que recibe InformeAvanceModal (props + formData + recomendacionesIa)
+ * @param {object} [options]
+ * @param {'informe'|'hoy'} [options.mode] — cabecera del volcado
  */
-export function buildNovaStructuredDump(p) {
+export function buildNovaStructuredDump(p, options = {}) {
+    const mode = options.mode || 'informe';
     const {
         proyectoId,
         projectDetail,
@@ -106,8 +308,13 @@ export function buildNovaStructuredDump(p) {
         chunks.push(`--- ${title} ---\n${String(body).trim()}`);
     };
 
+    const tituloCabecera =
+        mode === 'hoy'
+            ? '=== Volcado efímero GORU — Asistente «¿Qué hacemos hoy?» (no se guarda informe) ==='
+            : '=== Volcado estructurado para NOVA (informe de avance / proyecto en marcha) ===';
+
     push('Cabecera GORU', [
-        '=== Volcado estructurado para NOVA (informe de avance / proyecto en marcha) ===',
+        tituloCabecera,
         `proyecto_id (GORU): ${proyectoId != null ? proyectoId : '—'}`,
         `modo: ${modo}`,
         `nombre: ${projectDetail?.nombre || '—'}`,
