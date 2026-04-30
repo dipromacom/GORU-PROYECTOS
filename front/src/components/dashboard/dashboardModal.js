@@ -1,6 +1,8 @@
 /* eslint-disable no-unused-vars */
 import React, { useMemo, useState } from "react";
 import Modal from "react-bootstrap/Modal";
+import Form from "react-bootstrap/Form";
+import { Row, Col } from "react-bootstrap";
 import moment from "moment";
 import "moment/locale/es-mx";
 import { Doughnut, Line } from "react-chartjs-2";
@@ -23,6 +25,26 @@ const TIPO_COLOR = {
 const TIPO_BORDER = { "1": "#6f42c1", "2": "#fd7e14", "3": "#20c997" };
 
 const MODO_LABEL = { P: "Proyectos Equipo", A: "Proyectos Personales", PR: "Programas" };
+
+// ─── Helpers de filtro ────────────────────────────────────────────────────────
+const normalizeText = (s) =>
+    (s ?? "")
+        .toString()
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "")
+        .toLowerCase()
+        .trim();
+
+const getDirectorNombre = (p) =>
+    p?.DirectorProyecto?.Persona
+        ? `${p.DirectorProyecto.Persona.nombre} ${p.DirectorProyecto.Persona.apellido || ""}`.trim()
+        : "";
+
+const safeDate = (raw) => {
+    if (!raw) return null;
+    const d = new Date(raw);
+    return isNaN(d.getTime()) ? null : d;
+};
 
 // KPI definitions — color en CSS custom property --kpi-color
 const KPI_CONFIG = (byEstado, pendientes, total) => [
@@ -390,6 +412,80 @@ function DashboardModal({ show, onHide, projectList = [], modo = "P" }) {
     const [activeTab, setActiveTab] = useState("general");
     const modoLabel = MODO_LABEL[modo] || "Proyectos";
 
+    // ─── Filtros (frontend) ───────────────────────────────────────────────────
+    const [fNombre, setFNombre] = useState("");
+    const [fEstado, setFEstado] = useState("");
+    const [fDirector, setFDirector] = useState("");
+    const [fDateField, setFDateField] = useState("fecha_inicio"); // fecha_inicio | fecha_creacion
+    const [fDateFrom, setFDateFrom] = useState("");
+    const [fDateTo, setFDateTo] = useState("");
+
+    const estadoOptions = useMemo(() => {
+        const set = new Set();
+        (projectList || []).forEach((p) => {
+            if (p?.estado) set.add(String(p.estado));
+        });
+        const arr = Array.from(set);
+        const order = ["C", "S", "P", "X", "E"];
+        arr.sort((a, b) => order.indexOf(a) - order.indexOf(b));
+        return arr;
+    }, [projectList]);
+
+    const directorOptions = useMemo(() => {
+        const set = new Set();
+        (projectList || []).forEach((p) => {
+            const d = getDirectorNombre(p);
+            if (d) set.add(d);
+        });
+        return Array.from(set).sort((a, b) => a.localeCompare(b, "es"));
+    }, [projectList]);
+
+    const filteredProjectList = useMemo(() => {
+        const nombreQ = normalizeText(fNombre);
+        const directorQ = normalizeText(fDirector);
+        const from = fDateFrom ? safeDate(fDateFrom + "T00:00:00") : null;
+        const to = fDateTo ? safeDate(fDateTo + "T23:59:59") : null;
+        const dateKey = fDateField === "fecha_creacion" ? "fecha_creacion" : "fecha_inicio";
+
+        return (projectList || []).filter((p) => {
+            // Nombre
+            if (nombreQ) {
+                const n = normalizeText(p?.nombre);
+                if (!n.includes(nombreQ)) return false;
+            }
+
+            // Estado
+            if (fEstado) {
+                if (String(p?.estado || "") !== String(fEstado)) return false;
+            }
+
+            // Director
+            if (directorQ) {
+                const d = normalizeText(getDirectorNombre(p));
+                if (!d.includes(directorQ)) return false;
+            }
+
+            // Fecha (rango)
+            if (from || to) {
+                const d = safeDate(p?.[dateKey]);
+                if (!d) return false;
+                if (from && d < from) return false;
+                if (to && d > to) return false;
+            }
+
+            return true;
+        });
+    }, [projectList, fNombre, fEstado, fDirector, fDateField, fDateFrom, fDateTo]);
+
+    const clearFilters = () => {
+        setFNombre("");
+        setFEstado("");
+        setFDirector("");
+        setFDateField("fecha_inicio");
+        setFDateFrom("");
+        setFDateTo("");
+    };
+
     const tabs = [
         { key: "general", label: "📌 Vista General" },
         { key: "detalle", label: "🔍 Análisis Detallado" },
@@ -402,12 +498,86 @@ function DashboardModal({ show, onHide, projectList = [], modo = "P" }) {
                 <Modal.Title>
                     📊 Dashboard — Cartera de {modoLabel}
                     <span className="db-header-badge">
-                        {projectList.length} proyecto{projectList.length !== 1 ? "s" : ""}
+                        {filteredProjectList.length} / {projectList.length} proyecto{projectList.length !== 1 ? "s" : ""}
                     </span>
                 </Modal.Title>
             </Modal.Header>
 
             <Modal.Body>
+                {/* Filtros (aplican a todas las pestañas) */}
+                <div className="db-card" style={{ marginBottom: 12 }}>
+                    <div className="db-section-title">🔎 Filtros</div>
+                    <Row style={{ rowGap: 10 }}>
+                        <Col xs={12} md={4}>
+                            <Form.Group className="mb-0">
+                                <Form.Label className="small text-muted fw-bold mb-1">Nombre</Form.Label>
+                                <Form.Control
+                                    size="sm"
+                                    placeholder="Buscar por nombre…"
+                                    value={fNombre}
+                                    onChange={(e) => setFNombre(e.target.value)}
+                                />
+                            </Form.Group>
+                        </Col>
+
+                        <Col xs={12} md={4}>
+                            <Form.Group className="mb-0">
+                                <Form.Label className="small text-muted fw-bold mb-1">Estado</Form.Label>
+                                <Form.Control as="select" size="sm" value={fEstado} onChange={(e) => setFEstado(e.target.value)}>
+                                    <option value="">Todos</option>
+                                    {estadoOptions.map((k) => (
+                                        <option key={k} value={k}>
+                                            {ESTADO_LABEL[k] || k}
+                                        </option>
+                                    ))}
+                                </Form.Control>
+                            </Form.Group>
+                        </Col>
+
+                        <Col xs={12} md={4}>
+                            <Form.Group className="mb-0">
+                                <Form.Label className="small text-muted fw-bold mb-1">Director</Form.Label>
+                                <Form.Control as="select" size="sm" value={fDirector} onChange={(e) => setFDirector(e.target.value)}>
+                                    <option value="">Todos</option>
+                                    {directorOptions.map((d) => (
+                                        <option key={d} value={d}>{d}</option>
+                                    ))}
+                                </Form.Control>
+                            </Form.Group>
+                        </Col>
+
+                        <Col xs={12} md={4}>
+                            <Form.Group className="mb-0">
+                                <Form.Label className="small text-muted fw-bold mb-1">Filtrar por fecha</Form.Label>
+                                <Form.Control as="select" size="sm" value={fDateField} onChange={(e) => setFDateField(e.target.value)}>
+                                    <option value="fecha_inicio">Fecha de inicio</option>
+                                    <option value="fecha_creacion">Fecha de creación</option>
+                                </Form.Control>
+                            </Form.Group>
+                        </Col>
+
+                        <Col xs={6} md={4}>
+                            <Form.Group className="mb-0">
+                                <Form.Label className="small text-muted fw-bold mb-1">Desde</Form.Label>
+                                <Form.Control size="sm" type="date" value={fDateFrom} onChange={(e) => setFDateFrom(e.target.value)} />
+                            </Form.Group>
+                        </Col>
+
+                        <Col xs={6} md={4}>
+                            <Form.Group className="mb-0">
+                                <Form.Label className="small text-muted fw-bold mb-1">Hasta</Form.Label>
+                                <Form.Control size="sm" type="date" value={fDateTo} onChange={(e) => setFDateTo(e.target.value)} />
+                            </Form.Group>
+                        </Col>
+                    </Row>
+
+                    <div style={{ display: "flex", justifyContent: "flex-end", marginTop: 10 }}>
+                        <button className="db-close-btn" onClick={clearFilters} type="button">
+                            Limpiar filtros
+                        </button>
+                    </div>
+                </div>
+
                 {/* Tab bar */}
                 <div className="db-tabs-bar">
                     {tabs.map(({ key, label, soon }) => (
@@ -425,18 +595,18 @@ function DashboardModal({ show, onHide, projectList = [], modo = "P" }) {
                 {/* Content */}
                 <div className="db-scroll">
                     {activeTab === "general" && (
-                        projectList.length === 0
+                        filteredProjectList.length === 0
                             ? (
                                 <div className="db-empty">
                                     <div className="db-empty-icon">📂</div>
                                     <p>No hay proyectos con los filtros actuales.</p>
                                 </div>
                             )
-                            : <TabGeneral projects={projectList} />
+                            : <TabGeneral projects={filteredProjectList} />
                     )}
 
                     {activeTab === "detalle" && (
-                        <TabDetalle projects={projectList} modo={modo}/>
+                        <TabDetalle projects={filteredProjectList} modo={modo} />
                     )}
                 </div>
             </Modal.Body>

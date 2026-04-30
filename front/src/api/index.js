@@ -69,8 +69,8 @@ export const disableOpcionCustom = (id, payload) => apiWithToken.put(`/opcion/cu
 export const getBatchStatus = (usuarioId) => apiWithToken.get(`/batch/status`, { headers: { usuario: usuarioId } });
 export const updateBatchSetup = (usuarioId, tipoEvaluacionId) => apiWithToken.put(`/batch/tipoEvaluacion/${tipoEvaluacionId}/update`, {}, { headers: { usuario: usuarioId } });
 
-export const getBatchDetails= (batchId, usuarioId) => apiWithToken.get(`/batch/${batchId}`, { headers: { usuario: usuarioId }});
-export const getBatchByProjectId= (projectId) => apiWithToken.get(`/batch/project/${projectId}`);
+export const getBatchDetails = (batchId, usuarioId) => apiWithToken.get(`/batch/${batchId}`, { headers: { usuario: usuarioId } });
+export const getBatchByProjectId = (projectId) => apiWithToken.get(`/batch/project/${projectId}`);
 
 
 //Se agrega endpoint para activar proyecto
@@ -85,8 +85,8 @@ export const cambiarEstadoProyecto = (payload) => apiWithToken.post(`/proyecto/e
 //se agrega endpoint para obtener proyecto por ID
 export const getProyectoByID = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}`)
 
-export const getProyectos = (params) => apiWithToken.get(`/proyecto/${ params || null ? `?${ (new URLSearchParams(params))?.toString()?? '' }`: '' }`)
-export const createProyecto = (payload) => apiWithToken.post("/proyecto/",payload)
+export const getProyectos = (params) => apiWithToken.get(`/proyecto/${params || null ? `?${(new URLSearchParams(params))?.toString() ?? ''}` : ''}`)
+export const createProyecto = (payload) => apiWithToken.post("/proyecto/", payload)
 export const updateProyecto = (projectId, payload) => apiWithToken.put(`/proyecto/${projectId}`, payload)
 
 export const createTaskInBatch = (payload) => apiWithToken.post(`/tarea/batch`, payload)
@@ -98,16 +98,24 @@ export const createInteresadosBatch = (payload) => apiWithToken.post('/interesad
 export const getInteresadosByProjectId = (proyectoId) => apiWithToken.get(`/interesados/${proyectoId}`)
 export const getInteresadoByProjectId = (proyectoId) => apiWithToken.get(`/interesado/${proyectoId}`)
 
+/**
+ * Correo desde el proyecto (interesados y/o colaboradores). Remitente = usuario autenticado.
+ * payload: { asunto, mensaje, destinatariosModo?, interesadoIds?, colaboradorUsuarioIds? }
+ * destinatariosModo: todos | colaboradores_todos | colaborador | interesados_todos | interesado
+ */
+export const postCorreoInteresadosProyecto = (proyectoId, payload) =>
+  apiWithToken.post(`/interesados/proyecto/${proyectoId}/correo`, payload);
+
 // actualizar interesado
 export const updateInteresado = (payload) => apiWithToken.put(`/interesados/${payload.id_interesado}`, payload);
 
 // datos generales del proyecto
-export const createDatosGeneralesProyecto = (payload) => apiWithToken.post("/proyecto/generalData",payload)
-export const updateDatosGenerales = (projectId,payload) => apiWithToken.put(`/proyecto/${projectId}/generalData`,payload)
+export const createDatosGeneralesProyecto = (payload) => apiWithToken.post("/proyecto/generalData", payload)
+export const updateDatosGenerales = (projectId, payload) => apiWithToken.put(`/proyecto/${projectId}/generalData`, payload)
 
 export const createAnalisisAmbientalBatch = (payload) => apiWithToken.post('/analisisAmbiental', payload);
 export const getAnalisisAmbientalByProjectId = (proyectoId) => apiWithToken.get(`/analisisAmbiental/${proyectoId}`)
-export const getAllCriteriosAnalisis = () =>  apiWithToken.get('/criterioAnalisis/');
+export const getAllCriteriosAnalisis = () => apiWithToken.get('/criterioAnalisis/');
 
 export const createResultadoAnalisisAmbientalBatch = (payload) => apiWithToken.post('/resultadoAnalisis', payload);
 export const getResultadoAnalisisAmbientalByProjectId = (proyectoId) => apiWithToken.get(`/resultadoAnalisis/${proyectoId}`)
@@ -118,8 +126,8 @@ export const getTasks = (idProject, page = 1, limit = 10, done) => {
   const url = `/tarea/todo?projectId=${idProject}&page=${page}&limit=${limit}&done=${done}`
   return apiWithToken.get(url)
 }
-export const syncKanban = ({status, tasks, projectId}) => apiWithToken.post(`/proyecto/${projectId}/kanban`,{status, tasks})
-export const fetchKanban = ({projectId}) => apiWithToken.get(`/proyecto/${projectId}/kanban`)
+export const syncKanban = ({ status, tasks, projectId }) => apiWithToken.post(`/proyecto/${projectId}/kanban`, { status, tasks })
+export const fetchKanban = ({ projectId }) => apiWithToken.get(`/proyecto/${projectId}/kanban`)
 
 export const fetchGantt = ({ projectId }) =>
   apiWithToken.get(`/proyecto/${projectId}/gantt`);
@@ -273,6 +281,12 @@ export const patchAdminUsuarioTipoLicencia = (usuarioId, tipoLicenciaId) =>
 export const patchAdminUsuarioEmpresa = (usuarioId, empresaId) =>
   apiWithToken.patch(`/admin/usuarios/${usuarioId}/empresa`, { empresaId });
 export const postAdminEmpresa = (payload) => apiWithToken.post('/admin/empresas', payload);
+export const getAdminColaboradoresProyectoConfig = () => apiWithToken.get('/admin/colaboradores-proyecto-config');
+export const putAdminColaboradoresProyectoConfig = (payload) =>
+  apiWithToken.put('/admin/colaboradores-proyecto-config', payload);
+export const getColaboradoresMaxConfig = () => apiWithToken.get('/proyecto/config/colaboradores-max');
+export const postInvitacionCorreoExterno = (proyectoId, payload) =>
+  apiWithToken.post(`/proyecto/${proyectoId}/invitacion-correo-externo`, payload);
 export const getAllTipoLicenciaCatalogo = () => api.get('/tipo-licencia');
 export const getAllEmpresasCatalogo = () => api.get('/empresa');
 
@@ -294,6 +308,7 @@ export const deletePermisoProyecto = permisoId => apiWithToken.delete(`/proyecto
 // --- Asignación ---
 
 export const assignRolProyecto = payload => apiWithToken.post('/proyecto/asignarRol', payload);
+
 
 // --- GESTIÓN DE USUARIOS DE PROYECTO
 export const getUsuariosProyecto = proyectoId => apiWithToken.get(`/proyecto/${proyectoId}/usuarios`);

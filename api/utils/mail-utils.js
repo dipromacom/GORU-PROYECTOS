@@ -12,22 +12,38 @@ aws.config.update({
   region: config.awsRegion,
 });
 
-const enviarMail = async (email, motivo, mensaje) => {
+/**
+ * @param {string} email
+ * @param {string} motivo
+ * @param {string} mensaje
+ * @param {{ fromEmail: string, fromDisplayName?: string } | null} [remitente] Si se indica, el From es el usuario (SES debe autorizar ese remitente).
+ */
+const enviarMail = async (email, motivo, mensaje, remitente = null) => {
   try {
     let transporter = nodemailer.createTransport({
       SES: new aws.SES({
         apiVersion: '2010-12-01'
       })
     });
-  
-    let message = await transporter.sendMail({
-      from: `"GORU" <${config.fromEmail}>`,
-      to: [ email ],
-      bcc: [ email ],
+
+    const fromDefault = `"GORU" <${config.fromEmail}>`;
+    let fromLine = fromDefault;
+    const mailPayload = {
+      to: [email],
       subject: motivo,
       text: mensaje,
-    });
-  
+    };
+    if (remitente && remitente.fromEmail) {
+      const dn = (remitente.fromDisplayName || 'GORU').replace(/"/g, "'");
+      fromLine = `"${dn}" <${remitente.fromEmail}>`;
+      mailPayload.replyTo = remitente.fromEmail;
+    } else {
+      mailPayload.bcc = [email];
+    }
+    mailPayload.from = fromLine;
+
+    let message = await transporter.sendMail(mailPayload);
+
     logger.info({ message: `Mensaje enviado: ${message.messageId}` });
   } catch (error) {
     logger.error({
@@ -39,7 +55,7 @@ const enviarMail = async (email, motivo, mensaje) => {
 
     throw error;
   }
-  
+
 }
 
 module.exports = {

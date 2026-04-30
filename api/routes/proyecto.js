@@ -22,6 +22,7 @@ router.get('/proyecto', ProyectoController.getAllProyecto);
 // Roles y permisos (van antes de /:id para evitar conflicto)
 router.get('/proyecto/roles', RolProyectoController.getAllRolesProyecto);
 router.get('/proyecto/permisos', RolProyectoController.getAllPermisosProyecto);
+router.get('/proyecto/config/colaboradores-max', ProyectoController.getColaboradoresMaxConfig);
 
 // Dashboard por usuario (estáticas con subruta fija)
 router.get('/proyecto/dashboard/gantt/usuario/:usuarioId', GanttController.getGanttByUser);
@@ -48,6 +49,7 @@ router.post('/proyecto/activate', ProyectoController.activarProyecto);
 router.post('/proyecto/cerrar', ProyectoController.cerrarProyecto);
 router.post('/proyecto/estado', ProyectoController.updateEstadoProyecto);
 router.post('/proyecto/asignarRol', RolProyectoController.assignRolProyecto);
+router.post('/proyecto/:id/invitacion-correo-externo', RolProyectoController.postInvitacionCorreoExterno);
 
 // Roles
 router.post('/proyecto/roles', RolProyectoController.createRolProyecto);

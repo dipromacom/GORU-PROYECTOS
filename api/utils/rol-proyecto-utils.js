@@ -1,6 +1,7 @@
 // utils/rol-proyecto-utils.js
 
 const { RolProyecto, PermisoProyecto, UsuarioProyecto, Usuario, Proyecto } = require('../models/index');
+const ColabConfigUtils = require('./config-colaboradores-proyecto-utils');
 const { Op } = require('sequelize');
 // const logger = require('../logger/logger'); // Asumiendo que tienes logger y path importados
 
@@ -110,7 +111,50 @@ const deletePermisoProyecto = async (id) => {
 // --- Funciones de Asignación (Ya existente) ---
 
 const assignRolProyectoToUsuario = async (usuarioId, proyectoId, rolProyectoId) => {
-    // ... (código existente para encontrar o crear y actualizar UsuarioProyecto)
+    const proyecto = await Proyecto.findByPk(proyectoId, { attributes: ['id', 'modo', 'empresa', 'nombre'] });
+    if (!proyecto) {
+        const e = new Error('Proyecto no encontrado.');
+        e.statusCode = 404;
+        throw e;
+    }
+
+    const usuarioAsignado = await Usuario.findByPk(usuarioId, { attributes: ['id', 'empresa'] });
+    if (!usuarioAsignado) {
+        const e = new Error('Usuario no encontrado.');
+        e.statusCode = 404;
+        throw e;
+    }
+
+    if (
+        proyecto.empresa != null
+        && usuarioAsignado.empresa != null
+        && Number(proyecto.empresa) !== Number(usuarioAsignado.empresa)
+    ) {
+        const e = new Error('Solo puede asignar usuarios de la misma empresa del proyecto.');
+        e.statusCode = 403;
+        throw e;
+    }
+
+    const configPlain = await ColabConfigUtils.getConfigPlain();
+    const max = ColabConfigUtils.getMaxColaboradoresForModo(proyecto.modo || 'P', configPlain);
+
+    const existing = await UsuarioProyecto.findOne({
+        where: { usuario_id: usuarioId, proyecto_id: proyectoId },
+    });
+    const colCount = await UsuarioProyecto.count({
+        where: { proyecto_id: proyectoId, rol_proyecto_id: { [Op.ne]: null } },
+    });
+
+    const wouldAddSlot = !existing || existing.rol_proyecto_id == null;
+    if (wouldAddSlot && colCount >= max) {
+        const e = new Error(
+            `Se alcanzó el máximo de colaboradores con rol para este proyecto (${max}). `
+            + 'El límite lo define la plataforma según el tipo de proyecto (personal, equipo o programa).'
+        );
+        e.statusCode = 403;
+        throw e;
+    }
+
     const [asignacion, created] = await UsuarioProyecto.findOrCreate({
         where: { usuario_id: usuarioId, proyecto_id: proyectoId },
         defaults: { rol_proyecto_id: rolProyectoId }
@@ -119,8 +163,6 @@ const assignRolProyectoToUsuario = async (usuarioId, proyectoId, rolProyectoId) 
     if (!created) {
         await asignacion.update({ rol_proyecto_id: rolProyectoId });
     }
-
-    // Aquí podemos añadir una validación para la empresa (pendiente de implementación en el front/middleware)
 
     return UsuarioProyecto.findOne({
         where: { usuario_id: usuarioId, proyecto_id: proyectoId },

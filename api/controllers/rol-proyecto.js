@@ -1,10 +1,11 @@
 // controllers/rol-proyecto.js
 
 const RolProyectoUtils = require('../utils/rol-proyecto-utils');
-const { Proyecto } = require('../models/index');
+const { Proyecto, Usuario } = require('../models/index');
 const { decodeToken } = require('../utils/security-utils');
 const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
 const { P } = PermisoProyectoUtils;
+const MailUtils = require('../utils/mail-utils');
 // const logger = require('../logger/logger'); // Asumiendo imports de logger y path
 
 // --- Asignación de Rol (Ya existente) ---
@@ -31,8 +32,65 @@ const assignRolProyecto = async (req, res) => {
         return res.status(200).json({ success: true, data: asignacion });
 
     } catch (error) {
-        // logger.error({ message: error.message, source: file, method: "assignRolProyecto" });
-        return res.status(500).json({ success: false, message: error.message });
+        const status = error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
+        return res.status(status).json({ success: false, message: error.message });
+    }
+};
+
+/**
+ * Invita por correo a alguien que aún no tiene cuenta en Goru (no agrega al proyecto).
+ */
+const postInvitacionCorreoExterno = async (req, res) => {
+    const { id: proyectoId } = req.params;
+    const { email } = req.body || {};
+    try {
+        const { authorization } = req.headers;
+        const { id: solicitanteId } = decodeToken(authorization);
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, solicitanteId, proyectoId, P.PROYECTO_MIEMBROS_GEST);
+        if (!ok) return;
+
+        if (!email || typeof email !== 'string') {
+            return res.status(400).json({ success: false, message: 'Indique un correo electrónico.' });
+        }
+        const normalized = email.trim().toLowerCase();
+        if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized)) {
+            return res.status(400).json({ success: false, message: 'Correo electrónico no válido.' });
+        }
+
+        const exist = await Usuario.findOne({ where: { username: normalized } });
+        if (exist) {
+            return res.status(400).json({
+                success: false,
+                message: 'Este correo ya corresponde a un usuario de Goru. Agréguelo como colaborador desde la lista de usuarios de su empresa.',
+            });
+        }
+
+        const proyecto = await Proyecto.findByPk(proyectoId, { attributes: ['id', 'nombre'] });
+        if (!proyecto) {
+            return res.status(404).json({ success: false, message: 'Proyecto no encontrado.' });
+        }
+
+        const DEFAULT_REGISTRO_URL = 'https://goru.grupogonzalez.ec/signUp';
+        const baseUrl = (process.env.FRONTEND_PUBLIC_URL || process.env.REACT_APP_PUBLIC_URL || '').replace(/\/$/, '');
+        const registroUrl = baseUrl ? `${baseUrl}/signUp` : DEFAULT_REGISTRO_URL;
+        const motivo = `Invitación a Goru — ${proyecto.nombre || 'Proyecto'}`;
+        const nombreProy = proyecto.nombre || 'un proyecto';
+        const mensaje = `Hola,
+
+Le han invitado a colaborar en el proyecto "${nombreProy}" en la plataforma Goru.
+
+Para crear su cuenta de usuario, ingrese a:
+${registroUrl}
+
+Una vez registrado y asociado a la misma empresa, quien le invitó podrá agregarlo al proyecto desde Configuración → Agregar colaborador al proyecto.
+
+Este mensaje fue enviado automáticamente; no responda a este correo.`;
+
+        await MailUtils.enviarMail(normalized, motivo, mensaje);
+        return res.status(200).json({ success: true, message: 'Se envió el correo de invitación.' });
+    } catch (error) {
+        const status = error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
+        return res.status(status).json({ success: false, message: error.message });
     }
 };
 
@@ -206,6 +264,7 @@ const getUserProjectRol = async (req, res) => {
 
 module.exports = {
     assignRolProyecto,
+    postInvitacionCorreoExterno,
     // Roles
     createRolProyecto,
     getAllRolesProyecto,

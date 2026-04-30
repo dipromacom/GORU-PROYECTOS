@@ -2,6 +2,7 @@ const { Usuario } = require('../models/index');
 const UsuarioUtils = require('../utils/usuario-utils');
 const EmpresaUtils = require('../utils/empresa-utils');
 const { assertSuperAdmin } = require('../utils/super-admin-utils');
+const ColabConfigUtils = require('../utils/config-colaboradores-proyecto-utils');
 
 const toPlainUsuario = (instance) => {
     if (!instance) return null;
@@ -82,9 +83,49 @@ const createEmpresa = async (req, res) => {
     }
 };
 
+const getColaboradoresProyectoConfig = async (req, res) => {
+    try {
+        if (!(await assertSuperAdmin(req, res))) return;
+        const data = await ColabConfigUtils.getConfigPlain();
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        const status = error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
+        return res.status(status).json({ success: false, message: error.message });
+    }
+};
+
+const putColaboradoresProyectoConfig = async (req, res) => {
+    try {
+        if (!(await assertSuperAdmin(req, res))) return;
+        const { max_colaboradores_personal, max_colaboradores_equipo, max_colaboradores_programa } = req.body || {};
+        if (
+            max_colaboradores_personal === undefined
+            || max_colaboradores_equipo === undefined
+            || max_colaboradores_programa === undefined
+        ) {
+            return res.status(400).json({
+                success: false,
+                message: 'Debe enviar max_colaboradores_personal, max_colaboradores_equipo y max_colaboradores_programa.',
+            });
+        }
+        const payload = req.userPayload || {};
+        const uid = payload.id != null ? parseInt(payload.id, 10) : null;
+        const data = await ColabConfigUtils.updateConfig(
+            { max_colaboradores_personal, max_colaboradores_equipo, max_colaboradores_programa },
+            Number.isFinite(uid) ? uid : null
+        );
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        const status = error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
+        return res.status(status).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     listUsuarios,
     patchUsuarioTipoLicencia,
     patchUsuarioEmpresa,
     createEmpresa,
+    getColaboradoresProyectoConfig,
+    putColaboradoresProyectoConfig,
 };

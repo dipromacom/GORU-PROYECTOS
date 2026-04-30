@@ -2179,7 +2179,17 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="Matriz-Interesados">
-                                    <ViewInteresados interesados={interesado} toDo={todo} markAsDoneCallback={id => doneTask(id)} cerrado={cerrado} esPrograma={esPrograma} />
+                                        <ViewInteresados
+                                            interesados={interesado}
+                                            projectId={numericId}
+                                            puedeEnviarCorreoInteresados={puede(PermProy.INTERESADOS_GEST)}
+                                            puedeEnviarCorreoColaboradores={puede(PermProy.PROYECTO_MIEMBROS_GEST)}
+                                            usuarioCreadorId={projectDetail?.usuario_creador}
+                                            toDo={todo}
+                                            markAsDoneCallback={id => doneTask(id)}
+                                            cerrado={cerrado}
+                                            esPrograma={esPrograma}
+                                        />
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="Crear-Interesado">
                                     <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} esPrograma={esPrograma} />

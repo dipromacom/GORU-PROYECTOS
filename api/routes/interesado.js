@@ -3,6 +3,7 @@ const interesadoController = require('../controllers/interesado');
 
 const router = express.Router();
 
+router.post('/interesados/proyecto/:proyectoId/correo', interesadoController.postEnviarCorreoInteresados);
 router.post('/interesados', interesadoController.createInteresado);
 router.put('/interesados/:id', interesadoController.updateInteresado);
 router.delete('/interesados/:id', interesadoController.deleteInteresado);

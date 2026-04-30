@@ -1,4 +1,7 @@
-const InteresadoUtils = require('../utils/interesados-utils')
+const InteresadoUtils = require('../utils/interesados-utils');
+const InteresadoCorreoUtils = require('../utils/interesados-correo-utils');
+const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
+const { P } = PermisoProyectoUtils;
 const logger = require('../logger/logger');
 const db = require('../db');
 const path = require('path');
@@ -26,7 +29,7 @@ const { decodeToken } = require('../utils/security-utils');
 
 
 //     try {
-        
+
 //         const interesado = await InteresadoUtils.createInteresados({
 //             proyecto_id,
 //             id_interesado,
@@ -186,6 +189,83 @@ const getInteresadosById = async (req, res) => {
     }
 };
 
+const MODOS_CORREO = ['todos', 'colaboradores_todos', 'colaborador', 'interesados_todos', 'interesado'];
+
+const postEnviarCorreoInteresados = async (req, res) => {
+    try {
+        const usuarioId = PermisoProyectoUtils.getUsuarioIdFromReq(req);
+        if (usuarioId == null) {
+            return res.status(401).json({ success: false, message: 'No autorizado' });
+        }
+        const { proyectoId } = req.params;
+
+        const { asunto, mensaje, interesadoIds, colaboradorUsuarioIds, destinatariosModo: modoBody } = req.body || {};
+        const idsInt = Array.isArray(interesadoIds) ? interesadoIds : [];
+        const idsColab = Array.isArray(colaboradorUsuarioIds) ? colaboradorUsuarioIds : [];
+
+        let destinatariosModo = typeof modoBody === 'string' ? modoBody.trim() : '';
+        if (!MODOS_CORREO.includes(destinatariosModo)) {
+            destinatariosModo = idsInt.length > 0 ? 'interesado' : 'interesados_todos';
+        }
+
+        const necesitaInteresados = ['todos', 'interesados_todos', 'interesado'].includes(destinatariosModo);
+        const necesitaMiembros = ['todos', 'colaboradores_todos', 'colaborador'].includes(destinatariosModo);
+
+        if (necesitaInteresados) {
+            const ok = await PermisoProyectoUtils.assertPermisoProyecto(
+                res,
+                usuarioId,
+                proyectoId,
+                P.INTERESADOS_GEST,
+            );
+            if (!ok) return;
+        }
+        if (necesitaMiembros) {
+            const ok2 = await PermisoProyectoUtils.assertPermisoProyecto(
+                res,
+                usuarioId,
+                proyectoId,
+                P.PROYECTO_MIEMBROS_GEST,
+            );
+            if (!ok2) return;
+        }
+
+        if (!asunto || !String(asunto).trim()) {
+            return res.status(400).json({ success: false, message: 'El asunto es obligatorio.' });
+        }
+        if (!mensaje || !String(mensaje).trim()) {
+            return res.status(400).json({ success: false, message: 'El mensaje es obligatorio.' });
+        }
+
+        if (destinatariosModo === 'interesado' && idsInt.length === 0) {
+            return res.status(400).json({ success: false, message: 'Debe indicar el interesado (interesadoIds).' });
+        }
+        if (destinatariosModo === 'colaborador' && idsColab.length !== 1) {
+            return res.status(400).json({ success: false, message: 'Debe indicar exactamente un colaborador (colaboradorUsuarioIds con un id).' });
+        }
+
+        const data = await InteresadoCorreoUtils.enviarCorreosProyecto({
+            usuarioId,
+            proyectoId,
+            asunto: String(asunto).trim(),
+            mensaje: String(mensaje).trim(),
+            destinatariosModo,
+            interesadoIds: destinatariosModo === 'interesado' ? idsInt : undefined,
+            colaboradorUsuarioIds: destinatariosModo === 'colaborador' ? idsColab : undefined,
+        });
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        const code = error.statusCode && error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
+        logger.error({
+            message: error.message,
+            source: file,
+            method: 'postEnviarCorreoInteresados()',
+            params: req.params,
+        });
+        return res.status(code).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     createInteresado,
     updateInteresado,
@@ -193,4 +273,5 @@ module.exports = {
     getAllInteresados,
     getInteresadoById,
     getInteresadosById,
+    postEnviarCorreoInteresados,
 };

@@ -17,6 +17,8 @@ import {
     postAdminEmpresa,
     getAllTipoLicenciaCatalogo,
     getAllEmpresasCatalogo,
+    getAdminColaboradoresProyectoConfig,
+    putAdminColaboradoresProyectoConfig,
 } from '../api';
 import { selectors as sessionSelectors } from '../reducers/session';
 import '../css/Commons.css';
@@ -37,6 +39,15 @@ function AdminPlatform({ user }) {
     const [empIdent, setEmpIdent] = useState('');
     const [empTipoId, setEmpTipoId] = useState('RUC');
     const [creatingEmp, setCreatingEmp] = useState(false);
+
+    const [colabCfg, setColabCfg] = useState(null);
+    const [colabDraft, setColabDraft] = useState({
+        max_colaboradores_personal: '',
+        max_colaboradores_equipo: '',
+        max_colaboradores_programa: '',
+    });
+    const [loadingColabCfg, setLoadingColabCfg] = useState(false);
+    const [savingColabCfg, setSavingColabCfg] = useState(false);
 
     const [draft, setDraft] = useState({});
 
@@ -99,6 +110,63 @@ function AdminPlatform({ user }) {
         if (!user || !user.es_super_admin) return;
         loadCatalogos();
     }, [user, loadCatalogos]);
+
+    const loadColabConfig = useCallback(async () => {
+        if (!user || !user.es_super_admin) return;
+        setLoadingColabCfg(true);
+        try {
+            const res = await getAdminColaboradoresProyectoConfig();
+            if (res.data.success && res.data.data) {
+                const d = res.data.data;
+                setColabCfg(d);
+                setColabDraft({
+                    max_colaboradores_personal: String(d.maxColaboradoresPersonal ?? ''),
+                    max_colaboradores_equipo: String(d.maxColaboradoresEquipo ?? ''),
+                    max_colaboradores_programa: String(d.maxColaboradoresPrograma ?? ''),
+                });
+            }
+        } catch (e) {
+            toast.error(
+                e.response && e.response.data && e.response.data.message ? e.response.data.message : e.message
+            );
+        } finally {
+            setLoadingColabCfg(false);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (!user || !user.es_super_admin) return;
+        loadColabConfig();
+    }, [user, loadColabConfig]);
+
+    const handleGuardarColabConfig = async (e) => {
+        e.preventDefault();
+        const body = {
+            max_colaboradores_personal: parseInt(colabDraft.max_colaboradores_personal, 10),
+            max_colaboradores_equipo: parseInt(colabDraft.max_colaboradores_equipo, 10),
+            max_colaboradores_programa: parseInt(colabDraft.max_colaboradores_programa, 10),
+        };
+        if ([body.max_colaboradores_personal, body.max_colaboradores_equipo, body.max_colaboradores_programa].some(
+            (n) => !Number.isFinite(n)
+        )) {
+            toast.warn('Los tres límites deben ser números enteros.');
+            return;
+        }
+        setSavingColabCfg(true);
+        try {
+            const res = await putAdminColaboradoresProyectoConfig(body);
+            if (res.data.success) {
+                toast.success('Límites de colaboradores actualizados.');
+                await loadColabConfig();
+            }
+        } catch (er) {
+            toast.error(
+                er.response && er.response.data && er.response.data.message ? er.response.data.message : er.message
+            );
+        } finally {
+            setSavingColabCfg(false);
+        }
+    };
 
     useEffect(() => {
         if (!user || !user.es_super_admin) return;
@@ -179,6 +247,82 @@ function AdminPlatform({ user }) {
                     Planes (tipo de licencia), empresas y asignación de empresa a usuarios. Tras cambiar el plan, el usuario puede
                     necesitar cerrar sesión y volver a entrar para ver el menú actualizado.
                 </p>
+
+                <Card className="mb-4 shadow-sm border-0">
+                    <Card.Body className="px-3 px-md-4 py-4">
+                        <Card.Title className="blue h5 mb-3">Límites de colaboradores por proyecto</Card.Title>
+                        <p className="text-muted small mb-4">
+                            Aplica a todos los proyectos según su modo: personal (A), equipo (P) o programa (PR). Los usuarios con
+                            rol asignado cuentan para el límite; el creador del proyecto (sin rol en la tabla pivote) no cuenta.
+                        </p>
+                        {loadingColabCfg ? (
+                            <p className="mb-0">Cargando configuración…</p>
+                        ) : (
+                            <Form onSubmit={handleGuardarColabConfig}>
+                                <Row className="g-3 align-items-end">
+                                    <Col xs={12} md={4}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label>Máx. colaboradores — proyecto personal</Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                min={0}
+                                                value={colabDraft.max_colaboradores_personal}
+                                                onChange={(ev) =>
+                                                    setColabDraft((p) => ({
+                                                        ...p,
+                                                        max_colaboradores_personal: ev.target.value,
+                                                    }))
+                                                }
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col xs={12} md={4}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label>Máx. colaboradores — proyecto equipo</Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                min={0}
+                                                value={colabDraft.max_colaboradores_equipo}
+                                                onChange={(ev) =>
+                                                    setColabDraft((p) => ({
+                                                        ...p,
+                                                        max_colaboradores_equipo: ev.target.value,
+                                                    }))
+                                                }
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col xs={12} md={4}>
+                                        <Form.Group className="mb-0">
+                                            <Form.Label>Máx. colaboradores — programa</Form.Label>
+                                            <Form.Control
+                                                type="number"
+                                                min={0}
+                                                value={colabDraft.max_colaboradores_programa}
+                                                onChange={(ev) =>
+                                                    setColabDraft((p) => ({
+                                                        ...p,
+                                                        max_colaboradores_programa: ev.target.value,
+                                                    }))
+                                                }
+                                            />
+                                        </Form.Group>
+                                    </Col>
+                                    <Col xs={12} className="d-flex justify-content-end">
+                                        <Button type="submit" variant="primary" disabled={savingColabCfg || loadingColabCfg}>
+                                            Guardar límites
+                                        </Button>
+                                    </Col>
+                                </Row>
+                                {colabCfg && colabCfg.fechaActualizacion && (
+                                    <p className="small text-muted mt-3 mb-0">
+                                        Última actualización: {new Date(colabCfg.fechaActualizacion).toLocaleString('es-ES')}
+                                    </p>
+                                )}
+                            </Form>
+                        )}
+                    </Card.Body>
+                </Card>
 
                 <Card className="mb-4 shadow-sm border-0">
                     <Card.Body className="px-3 px-md-4 py-4">

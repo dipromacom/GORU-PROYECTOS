@@ -64,6 +64,7 @@ function RoleSettingsModal({
                         <Tab.Pane eventKey="assign">
                             <AssignUserRole
                                 projectId={projectId}
+                                projectModo={projectDetail?.modo}
                                 roles={roles}
                                 usuariosEmpresa={usuariosEmpresa}
                                 usuariosAsignados={usuariosAsignados}

@@ -1,6 +1,7 @@
 // sagas/rolProyecto.js
 
 import { call, put, takeLatest } from "redux-saga/effects";
+import { toast } from "react-toastify";
 import { types } from "../reducers/rolProyecto";
 import { onError } from "../libs/errorLib";
 import {
@@ -98,7 +99,14 @@ function* handleAssignRolProyecto({ payload }) {
 
     } catch (e) {
         onError(e);
-        yield put({ type: types.ASSIGN_ROL_ERROR, errorMessage: "Error al asignar el rol al usuario." });
+        const msg = e.response && e.response.data && e.response.data.message;
+        const st = e.response && e.response.status;
+        if (st === 403 && msg) {
+            toast.warn(msg);
+        } else if (msg) {
+            toast.error(msg);
+        }
+        yield put({ type: types.ASSIGN_ROL_ERROR, errorMessage: msg || "Error al asignar el rol al usuario." });
     }
 }
 // --- Handlers usuarios proyecto ---
@@ -117,6 +125,7 @@ function* handleDeleteUsuarioProyecto({ usuarioId, proyectoId }) {
     try {
         yield call(deleteUsuarioProyecto, usuarioId, proyectoId);
         yield put({ type: types.DELETE_USUARIO_PROYECTO_SUCCESS, usuarioId });
+        yield put({ type: types.GET_USUARIOS_PROYECTO_REQUEST, proyectoId });
     } catch (e) {
         onError(e);
         yield put({ type: types.DELETE_USUARIO_PROYECTO_ERROR, errorMessage: "Error al eliminar usuario del proyecto." });

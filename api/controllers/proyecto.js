@@ -5,6 +5,7 @@ const DateUtils = require('../utils/date-utils');
 const { decodeToken } = require('../utils/security-utils');
 const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
 const { P } = PermisoProyectoUtils;
+const ColabConfigUtils = require('../utils/config-colaboradores-proyecto-utils');
 
 const httpErrorStatus = (error, fallback = 500) => (
   error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : fallback
@@ -187,6 +188,20 @@ const updateEstadoProyecto = async (req, res) => {
   }
 };
 
+/**
+ * Límites globales de colaboradores (por modo de proyecto). Requiere sesión.
+ */
+const getColaboradoresMaxConfig = async (req, res) => {
+  try {
+    const { authorization } = req.headers;
+    decodeToken(authorization);
+    const data = await ColabConfigUtils.getConfigPlain();
+    return res.status(200).json({ success: true, data });
+  } catch (error) {
+    return res.status(500).json({ success: false, message: error.message });
+  }
+};
+
 module.exports = {
   getAllProyecto,
   getActiveProyecto,
@@ -198,4 +213,5 @@ module.exports = {
   updateEstadoProyecto,
   updateProyecto,
   updateProyectoGeneralData,
+  getColaboradoresMaxConfig,
 };
