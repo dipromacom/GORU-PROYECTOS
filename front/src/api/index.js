@@ -106,8 +106,12 @@ export const getInteresadoByProjectId = (proyectoId) => apiWithToken.get(`/inter
 export const postCorreoInteresadosProyecto = (proyectoId, payload) =>
   apiWithToken.post(`/interesados/proyecto/${proyectoId}/correo`, payload);
 
+export const getCorreoDestinatariosProyecto = (proyectoId) =>
+  apiWithToken.get(`/proyecto/${proyectoId}/correo/destinatarios`);
+
 // actualizar interesado
 export const updateInteresado = (payload) => apiWithToken.put(`/interesados/${payload.id_interesado}`, payload);
+
 
 // datos generales del proyecto
 export const createDatosGeneralesProyecto = (payload) => apiWithToken.post("/proyecto/generalData", payload)

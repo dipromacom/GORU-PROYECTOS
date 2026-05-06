@@ -4,8 +4,9 @@ const {
 const MailUtils = require('./mail-utils');
 
 const EMAIL_REGEX = /^[^\s@]+@[^\s@]+\.[^\s@]+$/i;
+const MAX_CORREOS_DESTINATARIOS = 100;
 
-/** @typedef {'todos'|'colaboradores_todos'|'colaborador'|'interesados_todos'|'interesado'} DestinatariosModo */
+/** @typedef {'todos'|'uno'|'varios'} DestinatariosModoCorreo */
 
 function escapeMailDisplayName(name) {
     if (!name || !String(name).trim()) return 'GORU';
@@ -167,7 +168,49 @@ function mergeDestinatariosUnicosPorEmail(listas) {
 }
 
 /**
- * @param {{ usuarioId: number, proyectoId: string|number, asunto: string, mensaje: string, destinatariosModo: DestinatariosModo, interesadoIds?: number[], colaboradorUsuarioIds?: number[] }} params
+ * Lista unificada (equipo + interesados) para UI y envío "a todos".
+ * @returns {Promise<{ email: string, nombre: string, origen: 'equipo'|'interesado' }[]>}
+ */
+async function listDestinatariosCorreoProyecto(proyectoId) {
+    const inter = await listDestinatariosInteresados(proyectoId, undefined);
+    const colRows = await getMiembrosProyectoConEmail(proyectoId);
+    const map = new Map();
+    for (const c of colRows) {
+        const k = c.email.toLowerCase();
+        if (!EMAIL_REGEX.test(c.email)) continue;
+        if (!map.has(k)) {
+            map.set(k, { email: c.email.trim(), nombre: c.nombre, origen: 'equipo' });
+        }
+    }
+    for (const i of inter) {
+        const k = i.email.toLowerCase();
+        map.set(k, { email: i.email.trim(), nombre: i.nombre, origen: 'interesado' });
+    }
+    return [...map.values()];
+}
+
+/**
+ * @param {unknown[]} raw
+ * @returns {{ email: string, nombre: string }[]}
+ */
+function normalizarListaCorreosManual(raw) {
+    if (!Array.isArray(raw)) return [];
+    const out = [];
+    const seen = new Set();
+    for (const item of raw) {
+        const em = String(item || '').trim();
+        if (!EMAIL_REGEX.test(em)) continue;
+        const k = em.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push({ email: em, nombre: em.split('@')[0] });
+        if (out.length >= MAX_CORREOS_DESTINATARIOS) break;
+    }
+    return out;
+}
+
+/**
+ * @param {{ usuarioId: number, proyectoId: string|number, asunto: string, mensaje: string, destinatariosModo: DestinatariosModoCorreo, destinatariosEmails?: string[] }} params
  */
 async function enviarCorreosProyecto(params) {
     const {
@@ -176,8 +219,7 @@ async function enviarCorreosProyecto(params) {
         asunto,
         mensaje,
         destinatariosModo,
-        interesadoIds,
-        colaboradorUsuarioIds,
+        destinatariosEmails,
     } = params;
 
     const remitente = await getRemitenteUsuario(usuarioId);
@@ -196,18 +238,11 @@ async function enviarCorreosProyecto(params) {
             destinatarios = mergeDestinatariosUnicosPorEmail([inter, col]);
             break;
         }
-        case 'colaboradores_todos':
-            destinatarios = await listDestinatariosColaboradores(proyectoId, undefined);
+        case 'uno':
+        case 'varios': {
+            destinatarios = normalizarListaCorreosManual(destinatariosEmails || []);
             break;
-        case 'colaborador':
-            destinatarios = await listDestinatariosColaboradores(proyectoId, colaboradorUsuarioIds);
-            break;
-        case 'interesados_todos':
-            destinatarios = await listDestinatariosInteresados(proyectoId, undefined);
-            break;
-        case 'interesado':
-            destinatarios = await listDestinatariosInteresados(proyectoId, interesadoIds);
-            break;
+        }
         default: {
             const e = new Error('Modo de destinatarios no válido.');
             e.statusCode = 400;
@@ -216,7 +251,7 @@ async function enviarCorreosProyecto(params) {
     }
 
     if (destinatarios.length === 0) {
-        const e = new Error(mensajeVacioDestinatarios(destinatariosModo, interesadoIds, colaboradorUsuarioIds));
+        const e = new Error(mensajeVacioDestinatarios(destinatariosModo));
         e.statusCode = 400;
         throw e;
     }
@@ -234,32 +269,29 @@ async function enviarCorreosProyecto(params) {
     return { sent, total: destinatarios.length, errors };
 }
 
-function mensajeVacioDestinatarios(modo, interesadoIds, colaboradorUsuarioIds) {
-    if (modo === 'interesado') {
-        return 'No se encontraron interesados seleccionados con correo válido en este proyecto.';
+function mensajeVacioDestinatarios(modo) {
+    if (modo === 'uno') {
+        return 'Indique un correo de destinatario válido.';
     }
-    if (modo === 'colaborador') {
-        return 'No se pudo enviar al colaborador indicado (correo no válido o no pertenece al proyecto).';
-    }
-    if (modo === 'colaboradores_todos') {
-        return 'No hay colaboradores del proyecto con correo electrónico válido.';
-    }
-    if (modo === 'interesados_todos') {
-        return 'No hay interesados con correo electrónico válido en este proyecto.';
+    if (modo === 'varios') {
+        return 'Indique al menos dos correos distintos (selección y/o campo Para).';
     }
     if (modo === 'todos') {
-        return 'No hay destinatarios con correo válido entre colaboradores e interesados de este proyecto.';
+        return 'No hay nadie en el proyecto con correo electrónico válido (equipo e interesados).';
     }
     return 'No hay destinatarios con correo electrónico válido.';
 }
 
 module.exports = {
     EMAIL_REGEX,
+    MAX_CORREOS_DESTINATARIOS,
     getRemitenteUsuario,
     getRemitenteInteresados,
     listDestinatariosInteresados,
     listDestinatariosColaboradores,
     getMiembrosProyectoConEmail,
     mergeDestinatariosUnicosPorEmail,
+    listDestinatariosCorreoProyecto,
+    normalizarListaCorreosManual,
     enviarCorreosProyecto,
 };

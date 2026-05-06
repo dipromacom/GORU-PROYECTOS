@@ -189,7 +189,35 @@ const getInteresadosById = async (req, res) => {
     }
 };
 
-const MODOS_CORREO = ['todos', 'colaboradores_todos', 'colaborador', 'interesados_todos', 'interesado'];
+const MODOS_CORREO = ['todos', 'uno', 'varios'];
+
+const getDestinatariosCorreoProyecto = async (req, res) => {
+    try {
+        const usuarioId = PermisoProyectoUtils.getUsuarioIdFromReq(req);
+        if (usuarioId == null) {
+            return res.status(401).json({ success: false, message: 'No autorizado' });
+        }
+        const { proyectoId } = req.params;
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(
+            res,
+            usuarioId,
+            proyectoId,
+            P.INTERESADOS_GEST,
+        );
+        if (!ok) return;
+
+        const data = await InteresadoCorreoUtils.listDestinatariosCorreoProyecto(proyectoId);
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        logger.error({
+            message: error.message,
+            source: file,
+            method: 'getDestinatariosCorreoProyecto()',
+            params: req.params,
+        });
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
 
 const postEnviarCorreoInteresados = async (req, res) => {
     try {
@@ -199,36 +227,20 @@ const postEnviarCorreoInteresados = async (req, res) => {
         }
         const { proyectoId } = req.params;
 
-        const { asunto, mensaje, interesadoIds, colaboradorUsuarioIds, destinatariosModo: modoBody } = req.body || {};
-        const idsInt = Array.isArray(interesadoIds) ? interesadoIds : [];
-        const idsColab = Array.isArray(colaboradorUsuarioIds) ? colaboradorUsuarioIds : [];
+        const { asunto, mensaje, destinatariosModo: modoBody, destinatariosEmails } = req.body || {};
+        const destinatariosModo = typeof modoBody === 'string' ? modoBody.trim() : '';
 
-        let destinatariosModo = typeof modoBody === 'string' ? modoBody.trim() : '';
         if (!MODOS_CORREO.includes(destinatariosModo)) {
-            destinatariosModo = idsInt.length > 0 ? 'interesado' : 'interesados_todos';
+            return res.status(400).json({ success: false, message: 'Modo de destinatarios no válido. Use: todos, uno o varios.' });
         }
 
-        const necesitaInteresados = ['todos', 'interesados_todos', 'interesado'].includes(destinatariosModo);
-        const necesitaMiembros = ['todos', 'colaboradores_todos', 'colaborador'].includes(destinatariosModo);
-
-        if (necesitaInteresados) {
-            const ok = await PermisoProyectoUtils.assertPermisoProyecto(
-                res,
-                usuarioId,
-                proyectoId,
-                P.INTERESADOS_GEST,
-            );
-            if (!ok) return;
-        }
-        if (necesitaMiembros) {
-            const ok2 = await PermisoProyectoUtils.assertPermisoProyecto(
-                res,
-                usuarioId,
-                proyectoId,
-                P.PROYECTO_MIEMBROS_GEST,
-            );
-            if (!ok2) return;
-        }
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(
+            res,
+            usuarioId,
+            proyectoId,
+            P.INTERESADOS_GEST,
+        );
+        if (!ok) return;
 
         if (!asunto || !String(asunto).trim()) {
             return res.status(400).json({ success: false, message: 'El asunto es obligatorio.' });
@@ -237,12 +249,33 @@ const postEnviarCorreoInteresados = async (req, res) => {
             return res.status(400).json({ success: false, message: 'El mensaje es obligatorio.' });
         }
 
-        if (destinatariosModo === 'interesado' && idsInt.length === 0) {
-            return res.status(400).json({ success: false, message: 'Debe indicar el interesado (interesadoIds).' });
+        const emailsRaw = Array.isArray(destinatariosEmails) ? destinatariosEmails : [];
+        const emailsNorm = InteresadoCorreoUtils.normalizarListaCorreosManual(emailsRaw);
+
+        if (destinatariosModo === 'uno') {
+            if (emailsNorm.length !== 1) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Debe indicar exactamente un correo en destinatariosEmails.',
+                });
+            }
         }
-        if (destinatariosModo === 'colaborador' && idsColab.length !== 1) {
-            return res.status(400).json({ success: false, message: 'Debe indicar exactamente un colaborador (colaboradorUsuarioIds con un id).' });
+        if (destinatariosModo === 'varios') {
+            if (emailsNorm.length < 2) {
+                return res.status(400).json({
+                    success: false,
+                    message: 'Debe indicar al menos dos correos distintos (selección y/o campo Para).',
+                });
+            }
+            if (emailsNorm.length > InteresadoCorreoUtils.MAX_CORREOS_DESTINATARIOS) {
+                return res.status(400).json({
+                    success: false,
+                    message: `Máximo ${InteresadoCorreoUtils.MAX_CORREOS_DESTINATARIOS} destinatarios por envío.`,
+                });
+            }
         }
+
+        const emailsParaEnvio = destinatariosModo === 'todos' ? undefined : emailsNorm.map((x) => x.email);
 
         const data = await InteresadoCorreoUtils.enviarCorreosProyecto({
             usuarioId,
@@ -250,8 +283,7 @@ const postEnviarCorreoInteresados = async (req, res) => {
             asunto: String(asunto).trim(),
             mensaje: String(mensaje).trim(),
             destinatariosModo,
-            interesadoIds: destinatariosModo === 'interesado' ? idsInt : undefined,
-            colaboradorUsuarioIds: destinatariosModo === 'colaborador' ? idsColab : undefined,
+            destinatariosEmails: emailsParaEnvio,
         });
         return res.status(200).json({ success: true, data });
     } catch (error) {
@@ -273,5 +305,6 @@ module.exports = {
     getAllInteresados,
     getInteresadoById,
     getInteresadosById,
+    getDestinatariosCorreoProyecto,
     postEnviarCorreoInteresados,
 };

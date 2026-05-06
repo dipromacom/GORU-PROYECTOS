@@ -2183,8 +2183,6 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             interesados={interesado}
                                             projectId={numericId}
                                             puedeEnviarCorreoInteresados={puede(PermProy.INTERESADOS_GEST)}
-                                            puedeEnviarCorreoColaboradores={puede(PermProy.PROYECTO_MIEMBROS_GEST)}
-                                            usuarioCreadorId={projectDetail?.usuario_creador}
                                             toDo={todo}
                                             markAsDoneCallback={id => doneTask(id)}
                                             cerrado={cerrado}

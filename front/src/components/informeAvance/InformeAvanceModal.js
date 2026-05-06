@@ -964,7 +964,7 @@ const InformeAvanceModal = ({
                                 <i className="bi bi-stars me-1" aria-hidden />
                                 Recomendaciones de IA
                             </Button>
-                            <Button
+                            {/*<Button
                                 variant="outline-primary"
                                 size="sm"
                                 type="button"
@@ -973,7 +973,7 @@ const InformeAvanceModal = ({
                             >
                                 <span className="me-1" role="img" aria-hidden>👋</span>
                                 ¿Qué hacemos ahora?
-                            </Button>
+                            </Button>*/}
                         </div>
                     </Alert>
                     <Form.Group className="mb-4">

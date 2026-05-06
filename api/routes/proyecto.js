@@ -9,6 +9,7 @@ const logController = require('../controllers/log-controller');
 const informeAvanceController = require('../controllers/informe-avance');
 const solicitudCambioController = require('../controllers/solicitud-cambio');
 const ProgramaController = require('../controllers/programa');
+const interesadoController = require('../controllers/interesado');
 
 const router = express.Router();
 
@@ -38,6 +39,10 @@ router.get('/proyecto/encuesta-satisfaccion/todas/:proyectoId', encuestaControll
 
 // Informe de avance por ID (estática con subruta fija)
 router.get('/proyecto/informe-avance/:id', informeAvanceController.getInformeById);
+
+// Destinatarios de correo (equipo + interesados); antes de GET /proyecto/:id
+router.get('/proyecto/:proyectoId/correo/destinatarios', interesadoController.getDestinatariosCorreoProyecto);
+
 
 
 // ─────────────────────────────────────────────

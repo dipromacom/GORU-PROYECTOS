@@ -7,32 +7,86 @@ import moment from 'moment';
 import { selectors } from "../../reducers/project";
 import { selectors as sessionSelectors } from '../../reducers/session';
 import { Interesado } from "../ProyectoDetailMatriz/Interesado";
-import { postCorreoInteresadosProyecto, getUsuariosProyecto, getUsuarioById } from '../../api';
+import { postCorreoInteresadosProyecto, getCorreoDestinatariosProyecto } from '../../api';
 import './ViewInteresados.css';
 
 const emailValido = (e) => /^[^\s@]+@[^\s@]+\.[^\s@]+$/i.test(String(e || '').trim());
 
 const M = {
     TODOS: 'todos',
-    COLAB_TODOS: 'colaboradores_todos',
-    COLAB_UNO: 'colaborador',
-    INT_TODOS: 'interesados_todos',
-    INT_UNO: 'interesado',
+    UNO: 'uno',
+    VARIOS: 'varios',
 };
 
-function colabIdValido(v) {
-    const n = Number(v);
-    return v !== '' && !Number.isNaN(n) && n > 0;
+const MAX_DEST = 100;
+
+function parseCorreosTexto(s) {
+    if (!s || !String(s).trim()) return [];
+    return String(s)
+        .split(/[\n,;]+/)
+        .map((x) => x.trim())
+        .filter(Boolean);
 }
 
-function formCorreoValido(m) {
-    if (m.destinatariosModo === M.INT_UNO) {
-        return m.interesadoId != null && !Number.isNaN(Number(m.interesadoId));
+function mergeEmailsSeleccionYExtra(seleccionados, textoExtra) {
+    const map = new Map();
+    for (const e of seleccionados || []) {
+        const t = String(e || '').trim();
+        if (!emailValido(t)) continue;
+        map.set(t.toLowerCase(), t);
     }
-    if (m.destinatariosModo === M.COLAB_UNO) {
-        return colabIdValido(m.colaboradorUsuarioId);
+    for (const e of parseCorreosTexto(textoExtra)) {
+        const t = String(e || '').trim();
+        if (!emailValido(t)) continue;
+        map.set(t.toLowerCase(), t);
     }
-    return true;
+    return [...map.values()].slice(0, MAX_DEST);
+}
+
+/** Interesados ya cargados en la vista (no depende solo del GET). */
+function personasDesdeInteresadosProp(rows) {
+    const out = [];
+    const seen = new Set();
+    for (const row of rows || []) {
+        const em = String(row.email || '').trim();
+        if (!emailValido(em)) continue;
+        const k = em.toLowerCase();
+        if (seen.has(k)) continue;
+        seen.add(k);
+        out.push({
+            email: em,
+            nombre: row.nombre_interesado || em.split('@')[0],
+            origen: 'interesado',
+        });
+    }
+    return out;
+}
+
+/** Combina respuesta del API con interesados del padre (si el GET falla o devuelve vacío). */
+function fusionarPersonasCorreo(apiList, desdeProp) {
+    const map = new Map();
+    for (const p of apiList || []) {
+        if (!p?.email || !emailValido(p.email)) continue;
+        const em = String(p.email).trim();
+        map.set(em.toLowerCase(), {
+            email: em,
+            nombre: p.nombre || em.split('@')[0],
+            origen: p.origen === 'equipo' ? 'equipo' : 'interesado',
+        });
+    }
+    for (const p of desdeProp || []) {
+        const k = p.email.toLowerCase();
+        if (map.has(k)) continue;
+        map.set(k, p);
+    }
+    return [...map.values()];
+}
+
+function etiquetaResumen(modo, emailUno, countVarios) {
+    if (modo === M.TODOS) return 'Todo el proyecto (equipo e interesados, un correo por dirección)';
+    if (modo === M.UNO) return emailUno ? `Un destinatario: ${emailUno}` : 'Un destinatario';
+    if (modo === M.VARIOS) return `Varios destinatarios (${countVarios} correo(s))`;
+    return '';
 }
 
 export const ViewInteresados = ({
@@ -44,16 +98,12 @@ export const ViewInteresados = ({
     esPrograma,
     projectId,
     puedeEnviarCorreoInteresados,
-    puedeEnviarCorreoColaboradores,
-    usuarioCreadorId,
 }) => {
     const [filteredData, setFilteredData] = useState([]);
     const [verInteresado, setVerInteresado] = useState(null);
     const [correoModal, setCorreoModal] = useState({
         open: false,
-        destinatariosModo: M.INT_TODOS,
-        interesadoId: null,
-        colaboradorUsuarioId: '',
+        destinatariosModo: M.TODOS,
     });
     const [asunto, setAsunto] = useState('');
     const [mensaje, setMensaje] = useState('');
@@ -61,115 +111,76 @@ export const ViewInteresados = ({
     const [sendError, setSendError] = useState('');
     const [sendOk, setSendOk] = useState('');
     const [listaCorreoAviso, setListaCorreoAviso] = useState('');
-    const [colaboradoresOpciones, setColaboradoresOpciones] = useState([]);
-    const [cargandoColaboradores, setCargandoColaboradores] = useState(false);
 
-    const puedeAlgunoCorreo = puedeEnviarCorreoInteresados || puedeEnviarCorreoColaboradores;
+    const [personasCorreo, setPersonasCorreo] = useState([]);
+    const [cargandoPersonas, setCargandoPersonas] = useState(false);
+    /** '' | email del listado | '__otro__' (escribir manual) */
+    const [unoSelectValue, setUnoSelectValue] = useState('');
+    const [emailUno, setEmailUno] = useState('');
+    const [seleccionadosVarios, setSeleccionadosVarios] = useState([]);
+    const [correosParaExtra, setCorreosParaExtra] = useState('');
 
-    const defaultModoCorreo = useCallback(() => {
-        if (puedeEnviarCorreoInteresados && puedeEnviarCorreoColaboradores) return M.TODOS;
-        if (puedeEnviarCorreoInteresados) return M.INT_TODOS;
-        return M.COLAB_TODOS;
-    }, [puedeEnviarCorreoInteresados, puedeEnviarCorreoColaboradores]);
+    const emailsVariosMerged = useMemo(
+        () => mergeEmailsSeleccionYExtra(seleccionadosVarios, correosParaExtra),
+        [seleccionadosVarios, correosParaExtra],
+    );
 
-    const etiquetaModo = useCallback((modo, interId, colabId) => {
-        switch (modo) {
-            case M.TODOS: return 'Todos los colaboradores e interesados (correo único por dirección)';
-            case M.COLAB_TODOS: return 'Todos los colaboradores del proyecto';
-            case M.COLAB_UNO: {
-                const o = colaboradoresOpciones.find((c) => String(c.usuario_id) === String(colabId));
-                return o ? o.label : 'Un colaborador';
-            }
-            case M.INT_TODOS: return 'Todos los interesados con correo válido';
-            case M.INT_UNO: {
-                const row = filteredData.find((r) => r.id === interId);
-                return row ? `${row.nombre_interesado || 'Interesado'} (${row.email})` : 'Un interesado';
-            }
-            default: return '';
+    const cargarPersonasCorreo = useCallback(async () => {
+        if (!puedeEnviarCorreoInteresados) return;
+        const desdeProp = personasDesdeInteresadosProp(interesados);
+        const pid = Number(projectId);
+        if (!Number.isFinite(pid) || pid <= 0) {
+            setPersonasCorreo(desdeProp);
+            return;
         }
-    }, [colaboradoresOpciones, filteredData]);
-
-    const cargarColaboradores = useCallback(async () => {
-        if (!projectId || !puedeEnviarCorreoColaboradores) return;
-        setCargandoColaboradores(true);
+        setCargandoPersonas(true);
         try {
-            const res = await getUsuariosProyecto(projectId);
-            const raw = res.data?.data || [];
-            const list = raw.map((up) => ({
-                usuario_id: up.usuario_id,
-                email: up.Usuario?.username || '',
-                label: `${up.Usuario?.username || ''}${up.RolProyecto?.nombre ? ` — ${up.RolProyecto.nombre}` : ''}`,
-            })).filter((x) => emailValido(x.email));
-
-            const ids = new Set(list.map((x) => Number(x.usuario_id)));
-            const creadorNum = usuarioCreadorId != null ? Number(usuarioCreadorId) : null;
-            if (creadorNum != null && !Number.isNaN(creadorNum) && !ids.has(creadorNum)) {
-                try {
-                    const ur = await getUsuarioById(creadorNum);
-                    const u = ur.data?.data;
-                    if (u?.username && emailValido(u.username)) {
-                        list.unshift({
-                            usuario_id: creadorNum,
-                            email: u.username,
-                            label: `${u.username} — Creador del proyecto`,
-                        });
-                    }
-                } catch {
-                    /* ignorar */
-                }
-            }
-            setColaboradoresOpciones(list);
+            const res = await getCorreoDestinatariosProyecto(pid);
+            const list = res.data?.data;
+            const apiList = Array.isArray(list) ? list : [];
+            setPersonasCorreo(fusionarPersonasCorreo(apiList, desdeProp));
         } catch {
-            setColaboradoresOpciones([]);
+            setPersonasCorreo(desdeProp);
         } finally {
-            setCargandoColaboradores(false);
+            setCargandoPersonas(false);
         }
-    }, [projectId, puedeEnviarCorreoColaboradores, usuarioCreadorId]);
+    }, [projectId, puedeEnviarCorreoInteresados, interesados]);
 
     useEffect(() => {
-        if (!correoModal.open || !puedeEnviarCorreoColaboradores) return;
-        cargarColaboradores();
-    }, [correoModal.open, puedeEnviarCorreoColaboradores, cargarColaboradores]);
+        if (!correoModal.open || !puedeEnviarCorreoInteresados) return;
+        cargarPersonasCorreo();
+    }, [correoModal.open, puedeEnviarCorreoInteresados, cargarPersonasCorreo]);
 
-    useEffect(() => {
-        if (!correoModal.open || correoModal.destinatariosModo !== M.COLAB_UNO) return;
-        if (colabIdValido(correoModal.colaboradorUsuarioId)) return;
-        if (colaboradoresOpciones.length === 0) return;
-        setCorreoModal((m) => ({ ...m, colaboradorUsuarioId: String(colaboradoresOpciones[0].usuario_id) }));
-    }, [correoModal.open, correoModal.destinatariosModo, correoModal.colaboradorUsuarioId, colaboradoresOpciones]);
+    const resetCamposCorreo = useCallback(() => {
+        setAsunto('');
+        setMensaje('');
+        setUnoSelectValue('');
+        setEmailUno('');
+        setSeleccionadosVarios([]);
+        setCorreosParaExtra('');
+        setSendError('');
+        setSendOk('');
+    }, []);
 
     const abrirCorreoGeneral = useCallback(() => {
         setListaCorreoAviso('');
-        setSendError('');
-        setSendOk('');
-        setAsunto('');
-        setMensaje('');
-        setCorreoModal({
-            open: true,
-            destinatariosModo: defaultModoCorreo(),
-            interesadoId: null,
-            colaboradorUsuarioId: '',
-        });
-    }, [defaultModoCorreo]);
+        resetCamposCorreo();
+        setCorreoModal({ open: true, destinatariosModo: M.TODOS });
+    }, [resetCamposCorreo]);
 
-    const abrirCorreoInteresado = useCallback((row) => {
+    const abrirCorreoUnInteresado = useCallback((row) => {
         if (!puedeEnviarCorreoInteresados) return;
         if (!emailValido(row.email)) {
             setListaCorreoAviso('Este interesado no tiene un correo válido.');
             return;
         }
         setListaCorreoAviso('');
-        setSendError('');
-        setSendOk('');
-        setAsunto('');
-        setMensaje('');
-        setCorreoModal({
-            open: true,
-            destinatariosModo: M.INT_UNO,
-            interesadoId: row.id,
-            colaboradorUsuarioId: '',
-        });
-    }, [puedeEnviarCorreoInteresados]);
+        resetCamposCorreo();
+        const em = String(row.email).trim();
+        setEmailUno(em);
+        setUnoSelectValue(emailValido(em) ? em : '__otro__');
+        setCorreoModal({ open: true, destinatariosModo: M.UNO });
+    }, [puedeEnviarCorreoInteresados, resetCamposCorreo]);
 
     const cerrarModalCorreo = useCallback(() => {
         setCorreoModal((m) => ({ ...m, open: false }));
@@ -178,17 +189,35 @@ export const ViewInteresados = ({
         setSendOk('');
     }, []);
 
+    const toggleSeleccionVario = useCallback((email) => {
+        const em = String(email).trim();
+        const k = em.toLowerCase();
+        setSeleccionadosVarios((prev) => {
+            const set = new Set(prev.map((x) => x.toLowerCase()));
+            if (set.has(k)) {
+                return prev.filter((x) => x.toLowerCase() !== k);
+            }
+            return [...prev, em];
+        });
+    }, []);
+
     const enviarCorreo = useCallback(async () => {
         if (!projectId) return;
-        const { destinatariosModo, interesadoId, colaboradorUsuarioId } = correoModal;
+        const { destinatariosModo } = correoModal;
 
-        if (destinatariosModo === M.INT_UNO && (interesadoId == null || Number.isNaN(Number(interesadoId)))) {
-            setSendError('Seleccione un interesado.');
+        if (destinatariosModo === M.UNO && !emailValido(emailUno)) {
+            setSendError('Escriba un correo válido para el destinatario.');
             return;
         }
-        if (destinatariosModo === M.COLAB_UNO && !colabIdValido(colaboradorUsuarioId)) {
-            setSendError('Seleccione un colaborador.');
-            return;
+        if (destinatariosModo === M.VARIOS) {
+            if (emailsVariosMerged.length < 2) {
+                setSendError('Seleccione o escriba al menos dos correos distintos (casillas y/o campo Para).');
+                return;
+            }
+            if (emailsVariosMerged.length > MAX_DEST) {
+                setSendError(`Máximo ${MAX_DEST} destinatarios por envío.`);
+                return;
+            }
         }
 
         setSending(true);
@@ -200,11 +229,10 @@ export const ViewInteresados = ({
                 mensaje: mensaje.trim(),
                 destinatariosModo,
             };
-            if (destinatariosModo === M.INT_UNO) {
-                payload.interesadoIds = [Number(interesadoId)];
-            }
-            if (destinatariosModo === M.COLAB_UNO) {
-                payload.colaboradorUsuarioIds = [Number(colaboradorUsuarioId)];
+            if (destinatariosModo === M.UNO) {
+                payload.destinatariosEmails = [String(emailUno).trim()];
+            } else if (destinatariosModo === M.VARIOS) {
+                payload.destinatariosEmails = emailsVariosMerged;
             }
 
             const res = await postCorreoInteresadosProyecto(projectId, payload);
@@ -228,19 +256,15 @@ export const ViewInteresados = ({
         } finally {
             setSending(false);
         }
-    }, [projectId, asunto, mensaje, correoModal, cerrarModalCorreo]);
+    }, [projectId, asunto, mensaje, correoModal, emailUno, emailsVariosMerged, cerrarModalCorreo]);
 
-    const interesadosConEmail = useMemo(
-        () => (filteredData || []).filter((r) => emailValido(r.email)),
-        [filteredData],
-    );
-
-    useEffect(() => {
-        if (!correoModal.open || correoModal.destinatariosModo !== M.INT_UNO) return;
-        if (correoModal.interesadoId != null) return;
-        if (interesadosConEmail.length === 0) return;
-        setCorreoModal((m) => ({ ...m, interesadoId: interesadosConEmail[0].id }));
-    }, [correoModal.open, correoModal.destinatariosModo, correoModal.interesadoId, interesadosConEmail]);
+    const formCorreoValido = useMemo(() => {
+        const { destinatariosModo } = correoModal;
+        if (!asunto.trim() || !mensaje.trim()) return false;
+        if (destinatariosModo === M.UNO) return emailValido(emailUno);
+        if (destinatariosModo === M.VARIOS) return emailsVariosMerged.length >= 2 && emailsVariosMerged.length <= MAX_DEST;
+        return true;
+    }, [correoModal, asunto, mensaje, emailUno, emailsVariosMerged]);
 
     const columns = useMemo(
         () => [
@@ -273,11 +297,11 @@ export const ViewInteresados = ({
                                 </button>
                             </OverlayTrigger>
                             {puedeEnviarCorreoInteresados && (
-                                <OverlayTrigger placement="top" overlay={<Tooltip>Enviar correo a este interesado</Tooltip>}>
+                                <OverlayTrigger placement="top" overlay={<Tooltip>Enviar correo a esta persona</Tooltip>}>
                                     <button
                                         type="button"
                                         className="btn btn-outline-secondary d-flex align-items-center p-2"
-                                        onClick={() => abrirCorreoInteresado(row.original)}
+                                        onClick={() => abrirCorreoUnInteresado(row.original)}
                                         disabled={!emailValido(row.original.email)}
                                     >
                                         <FaEnvelope size={14} />
@@ -291,7 +315,7 @@ export const ViewInteresados = ({
                 ),
             },
         ],
-        [cerrado, esPrograma, puedeEnviarCorreoInteresados, abrirCorreoInteresado]
+        [cerrado, esPrograma, puedeEnviarCorreoInteresados, abrirCorreoUnInteresado]
     );
 
     useEffect(() => {
@@ -316,19 +340,46 @@ export const ViewInteresados = ({
 
     const onChangeModo = (e) => {
         const v = e.target.value;
-        setCorreoModal((m) => ({
-            ...m,
-            destinatariosModo: v,
-            interesadoId: v === M.INT_UNO ? m.interesadoId : null,
-            colaboradorUsuarioId: v === M.COLAB_UNO ? m.colaboradorUsuarioId : '',
-        }));
+        setCorreoModal((m) => ({ ...m, destinatariosModo: v }));
+        if (v === M.TODOS) {
+            setUnoSelectValue('');
+            setEmailUno('');
+            setSeleccionadosVarios([]);
+            setCorreosParaExtra('');
+        }
+        if (v === M.UNO) {
+            setUnoSelectValue('');
+            setEmailUno('');
+        }
     };
 
-    const destLabel = etiquetaModo(
-        correoModal.destinatariosModo,
-        correoModal.interesadoId,
-        correoModal.colaboradorUsuarioId,
-    );
+    const onChangeUnoSelect = (e) => {
+        const v = e.target.value;
+        setUnoSelectValue(v);
+        if (v === '__otro__') {
+            setEmailUno('');
+        } else if (v) {
+            setEmailUno(v);
+        } else {
+            setEmailUno('');
+        }
+    };
+
+    useEffect(() => {
+        if (!correoModal.open || correoModal.destinatariosModo !== M.UNO) return;
+        if (unoSelectValue) return;
+        if (personasCorreo[0]) {
+            const first = personasCorreo[0].email;
+            setUnoSelectValue(first);
+            setEmailUno(first);
+        } else {
+            setUnoSelectValue('__otro__');
+        }
+    }, [correoModal.open, correoModal.destinatariosModo, personasCorreo, unoSelectValue]);
+
+    const unoMuestraCampoManual = unoSelectValue === '__otro__' || unoSelectValue === '';
+
+    const resumen = etiquetaResumen(correoModal.destinatariosModo, emailUno, emailsVariosMerged.length);
 
     return (
         <div className="proyectos-form">
@@ -339,7 +390,7 @@ export const ViewInteresados = ({
                             {listaCorreoAviso}
                         </div>
                     )}
-                    {puedeAlgunoCorreo && !cerrado && projectId && (
+                    {puedeEnviarCorreoInteresados && !cerrado && projectId && (
                         <div className="mb-3 d-flex flex-wrap align-items-center" style={{ gap: '12px' }}>
                             <Button variant="outline-primary" size="sm" onClick={abrirCorreoGeneral} type="button">
                                 <FaEnvelope className="me-2" />
@@ -382,63 +433,106 @@ export const ViewInteresados = ({
                             onChange={onChangeModo}
                             disabled={sending}
                         >
-                            {puedeEnviarCorreoInteresados && puedeEnviarCorreoColaboradores && (
-                                <option value={M.TODOS}>Todos (colaboradores + interesados, sin duplicar correos)</option>
-                            )}
-                            {puedeEnviarCorreoColaboradores && (
-                                <>
-                                    <option value={M.COLAB_TODOS}>Solo colaboradores del proyecto</option>
-                                    <option value={M.COLAB_UNO}>Un colaborador</option>
-                                </>
-                            )}
-                            {puedeEnviarCorreoInteresados && (
-                                <>
-                                    <option value={M.INT_TODOS}>Solo interesados (todos con email válido)</option>
-                                    <option value={M.INT_UNO}>Un interesado</option>
-                                </>
-                            )}
+                            <option value={M.TODOS}>Todo el proyecto (equipo e interesados)</option>
+                            <option value={M.UNO}>Una persona (un correo)</option>
+                            <option value={M.VARIOS}>Varias personas (elegir y/o escribir correos)</option>
                         </Form.Control>
                     </Form.Group>
 
-                    {correoModal.destinatariosModo === M.COLAB_UNO && puedeEnviarCorreoColaboradores && (
-                        <Form.Group className="mb-3">
-                            <Form.Label>Colaborador</Form.Label>
-                            {cargandoColaboradores ? (
-                                <Spinner animation="border" size="sm" className="d-block" />
-                            ) : (
+                    {correoModal.destinatariosModo === M.UNO && (
+                        <>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Persona del proyecto</Form.Label>
                                 <Form.Control
                                     as="select"
-                                    value={correoModal.colaboradorUsuarioId}
-                                    onChange={(e) => setCorreoModal((m) => ({ ...m, colaboradorUsuarioId: e.target.value }))}
-                                    disabled={sending || colaboradoresOpciones.length === 0}
+                                    value={unoSelectValue}
+                                    onChange={onChangeUnoSelect}
+                                    disabled={sending || cargandoPersonas}
                                 >
                                     <option value="">— Seleccione —</option>
-                                    {colaboradoresOpciones.map((c) => (
-                                        <option key={c.usuario_id} value={String(c.usuario_id)}>{c.label}</option>
+                                    {personasCorreo.map((p) => (
+                                        <option key={p.email} value={p.email}>
+                                            {p.nombre} — {p.email} ({p.origen === 'equipo' ? 'Equipo' : 'Interesado'})
+                                        </option>
                                     ))}
+                                    <option value="__otro__">Otro correo (escribir manualmente)</option>
                                 </Form.Control>
+                                <Form.Text className="text-muted">
+                                    Elija alguien del proyecto o use “Otro correo” para una dirección que no esté en la lista.
+                                </Form.Text>
+                            </Form.Group>
+                            {unoMuestraCampoManual && (
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Correo</Form.Label>
+                                    <Form.Control
+                                        type="email"
+                                        value={emailUno}
+                                        onChange={(e) => setEmailUno(e.target.value)}
+                                        placeholder="correo@ejemplo.com"
+                                        disabled={sending}
+                                        autoComplete="off"
+                                    />
+                                </Form.Group>
                             )}
-                        </Form.Group>
+                        </>
                     )}
 
-                    {correoModal.destinatariosModo === M.INT_UNO && puedeEnviarCorreoInteresados && (
-                        <Form.Group className="mb-3">
-                            <Form.Label>Interesado</Form.Label>
-                            <Form.Control
-                                as="select"
-                                value={correoModal.interesadoId != null ? String(correoModal.interesadoId) : ''}
-                                onChange={(e) => setCorreoModal((m) => ({ ...m, interesadoId: e.target.value ? Number(e.target.value) : null }))}
-                                disabled={sending || interesadosConEmail.length === 0}
-                            >
-                                <option value="">— Seleccione —</option>
-                                {interesadosConEmail.map((r) => (
-                                    <option key={r.id} value={String(r.id)}>{r.nombre_interesado} ({r.email})</option>
-                                ))}
-                            </Form.Control>
-                        </Form.Group>
+                    {correoModal.destinatariosModo === M.VARIOS && (
+                        <>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Personas del proyecto</Form.Label>
+                                {cargandoPersonas ? (
+                                    <Spinner animation="border" size="sm" className="d-block" />
+                                ) : (
+                                    <div
+                                        className="border rounded p-2 bg-light"
+                                        style={{ maxHeight: '220px', overflowY: 'auto' }}
+                                    >
+                                        {personasCorreo.length === 0 ? (
+                                            <span className="text-muted small">No hay contactos cargados; use el campo Para.</span>
+                                        ) : (
+                                            personasCorreo.map((p) => {
+                                                const marcado = seleccionadosVarios.some((x) => x.toLowerCase() === p.email.toLowerCase());
+                                                const tag = p.origen === 'equipo' ? 'Equipo' : 'Interesado';
+                                                return (
+                                                    <Form.Check
+                                                        key={p.email}
+                                                        type="checkbox"
+                                                        id={`cv-${p.email}`}
+                                                        className="small py-1"
+                                                        checked={marcado}
+                                                        onChange={() => toggleSeleccionVario(p.email)}
+                                                        disabled={sending}
+                                                        label={`${p.nombre} — ${p.email} (${tag})`}
+                                                    />
+                                                );
+                                            })
+                                        )}
+                                    </div>
+                                )}
+                            </Form.Group>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Para (correos adicionales)</Form.Label>
+                                <Form.Control
+                                    as="textarea"
+                                    rows={3}
+                                    value={correosParaExtra}
+                                    onChange={(e) => setCorreosParaExtra(e.target.value)}
+                                    placeholder="Uno por línea, o separados por coma o punto y coma"
+                                    disabled={sending}
+                                />
+                                <Form.Text className="text-muted">
+                                    Añada aquí correos que no estén en la lista (clientes externos, copias, etc.).
+                                </Form.Text>
+                            </Form.Group>
+                            <p className="small text-muted mb-0">
+                                Se enviarán <strong>{emailsVariosMerged.length}</strong> correo(s) distinto(s)
+                                {emailsVariosMerged.length > MAX_DEST && ` (máximo ${MAX_DEST})`}.
+                            </p>
+                        </>
                     )}
 
-                    <p className="text-muted small mb-2">Resumen: {destLabel}</p>
+                    <p className="text-muted small mb-2 mt-2">Resumen: {resumen}</p>
                     {usuario?.username && (
                         <p className="small mb-3">
                             Remitente (From): <strong>{usuario.username}</strong>
@@ -476,7 +570,7 @@ export const ViewInteresados = ({
                     <Button
                         variant="primary"
                         onClick={enviarCorreo}
-                        disabled={sending || !asunto.trim() || !mensaje.trim() || !formCorreoValido(correoModal)}
+                        disabled={sending || !formCorreoValido}
                         type="button"
                     >
                         {sending ? (
