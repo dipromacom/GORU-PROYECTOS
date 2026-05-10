@@ -11,6 +11,7 @@ import { actions as routesActions } from "../reducers/routes";
 import { ToastContainer } from 'react-toastify';
 import 'react-toastify/dist/ReactToastify.css';
 import Spinner from "../components/spinner/Spinner";
+import ChatWidget from "../components/chatWidget/ChatWidget";
 
 function Desktop({ dispatch, component, isAuthenticated, isLoading, ...props }) {
 
@@ -51,6 +52,7 @@ function Desktop({ dispatch, component, isAuthenticated, isLoading, ...props }) 
             </div>
 
             <ToastContainer pauseOnHover={false} pauseOnFocusLoss={false} />
+              <ChatWidget />
             </div>
             </>
         );

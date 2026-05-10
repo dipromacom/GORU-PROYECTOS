@@ -49,6 +49,9 @@ const models = {
   InformeAvance: require('./informe-avance')(db, Sequelize),
   SolicitudCambio: require('./solicitud-cambio')(db, Sequelize),
   ConfigColaboradoresProyecto: require('./config-colaboradores-proyecto')(db, Sequelize),
+  ChatConversacion: require('./chat-conversacion')(db, Sequelize),
+  ChatMensaje: require('./chat-mensaje')(db, Sequelize),
+  ChatLectura: require('./chat-lectura')(db, Sequelize),
 };
 
 Object.keys(models).forEach((modelKey) => {

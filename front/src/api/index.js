@@ -356,6 +356,20 @@ export const createSolicitudCambio = (payload) => apiWithToken.post('/proyecto/c
 export const updateEstadoSolicitudCambio = (id, payload) => apiWithToken.put(`/proyecto/control-cambio/${id}/estado`, payload);
 export const getSolicitudesDashboard = (usuarioId, modo) => apiWithToken.get(`/proyecto/dashboard/control-cambio/usuario/${usuarioId}?modo=${modo}`);
 
+// --- CHAT ---
+export const getChatUsuariosDisponibles = (q) =>
+  apiWithToken.get('/chat/usuarios', { params: q ? { q } : undefined });
+export const getChatConversaciones = () => apiWithToken.get('/chat/conversaciones');
+export const postChatAbrirConversacion = (otroUsuarioId) =>
+  apiWithToken.post('/chat/conversaciones', { otroUsuarioId });
+export const getChatMensajes = (conversacionId, params) =>
+  apiWithToken.get(`/chat/conversaciones/${conversacionId}/mensajes`, { params });
+export const postChatEnviarMensaje = (conversacionId, texto) =>
+  apiWithToken.post(`/chat/conversaciones/${conversacionId}/mensajes`, { texto });
+export const postChatMarcarLeido = (conversacionId, hastaId) =>
+  apiWithToken.post(`/chat/conversaciones/${conversacionId}/leido`, { hastaId });
+export const getChatNoLeidos = () => apiWithToken.get('/chat/no-leidos');
+
 //--- PROGRAMA ---
 export const getProyectosDelPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/proyectos`);
 export const getProyectosDisponiblesParaPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/disponibles`);
