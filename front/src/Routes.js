@@ -31,6 +31,7 @@ import Interesado from "./components/ProyectoDetailMatriz/Interesado";
 import Interesados from "./components/ProyectoDetailMatriz/ViewInteresados";
 import Dashboard from "./private/Dashboard";
 import AdminPlatform from "./private/AdminPlatform";
+import MadurezDireccionProyectos from "./private/MadurezDireccionProyectos";
 
 const ExternalRedirect = ({ url }) => {
   useEffect(() => {
@@ -60,6 +61,7 @@ export default function Routes() {
       <Desktop exact path="/config" component={Config} />
       <Desktop exact path="/profile" component={Profile} />
       <Desktop exact path="/tools" component={Instrumentos} />
+      <Desktop exact path="/tools/madurez-direccion-proyectos" component={MadurezDireccionProyectos} />
       <Desktop exact path="/priorization" component={PriorizacionProyectos} />
       <Desktop exact path="/aboutUs" component={Nosotros} />
       <Desktop exact path="/home" component={Home} />

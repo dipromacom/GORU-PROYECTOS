@@ -1,6 +1,7 @@
 import React from "react";
 import ContactPopup from "../components/contactPopup/ContactPopup";
 import WidgetTool from "../components/widgetTool/WidgetTool";
+import MadurezDireccionWidgetTool from "../components/madurezDireccion/MadurezDireccionWidgetTool";
 import "../css/Commons.css";
 import "./Instrumentos.css";
 
@@ -87,6 +88,8 @@ function Instrumentos() {
                     externalUrl={"https://recursos.escueladeproyectos.dipromacom.net/resolucionProblemas"}
                     disabled={false}
                 />
+
+                    <MadurezDireccionWidgetTool />
 
                  <WidgetTool
                     title="Goru PIVOT® – Sistema de Priorización de Valor Organizacional y Transformacional"

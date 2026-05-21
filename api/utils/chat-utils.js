@@ -45,7 +45,7 @@ setInterval(() => {
         if (recent.length === 0) _rateBuckets.delete(k);
         else _rateBuckets.set(k, recent);
     }
-}, 5 * 60 * 1000).unref?.();
+}, 5 * 60 * 1000).unref();
 
 // ======================================================================
 // Helpers

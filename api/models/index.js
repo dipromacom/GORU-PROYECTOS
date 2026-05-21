@@ -52,6 +52,7 @@ const models = {
   ChatConversacion: require('./chat-conversacion')(db, Sequelize),
   ChatMensaje: require('./chat-mensaje')(db, Sequelize),
   ChatLectura: require('./chat-lectura')(db, Sequelize),
+  MadurezDireccionProyectos: require('./madurez-direccion-proyectos')(db, Sequelize),
 };
 
 Object.keys(models).forEach((modelKey) => {

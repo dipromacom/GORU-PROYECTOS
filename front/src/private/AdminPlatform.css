@@ -36,3 +36,115 @@
 .admin-platform .admin-search-row .form-group {
     margin-bottom: 0;
 }
+.admin-platform .admin-tabs .nav-link {
+    color: #122544;
+    font-weight: 500;
+}
+
+.admin-platform .admin-tabs .nav-link.active {
+    color: #EB5E00;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+.admin-platform .admin-tabs .nav-link {
+    color: #122544;
+    font-weight: 500;
+}
+
+.admin-platform .admin-tabs .nav-link.active {
+    color: #EB5E00;
+    border-color: #dee2e6 #dee2e6 #fff;
+}
+
+.admin-platform .admin-madurez-table-wrap {
+    max-height: 70vh;
+    overflow: auto;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.admin-platform .admin-madurez-table {
+    margin-bottom: 0;
+    font-size: 13px;
+}
+
+.admin-platform .admin-madurez-table th,
+.admin-platform .admin-madurez-table td {
+    padding: 12px 14px;
+    vertical-align: middle;
+}
+
+.admin-platform .admin-madurez-table thead th {
+    background: #f1f4f8;
+    color: #122544;
+    font-weight: 600;
+    white-space: nowrap;
+    border-bottom-width: 2px;
+}
+
+.admin-platform .admin-madurez-table .col-fecha {
+    min-width: 130px;
+}
+
+.admin-platform .admin-madurez-table .col-contacto {
+    min-width: 110px;
+}
+
+.admin-platform .admin-madurez-table .col-empresa {
+    min-width: 120px;
+}
+
+.admin-platform .admin-madurez-table .col-correo {
+    min-width: 180px;
+}
+
+.admin-platform .admin-madurez-table .col-celular {
+    min-width: 110px;
+}
+
+.admin-platform .admin-madurez-table .col-resultado {
+    min-width: 140px;
+}
+
+.admin-platform .admin-madurez-table .col-nivel {
+    min-width: 160px;
+}
+
+.admin-platform .admin-madurez-table .col-usuario {
+    min-width: 180px;
+}
+
+.admin-platform .admin-madurez-table .col-acciones {
+    min-width: 120px;
+}
+
+.admin-platform .admin-madurez-pct {
+    color: #6c757d;
+    font-weight: 500;
+}
+
+.admin-platform .admin-madurez-nivel-badge {
+    display: inline-block;
+    font-weight: 600;
+    color: #EB5E00;
+    margin-right: 6px;
+}
+
+.admin-platform .admin-madurez-nivel-name {
+    display: block;
+    font-size: 12px;
+    color: #495057;
+    margin-top: 2px;
+}
+
+.admin-platform .admin-madurez-filters {
+    padding: 14px 16px;
+    background: #f8f9fb;
+    border-radius: 8px;
+    border: 1px solid #e9ecef;
+}
+
+.admin-platform .admin-madurez-filters .form-label {
+    color: #122544;
+    font-weight: 500;
+}

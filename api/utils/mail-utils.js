@@ -58,6 +58,45 @@ const enviarMail = async (email, motivo, mensaje, remitente = null) => {
 
 }
 
+/**
+ * @param {string} email
+ * @param {string} motivo
+ * @param {string} mensaje
+ * @param {Array<{filename: string, content: Buffer, contentType?: string}>} [attachments]
+ */
+const enviarMailConAdjunto = async (email, motivo, mensaje, attachments = []) => {
+  try {
+    const transporter = nodemailer.createTransport({
+      SES: new aws.SES({
+        apiVersion: '2010-12-01',
+      }),
+    });
+
+    const mailPayload = {
+      from: `"GORU" <${config.fromEmail}>`,
+      to: [email],
+      subject: motivo,
+      text: mensaje,
+    };
+
+    if (attachments && attachments.length > 0) {
+      mailPayload.attachments = attachments;
+    }
+
+    const message = await transporter.sendMail(mailPayload);
+    logger.info({ message: `Mensaje con adjunto enviado: ${message.messageId}` });
+  } catch (error) {
+    logger.error({
+      message: error.message,
+      source: file,
+      method: 'enviarMailConAdjunto()',
+      params: { email, motivo },
+    });
+    throw error;
+  }
+};
+
 module.exports = {
   enviarMail,
+  enviarMailConAdjunto,
 }

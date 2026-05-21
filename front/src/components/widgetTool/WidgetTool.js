@@ -14,7 +14,8 @@ function WidgetTool({
     redirecTo,
     disabled,
     usuario,
-    externalUrl
+    externalUrl,
+    buttonLabel = 'Ingresar',
 }) {
     
     function handlePayClick() {
@@ -43,13 +44,13 @@ function WidgetTool({
 
                     <div className="center">
                     <button type="button" className="btn btn-success btn-pagar" onClick={handlePayClick} disabled={disabled}>
-                        Ingresar
+                            {buttonLabel}
                     </button>
                     </div> :
 
                     <div className="actions-placeholder">
                     <button type="button" className="btn btn-success btn-pagar" onClick={handlePayClick} disabled={disabled}>
-                        Ingresar
+                            {buttonLabel}
                         </button>
                     <p className="green">Pagar cód. descuento</p>
                     </div>

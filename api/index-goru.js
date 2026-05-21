@@ -53,6 +53,7 @@ const analisisAmbiental = require('./routes/analisis-impacto');
 const criterioAnalisis  = require('./routes/criterio-analisis');
 const resultadoAnalisis = require('./routes/resultado-analisis-impacto');
 const Chat = require('./routes/chat');
+const MadurezDireccionProyectos = require('./routes/madurez-direccion-proyectos');
 
 app.use('/api', TipoTelefonoRouter);
 app.use('/api', TipoDireccionRouter);
@@ -85,6 +86,7 @@ app.use('/api', analisisAmbiental);
 app.use('/api', criterioAnalisis);
 app.use('/api', resultadoAnalisis);
 app.use('/api', Chat);
+app.use('/api', MadurezDireccionProyectos);
 
 app.get('/', (req, res) => {
   res.send('Hello from Goru!!!');

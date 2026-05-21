@@ -1,0 +1,100 @@
+.madurez-admin-modal-body {
+    font-size: 13px;
+    color: #122544;
+}
+
+.madurez-admin-resumen {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 12px 20px;
+    padding: 16px;
+    background: #f8f9fb;
+    border-radius: 8px;
+    margin-bottom: 20px;
+}
+
+.madurez-admin-resumen-item {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.madurez-admin-resumen-item .label {
+    font-size: 11px;
+    font-weight: 600;
+    color: #6c757d;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.madurez-admin-resumen-highlight {
+    grid-column: 1 / -1;
+}
+
+.madurez-admin-block {
+    margin-bottom: 20px;
+}
+
+.madurez-admin-block h6 {
+    margin-bottom: 12px;
+    font-size: 14px;
+}
+
+.madurez-admin-block p {
+    margin: 0;
+    line-height: 1.5;
+    text-align: justify;
+}
+
+.madurez-admin-dimension {
+    margin-bottom: 16px;
+    padding-bottom: 12px;
+    border-bottom: 1px solid #e9ecef;
+}
+
+.madurez-admin-dimension:last-child {
+    border-bottom: none;
+    margin-bottom: 0;
+}
+
+.madurez-admin-dimension-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 12px;
+    margin-bottom: 8px;
+}
+
+.madurez-admin-dim-score {
+    white-space: nowrap;
+    font-size: 12px;
+    color: #EB5E00;
+    font-weight: 600;
+}
+
+.madurez-admin-preguntas {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+}
+
+.madurez-admin-preguntas li {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    padding: 8px 10px;
+    margin-bottom: 6px;
+    background: #fff;
+    border: 1px solid #e9ecef;
+    border-radius: 6px;
+}
+
+.madurez-admin-pregunta-text {
+    line-height: 1.4;
+}
+
+.madurez-admin-pregunta-valor {
+    font-size: 12px;
+    font-weight: 600;
+    color: #EB5E00;
+}
