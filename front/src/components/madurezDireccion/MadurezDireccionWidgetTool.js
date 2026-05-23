@@ -2,12 +2,13 @@ import React, { useEffect, useState } from 'react';
 import { connect } from 'react-redux';
 import { selectors as sessionSelectors } from '../../reducers/session';
 import { getMadurezDireccionEstado } from '../../api';
+import ContactPopup from '../contactPopup/ContactPopup';
 import WidgetTool from '../widgetTool/WidgetTool';
 
 const ESTADO_TIMEOUT_MS = 8000;
 
 function MadurezDireccionWidgetTool({ usuario }) {
-    const [completado, setCompletado] = useState(false);
+    const [estado, setEstado] = useState(null);
     const [estadoListo, setEstadoListo] = useState(false);
 
     useEffect(() => {
@@ -24,10 +25,9 @@ function MadurezDireccionWidgetTool({ usuario }) {
             }
             try {
                 const { data } = await getMadurezDireccionEstado(usuario.id);
-                if (activo) setCompletado(!!data.completado);
+                if (activo) setEstado(data);
             } catch {
-                // Si el API falla (tabla no creada, red, etc.) el botón sigue usable
-                if (activo) setCompletado(false);
+                if (activo) setEstado(null);
             } finally {
                 if (activo) setEstadoListo(true);
             }
@@ -41,9 +41,36 @@ function MadurezDireccionWidgetTool({ usuario }) {
         };
     }, [usuario?.id]);
 
+    const cupoAgotado = estado?.cupoAgotado === true;
+    const tieneIntentos = (estado?.cantidad || 0) > 0;
+
     const buttonLabel = !estadoListo
         ? 'Ingresar'
-        : (completado ? 'Ver resultado' : 'Ingresar');
+        : (cupoAgotado
+            ? 'Ver resultados'
+            : (tieneIntentos ? 'Continuar' : 'Ingresar'));
+
+    if (cupoAgotado && estadoListo) {
+        return (
+            <div className="widget">
+                <div className="widget-container">
+                    <h3 className="orange">Assessment de la Madurez en Dirección de Proyectos</h3>
+                    <div className="description-container">
+                        <p className="blue">
+                            Permite identificar, de manera rápida, el nivel inicial de madurez en Dirección de Proyectos de su organización, considerando procesos, personas, tecnología, gobierno, negocio, capacitación y portafolio.
+                        </p>
+                    </div>
+                    <div className="center">
+                        <ContactPopup>
+                            <button type="button" className="btn btn-success btn-pagar">
+                                {buttonLabel}
+                            </button>
+                        </ContactPopup>
+                    </div>
+                </div>
+            </div>
+        );
+    }
 
     return (
         <WidgetTool

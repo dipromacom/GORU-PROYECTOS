@@ -6,6 +6,7 @@ import Button from 'react-bootstrap/Button';
 import Alert from 'react-bootstrap/Alert';
 import { pdf } from '@react-pdf/renderer';
 import LoaderButton from '../components/loaderButton/LoaderButton';
+import ContactPopup from '../components/contactPopup/ContactPopup';
 import MadurezDireccionPdf from '../components/madurezDireccion/MadurezDireccionPdf';
 import { DownloadPdfButton } from '../components/downloadPdfButton/downloadPdfButton';
 import { selectors as sessionSelectors } from '../reducers/session';
@@ -48,7 +49,89 @@ function blobToBase64(blob) {
     });
 }
 
-function MadurezResultadoView({ resultado, onVolver }) {
+const CUPO_MAXIMO = 2;
+
+function formatFechaIntento(fecha) {
+    if (!fecha) return '';
+    return new Date(fecha).toLocaleString('es-ES', {
+        day: '2-digit',
+        month: '2-digit',
+        year: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit',
+    });
+}
+
+function MadurezHubView({
+    estado,
+    onNuevo,
+    onVerResultado,
+    onVolver,
+}) {
+    const { resultados = [], puedeRealizarOtro, cupoAgotado, cupoMaximo } = estado;
+
+    return (
+        <div>
+            <div className="madurez-actions-top">
+                <Button variant="outline-secondary" size="sm" onClick={onVolver}>
+                    ← Volver a Instrumentos
+                </Button>
+            </div>
+
+            {cupoAgotado ? (
+                <Alert variant="warning" className="madurez-cupo-alert">
+                    Ha utilizado su cupo de {cupoMaximo || CUPO_MAXIMO} assessments.
+                    Si necesita realizar más evaluaciones, envíenos un mensaje para ampliar su cupo.
+                </Alert>
+            ) : (
+                <Alert variant="info" className="madurez-cupo-alert">
+                    Puede realizar {cupoMaximo || CUPO_MAXIMO} assessments.
+                    {' '}Le queda <strong>{(cupoMaximo || CUPO_MAXIMO) - resultados.length}</strong> por completar.
+                </Alert>
+            )}
+
+            <div className="madurez-hub-actions">
+                {puedeRealizarOtro && (
+                    <Button variant="success" onClick={onNuevo}>
+                        Realizar {resultados.length === 0 ? 'assessment' : 'otro assessment'}
+                    </Button>
+                )}
+                {cupoAgotado && (
+                    <ContactPopup>
+                        <Button variant="success">Solicitar ampliar cupo</Button>
+                    </ContactPopup>
+                )}
+            </div>
+
+            {resultados.length > 0 && (
+                <div className="madurez-hub-resultados">
+                    <h3 className="orange">Sus resultados</h3>
+                    {resultados.map((r) => (
+                        <div key={r.id} className="madurez-hub-card">
+                            <div>
+                                <strong>Assessment {r.numeroIntento || '—'}</strong>
+                                <p className="blue mb-0 small">
+                                    {formatFechaIntento(r.fechaCompletado)}
+                                    {' · '}
+                                    {r.porcentajeMadurez}% — Nivel {r.nivelMadurez}
+                                </p>
+                            </div>
+                            <Button
+                                variant="outline-primary"
+                                size="sm"
+                                onClick={() => onVerResultado(r)}
+                            >
+                                Ver resultado
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            )}
+        </div>
+    );
+}
+
+function MadurezResultadoView({ resultado, onVolver, onHub, puedeRealizarOtro }) {
     const { interpretacion } = resultado;
     const nivel = getNivelPorPorcentaje(resultado.porcentajeMadurez);
     const contacto = {
@@ -64,11 +147,23 @@ function MadurezResultadoView({ resultado, onVolver }) {
 
     return (
         <div>
-            <div className="madurez-actions-top">
+            <div className="madurez-actions-top madurez-result-actions-top">
                 <Button variant="outline-secondary" size="sm" onClick={onVolver}>
                     ← Volver a Instrumentos
                 </Button>
+                {onHub && (
+                    <Button variant="outline-primary" size="sm" onClick={onHub}>
+                        ← Volver al menú del assessment
+                    </Button>
+                )}
             </div>
+
+            {resultado.numeroIntento && (
+                <p className="blue small mb-2">
+                    Resultado del assessment {resultado.numeroIntento}
+                    {resultado.fechaCompletado ? ` — ${formatFechaIntento(resultado.fechaCompletado)}` : ''}
+                </p>
+            )}
 
             <div className="madurez-result-hero">
                 <p className="blue mb-1">Resultado obtenido</p>
@@ -149,6 +244,14 @@ function MadurezResultadoView({ resultado, onVolver }) {
                     {(interpretacion?.proximosPasos || []).map((p) => <li key={p}>{p}</li>)}
                 </ul>
             </div>
+
+            {puedeRealizarOtro && onHub && (
+                <div className="madurez-hub-actions mt-4">
+                    <Button variant="success" onClick={onHub}>
+                        Realizar otro assessment
+                    </Button>
+                </div>
+            )}
         </div>
     );
 }
@@ -157,7 +260,9 @@ function MadurezDireccionProyectos({ dispatch, usuario }) {
     const [cargando, setCargando] = useState(true);
     const [enviando, setEnviando] = useState(false);
     const [error, setError] = useState('');
-    const [resultadoGuardado, setResultadoGuardado] = useState(null);
+    const [estadoMadurez, setEstadoMadurez] = useState(null);
+    const [vista, setVista] = useState('hub');
+    const [resultadoVista, setResultadoVista] = useState(null);
     const [paso, setPaso] = useState(0);
     const [respuestas, setRespuestas] = useState(Array(TOTAL_PREGUNTAS).fill(null));
     const [nombreContacto, setNombreContacto] = useState('');
@@ -170,6 +275,16 @@ function MadurezDireccionProyectos({ dispatch, usuario }) {
     const indiceDimension = esPasoDimension ? paso - 1 : -1;
     const dimensionActual = esPasoDimension ? DIMENSIONES[indiceDimension] : null;
 
+    const resetWizard = useCallback(() => {
+        setPaso(0);
+        setRespuestas(Array(TOTAL_PREGUNTAS).fill(null));
+        setNombreContacto('');
+        setEmpresa('');
+        setCelular('');
+        setCorreoContacto('');
+        setError('');
+    }, []);
+
     const cargarEstado = useCallback(async () => {
         if (!usuario?.id) {
             setCargando(false);
@@ -179,16 +294,24 @@ function MadurezDireccionProyectos({ dispatch, usuario }) {
         setError('');
         try {
             const { data } = await getMadurezDireccionEstado(usuario.id);
-            if (data.completado && data.resultado) {
-                setResultadoGuardado(data.resultado);
+            setEstadoMadurez(data);
+            const cantidad = data.cantidad || 0;
+            if (cantidad === 0) {
+                resetWizard();
+                setVista('wizard');
+            } else {
+                setVista('hub');
+                setResultadoVista(null);
             }
         } catch (e) {
-            // Permite iniciar el test aunque falle la consulta (p. ej. tabla SQL no ejecutada)
+            setEstadoMadurez(null);
+            resetWizard();
+            setVista('wizard');
             setError('');
         } finally {
             setCargando(false);
         }
-    }, [usuario?.id]);
+    }, [usuario?.id, resetWizard]);
 
     useEffect(() => {
         cargarEstado();
@@ -250,7 +373,14 @@ function MadurezDireccionProyectos({ dispatch, usuario }) {
             });
 
             if (data.success) {
-                setResultadoGuardado(data.resultado);
+                const estadoRes = await getMadurezDireccionEstado(usuario.id);
+                const nuevoEstado = estadoRes.data;
+                setEstadoMadurez(nuevoEstado);
+                const ultimo = nuevoEstado.resultados?.length
+                    ? nuevoEstado.resultados[nuevoEstado.resultados.length - 1]
+                    : data.resultado;
+                setResultadoVista(ultimo);
+                setVista('resultado');
             } else {
                 setError(data.message || 'Error al guardar el assessment.');
             }
@@ -265,6 +395,22 @@ function MadurezDireccionProyectos({ dispatch, usuario }) {
 
     const volverInstrumentos = () => dispatch(routesActions.goTo('tools'));
 
+    const irAlHub = () => {
+        setResultadoVista(null);
+        setVista('hub');
+    };
+
+    const iniciarNuevoAssessment = () => {
+        if (!estadoMadurez?.puedeRealizarOtro) return;
+        resetWizard();
+        setVista('wizard');
+    };
+
+    const verResultado = (resultado) => {
+        setResultadoVista(resultado);
+        setVista('resultado');
+    };
+
     if (cargando) {
         return (
             <div className="page-container">
@@ -276,14 +422,36 @@ function MadurezDireccionProyectos({ dispatch, usuario }) {
         );
     }
 
-    if (resultadoGuardado) {
+    if (vista === 'hub' && estadoMadurez) {
         return (
             <div className="page-container">
                 <hr className="separator" />
                 <div className="madurez-form">
                     <h1 className="orange">Assessment de Madurez en Dirección de Proyectos</h1>
-                    <p className="blue">Ya completó este assessment. A continuación puede consultar su resultado.</p>
-                    <MadurezResultadoView resultado={resultadoGuardado} onVolver={volverInstrumentos} />
+                    <MadurezHubView
+                        estado={estadoMadurez}
+                        onNuevo={iniciarNuevoAssessment}
+                        onVerResultado={verResultado}
+                        onVolver={volverInstrumentos}
+                    />
+                </div>
+            </div>
+        );
+    }
+
+    if (vista === 'resultado' && resultadoVista) {
+        const puedeOtro = estadoMadurez?.puedeRealizarOtro === true;
+        return (
+            <div className="page-container">
+                <hr className="separator" />
+                <div className="madurez-form">
+                    <h1 className="orange">Assessment de Madurez en Dirección de Proyectos</h1>
+                    <MadurezResultadoView
+                        resultado={resultadoVista}
+                        onVolver={volverInstrumentos}
+                        onHub={estadoMadurez?.cantidad > 0 ? irAlHub : null}
+                        puedeRealizarOtro={puedeOtro}
+                    />
                 </div>
             </div>
         );
@@ -293,15 +461,23 @@ function MadurezDireccionProyectos({ dispatch, usuario }) {
         <div className="page-container">
             <hr className="separator" />
             <div className="madurez-form">
-                <div className="madurez-actions-top">
+                <div className="madurez-actions-top madurez-result-actions-top">
                     <Button variant="outline-secondary" size="sm" onClick={volverInstrumentos}>
                         ← Volver a Instrumentos
                     </Button>
+                    {(estadoMadurez?.cantidad || 0) > 0 && (
+                        <Button variant="outline-primary" size="sm" onClick={irAlHub}>
+                            ← Volver al menú del assessment
+                        </Button>
+                    )}
                 </div>
 
                 <h1 className="orange">Assessment de Madurez en Dirección de Proyectos</h1>
                 <p className="blue madurez-dimension-desc">
                     Permite identificar el nivel inicial de madurez en Dirección de Proyectos de su organización.
+                    {(estadoMadurez?.cantidad || 0) > 0 && (
+                        <> Assessment {(estadoMadurez.cantidad || 0) + 1} de {estadoMadurez.cupoMaximo || CUPO_MAXIMO}.</>
+                    )}
                 </p>
 
                 <div className="madurez-progress-wrap">

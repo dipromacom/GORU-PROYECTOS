@@ -196,3 +196,43 @@
 .madurez-actions-top {
     margin-bottom: 12px;
 }
+
+.madurez-result-actions-top {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+}
+
+.madurez-cupo-alert {
+    margin: 16px 0 20px;
+    font-size: 14px;
+}
+
+.madurez-hub-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 12px;
+    margin-bottom: 24px;
+}
+
+.madurez-hub-resultados {
+    margin-top: 8px;
+}
+
+.madurez-hub-resultados h3 {
+    font-size: 18px;
+    margin-bottom: 12px;
+}
+
+.madurez-hub-card {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 14px 16px;
+    margin-bottom: 10px;
+    border: 1px solid #DEDFE9;
+    border-radius: 8px;
+    background: #f8f9fb;
+}

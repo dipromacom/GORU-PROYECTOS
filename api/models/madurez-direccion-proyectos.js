@@ -8,7 +8,6 @@ module.exports = (db, Sequelize) => {
         usuario_id: {
             type: Sequelize.INTEGER,
             allowNull: false,
-            unique: true,
             references: { model: 'usuario', key: 'id' },
         },
         nombre_contacto: {

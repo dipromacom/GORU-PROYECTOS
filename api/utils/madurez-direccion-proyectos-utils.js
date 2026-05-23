@@ -7,6 +7,7 @@ const {
 } = require('./madurez-direccion-proyectos-data');
 
 const GORU_NOTIFICACION_EMAIL = 'esproproyectos@dipromacom.net';
+const CUPO_MAXIMO_ASSESSMENTS = 2;
 
 const calcularResultados = (respuestas) => {
     if (!Array.isArray(respuestas) || respuestas.length !== TOTAL_PREGUNTAS) {
@@ -68,15 +69,37 @@ const calcularResultados = (respuestas) => {
     };
 };
 
-const getByUsuarioId = async (usuarioId) => {
+const listByUsuarioId = async (usuarioId) => {
     const id = parseInt(usuarioId, 10);
-    return MadurezDireccionProyectos.findOne({ where: { usuario_id: id } });
+    const rows = await MadurezDireccionProyectos.findAll({
+        where: { usuario_id: id },
+        order: [['createdAt', 'ASC']],
+    });
+    return rows;
+};
+
+const getEstadoUsuario = async (usuarioId) => {
+    const rows = await listByUsuarioId(usuarioId);
+    const resultados = rows.map((row, index) => ({
+        ...formatResultado(row),
+        numeroIntento: index + 1,
+    }));
+    const cantidad = resultados.length;
+    return {
+        cupoMaximo: CUPO_MAXIMO_ASSESSMENTS,
+        cantidad,
+        puedeRealizarOtro: cantidad < CUPO_MAXIMO_ASSESSMENTS,
+        cupoAgotado: cantidad >= CUPO_MAXIMO_ASSESSMENTS,
+        resultados,
+        completado: cantidad > 0,
+        resultado: resultados.length ? resultados[resultados.length - 1] : null,
+    };
 };
 
 const guardarResultado = async (usuarioId, payload) => {
-    const existente = await getByUsuarioId(usuarioId);
-    if (existente) {
-        throw new Error('El usuario ya completó este assessment');
+    const rows = await listByUsuarioId(usuarioId);
+    if (rows.length >= CUPO_MAXIMO_ASSESSMENTS) {
+        throw new Error('Ha alcanzado el cupo máximo de assessments. Contacte a GORU para ampliarlo.');
     }
 
     const {
@@ -222,9 +245,11 @@ const listAll = async ({ fechaDesde, fechaHasta } = {}) => {
 
 module.exports = {
     calcularResultados,
-    getByUsuarioId,
+    listByUsuarioId,
+    getEstadoUsuario,
     guardarResultado,
     formatResultado,
     listAll,
     GORU_NOTIFICACION_EMAIL,
+    CUPO_MAXIMO_ASSESSMENTS,
 };

@@ -7,11 +7,10 @@ const file = path.basename(__filename);
 const getEstado = async (req, res) => {
     const { id: usuarioId } = req.params;
     try {
-        const registro = await MadurezUtils.getByUsuarioId(usuarioId);
+        const estado = await MadurezUtils.getEstadoUsuario(usuarioId);
         return res.status(200).json({
             success: true,
-            completado: !!registro,
-            resultado: MadurezUtils.formatResultado(registro),
+            ...estado,
         });
     } catch (error) {
         logger.error({
@@ -50,7 +49,7 @@ const guardar = async (req, res) => {
             return res.status(400).json({ success: false, message: 'Correo electrónico inválido' });
         }
 
-        const registro = await MadurezUtils.guardarResultado(usuarioId, {
+        await MadurezUtils.guardarResultado(usuarioId, {
             nombreContacto: String(nombreContacto).trim(),
             empresa: String(empresa).trim(),
             celular: String(celular).trim(),
@@ -59,12 +58,18 @@ const guardar = async (req, res) => {
             pdfBase64,
         });
 
+        const estado = await MadurezUtils.getEstadoUsuario(usuarioId);
+        const ultimo = estado.resultados.length
+            ? estado.resultados[estado.resultados.length - 1]
+            : null;
+
         return res.status(200).json({
             success: true,
-            resultado: MadurezUtils.formatResultado(registro),
+            resultado: ultimo,
+            ...estado,
         });
     } catch (error) {
-        const esDuplicado = error.message.includes('ya completó');
+        const esDuplicado = error.message.includes('cupo máximo');
         logger.error({
             message: error.message,
             source: file,
