@@ -13,43 +13,51 @@ const INFO_COLOR = 'rgb(23, 162, 184)'; // Azul
 
 
 const PerformancePolarChart = ({ dataValues }) => {
-    // Definir colores base únicos para cada métrica
-    const metrics = [
+    const metricDefinitions = [
         {
+            key: 'alcance',
             label: '🎯 Alcance',
-            value: dataValues.alcance || 0,
-            baseColor: { r: 54, g: 162, b: 235 }  // Azul
+            baseColor: { r: 54, g: 162, b: 235 }
         },
         {
+            key: 'hitos',
             label: '🏁 Hitos',
-            value: dataValues.hitos || 0,
-            baseColor: { r: 153, g: 102, b: 255 } // Púrpura
+            baseColor: { r: 153, g: 102, b: 255 }
         },
         {
+            key: 'costos',
             label: '💰 Costos',
-            value: dataValues.costos || 0,
-            baseColor: { r: 255, g: 159, b: 64 }  // Naranja
+            baseColor: { r: 255, g: 159, b: 64 }
         },
         {
+            key: 'eficiencia',
             label: '📊 Kanban',
-            value: dataValues.eficiencia || 0,
-            baseColor: { r: 75, g: 192, b: 192 }  // Verde azulado
+            baseColor: { r: 75, g: 192, b: 192 }
         },
         {
+            key: 'todo',
             label: '✅ To-Do',
-            value: dataValues.todo || 0,
-            baseColor: { r: 76, g: 175, b: 80 }   // Verde
+            baseColor: { r: 76, g: 175, b: 80 }
         },
         {
+            key: 'cronograma',
             label: '📅 Cronograma',
-            value: dataValues.cronograma || 0,
-            baseColor: { r: 255, g: 99, b: 132 }  // Rosa/Rojo
+            baseColor: { r: 255, g: 99, b: 132 }
         },
-        ...(dataValues.beneficios !== undefined
-            ? [{ label: '🏆 Beneficios', value: dataValues.beneficios || 0, baseColor: { r: 255, g: 215, b: 0 } }]
-            : []
-        ),
+        {
+            key: 'beneficios',
+            label: '🏆 Beneficios',
+            baseColor: { r: 255, g: 215, b: 0 }
+        },
     ];
+
+    const metrics = metricDefinitions
+        .filter(m => dataValues[m.key] !== undefined)
+        .map(m => ({
+            label: m.label,
+            value: dataValues[m.key] || 0,
+            baseColor: m.baseColor,
+        }));
 
     // Función para ajustar el color según el desempeño
     const getColorByPerformance = (baseColor, value) => {
@@ -312,7 +320,7 @@ const getRiskColorVariant = (percentage) => {
 
 // --- Componente de Riesgo (Badge Semáforo) ---
 const RiskIndicator = ({ title, riskValue }) => {
-    title="Indice de Riesgo"
+    title = "Indice de Riesgo"
     const percentage = riskValue === null || riskValue === undefined ? 0 : riskValue;
 
     const remaining = 100 - percentage;

@@ -343,6 +343,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [plazoPeriodo, setPlazoPeriodo] = useState("M")
     const [maxDesviacionPeriodo, setMaxDesviacionPeriodo] = useState("M")
     const [tipoProyecto, setTipoProyecto] = useState("")
+    const esProyectoEquipoAgil = esProyecto && tipoProyecto?.toString() === TIPO_PROYECTO_AGIL
     const [leccionesAprendidas, setLeccionesAprendidas] = useState("")
     const [beneficios, setBeneficios] = useState("");
 
@@ -936,6 +937,26 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setGanttSummary(summary);
     }, []);
 
+    const resumenDesempenoChart = useMemo(() => {
+        if (esProyectoEquipoAgil) {
+            return {
+                eficiencia: resumenDesempeno.eficiencia,
+                todo: resumenDesempeno.todo,
+            };
+        }
+        if (esProyecto) {
+            const { beneficios, ...rest } = resumenDesempeno;
+            return rest;
+        }
+        return resumenDesempeno;
+    }, [esProyectoEquipoAgil, esProyecto, resumenDesempeno]);
+
+    useEffect(() => {
+        if (esProyectoEquipoAgil && activeTabSummary === 'ejecucion') {
+            setActiveTabSummary('desempeno');
+        }
+    }, [esProyectoEquipoAgil, activeTabSummary]);
+
     const goruHoyPanelProps = useMemo(
         () => ({
             proyectoId: numericId,
@@ -1235,7 +1256,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         <Form.Group controlId="tipoProyecto">
                                             <Form.Label>{esActividad ? "Tipo de Proyecto Personal" : esPrograma ? "Tipo de Programa" : "Tipo de Proyecto Equipo"}</Form.Label>
                                             <Form.Control
-                                                disabled={!editMode}
+                                                disabled={!editMode || ejecutado}
                                                 as="select"
                                                 className="form-select"
                                                 value={tipoProyecto}
@@ -1254,19 +1275,21 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             <GoruQueHacemosHoyPanel {...goruHoyPanelProps} />
                                             <Tab.Container activeKey={activeTabSummary} onSelect={(k) => setActiveTabSummary(k)}>
                                                 <Nav variant="tabs" className="justify-content-start mb-4 custom-tabs-style">
-                                                    {!esActividad && (ejecutado || cerrado) && (
+                                                    {!esActividad && (ejecutado || cerrado) && !esProyectoEquipoAgil && (
                                                         <>
                                                             <Nav.Item>
                                                                 <Nav.Link eventKey="ejecucion" className="px-4 py-2">
                                                                     <i className="bi bi-graph-up-arrow mr-2"></i>Resumen de Ejecución
                                                                 </Nav.Link>
                                                             </Nav.Item>
-                                                            <Nav.Item>
-                                                                <Nav.Link eventKey="desempeno" className="px-4 py-2">
-                                                                    <i className="bi bi-speedometer2 mr-2"></i>Resumen de Desempeño
-                                                                </Nav.Link>
-                                                            </Nav.Item>
                                                         </>
+                                                    )}
+                                                    {!esActividad && (ejecutado || cerrado) && (
+                                                        <Nav.Item>
+                                                            <Nav.Link eventKey="desempeno" className="px-4 py-2">
+                                                                <i className="bi bi-speedometer2 mr-2"></i>Resumen de Desempeño
+                                                            </Nav.Link>
+                                                        </Nav.Item>
                                                     )}
 
                                                     {puede(PermProy.ENCUESTAS_VER) && (
@@ -1302,7 +1325,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 </Nav>
 
                                                 <Tab.Content>
-                                                    {!esActividad && (ejecutado || cerrado) && (
+                                                    {!esActividad && (ejecutado || cerrado) && !esProyectoEquipoAgil && (
                                                         <>
                                                             <Tab.Pane eventKey="ejecucion">
                                                                 {/* PESTAÑA 1: RESUMEN DE EJECUCIÓN */}
@@ -1334,15 +1357,17 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                                     )}
                                                                 </Row>
                                                             </Tab.Pane>
-
+                                                        </>
+                                                    )}
+                                                    {!esActividad && (ejecutado || cerrado) && (
+                                                        <>
                                                             {/* PESTAÑA 2: RESUMEN DE DESEMPEÑO */}
                                                             <Tab.Pane eventKey="desempeno">
                                                                 <Row className="mb-4 justify-content-center">
                                                                     <Col md={8} lg={6} className="d-flex justify-content-center pb-4">
-                                                                        {/* 🔹 Enviamos el objeto completo 'resumenDesempeno' al gráfico Polar */}
                                                                         <SummaryChart
                                                                             type="performance"
-                                                                            dataValues={resumenDesempeno}
+                                                                            dataValues={resumenDesempenoChart}
                                                                         />
                                                                     </Col>
                                                                 </Row>
@@ -2179,15 +2204,15 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="Matriz-Interesados">
-                                        <ViewInteresados
-                                            interesados={interesado}
-                                            projectId={numericId}
-                                            puedeEnviarCorreoInteresados={puede(PermProy.INTERESADOS_GEST)}
-                                            toDo={todo}
-                                            markAsDoneCallback={id => doneTask(id)}
-                                            cerrado={cerrado}
-                                            esPrograma={esPrograma}
-                                        />
+                                    <ViewInteresados
+                                        interesados={interesado}
+                                        projectId={numericId}
+                                        puedeEnviarCorreoInteresados={puede(PermProy.INTERESADOS_GEST)}
+                                        toDo={todo}
+                                        markAsDoneCallback={id => doneTask(id)}
+                                        cerrado={cerrado}
+                                        esPrograma={esPrograma}
+                                    />
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="Crear-Interesado">
                                     <CreateInteresados onNavigate={setActiveKey} setInteresado={setInteresado} nombreinteresado={interesado} esPrograma={esPrograma} />
@@ -2241,174 +2266,206 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                                 {/* --- Alcance --- */}
                                 <Tab.Pane eventKey="alcance">
-                                    {!editMode && !cerrado && (
-                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar interesados </p>
+                                    {esProyectoEquipoAgil ? (
+                                        <p>El tipo de proyecto no es apto para usar el Alcance</p>
+                                    ) : (
+                                        <>
+                                            {!editMode && !cerrado && (
+                                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar interesados </p>
+                                            )}
+                                            <InputAlcanceList
+                                                alcanceEntregables={alcanceEntregables}
+                                                setAlcanceEntregables={setAlcanceEntregables}
+                                                editMode={editMode}
+                                                ejecutado={ejecutado}
+                                                cerrado={cerrado}
+                                                onSummaryChange={setPorcentajeCompletado}
+                                                esPrograma={esPrograma}
+                                                onPerformanceChange={setDesempenoValue}
+                                            />
+                                            <div className="mt-5 pb-5">
+                                                {
+                                                    editMode && (
+                                                        <LoaderButton
+                                                            type="submit"
+                                                            className="btn-success btn-save"
+                                                            disabled={!validateForm()}
+                                                            onClick={handleSubmit}
+                                                        >
+                                                            Guardar Cambios
+                                                        </LoaderButton>
+                                                    )
+                                                }
+                                            </div>
+                                        </>
                                     )}
-                                    <InputAlcanceList
-                                        alcanceEntregables={alcanceEntregables}
-                                        setAlcanceEntregables={setAlcanceEntregables}
-                                        editMode={editMode}
-                                        ejecutado={ejecutado}
-                                        cerrado={cerrado}
-                                        onSummaryChange={setPorcentajeCompletado}
-                                        esPrograma={esPrograma}
-                                        onPerformanceChange={setDesempenoValue}
-                                    />
-                                    <div className="mt-5 pb-5">
-                                        {
-                                            editMode && (
-                                                <LoaderButton
-                                                    type="submit"
-                                                    className="btn-success btn-save"
-                                                    disabled={!validateForm()}
-                                                    onClick={handleSubmit}
-                                                >
-                                                    Guardar Cambios
-                                                </LoaderButton>
-                                            )
-                                        }
-                                    </div>
                                 </Tab.Pane>
 
                                 {/* --- Hitos --- */}
                                 <Tab.Pane eventKey="hitos">
-                                    {!editMode && !cerrado && (
-                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar hitos </p>
+                                    {esProyectoEquipoAgil ? (
+                                        <p>El tipo de proyecto no es apto para usar los Hitos</p>
+                                    ) : (
+                                        <>
+                                            {!editMode && !cerrado && (
+                                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar hitos </p>
+                                            )}
+                                            <InputHitosList
+                                                tiempoDuracion={tiempoDuracion}
+                                                setTiempoDuracion={setTiempoDuracion}
+                                                tiempoFechasCriticas={tiempoFechasCriticas}
+                                                setTiempoFechasCriticas={setTiempoFechasCriticas}
+                                                editMode={editMode}
+                                                showDuration={showDuration}
+                                                ejecutado={ejecutado}
+                                                cerrado={cerrado}
+                                                onSummaryChange={setPorcentajeCompletado}
+                                                onPerformanceChange={setDesempenoValue}
+                                            />
+                                            <div className="mt-5 pb-5">
+                                                {
+                                                    editMode && (
+                                                        <LoaderButton
+                                                            type="submit"
+                                                            className="btn-success btn-save"
+                                                            disabled={!validateForm()}
+                                                            onClick={handleSubmit}
+                                                        >
+                                                            Guardar Cambios
+                                                        </LoaderButton>
+                                                    )
+                                                }
+                                            </div>
+                                        </>
                                     )}
-                                    <InputHitosList
-                                        tiempoDuracion={tiempoDuracion}
-                                        setTiempoDuracion={setTiempoDuracion}
-                                        tiempoFechasCriticas={tiempoFechasCriticas}
-                                        setTiempoFechasCriticas={setTiempoFechasCriticas}
-                                        editMode={editMode}
-                                        showDuration={showDuration}
-                                        ejecutado={ejecutado}
-                                        cerrado={cerrado}
-                                        onSummaryChange={setPorcentajeCompletado}
-                                        onPerformanceChange={setDesempenoValue}
-                                    />
-                                    <div className="mt-5 pb-5">
-                                        {
-                                            editMode && (
-                                                <LoaderButton
-                                                    type="submit"
-                                                    className="btn-success btn-save"
-                                                    disabled={!validateForm()}
-                                                    onClick={handleSubmit}
-                                                >
-                                                    Guardar Cambios
-                                                </LoaderButton>
-                                            )
-                                        }
-                                    </div>
                                 </Tab.Pane>
 
                                 {/* --- Costos --- */}
                                 <Tab.Pane eventKey="costos">
-                                    {!editMode && !cerrado && (
-                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar costos </p>
+                                    {esProyectoEquipoAgil ? (
+                                        <p>El tipo de proyecto no es apto para usar los Costos</p>
+                                    ) : (
+                                        <>
+                                            {!editMode && !cerrado && (
+                                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar costos </p>
+                                            )}
+                                            <InputCostosList
+                                                costoEntregable={costoEntregable}
+                                                setCostoEntregable={setCostoEntregable}
+                                                costoReservaContingencia={costoReservaContingencia}
+                                                setCostoReservaContingencia={setCostoReservaContingencia}
+                                                costoReservaContingenciaReal={costoReservaContingenciaReal}
+                                                setCostoReservaContingenciaReal={setCostoReservaContingenciaReal}
+                                                costoReservaGestion={costoReservaGestion}
+                                                setCostoReservaGestion={setCostoReservaGestion}
+                                                costoReservaGestionReal={costoReservaGestionReal}
+                                                setCostoReservaGestionReal={setCostoReservaGestionReal}
+                                                presupuesto={presupuesto}
+                                                editMode={editMode}
+                                                regexValidator={regexValidator}
+                                                ejecutado={ejecutado}
+                                                cerrado={cerrado}
+                                                onSummaryChange={setPorcentajeCompletado}
+                                                onPerformanceChange={setDesempenoValue}
+                                            />
+                                            <div className="mt-5 pb-5">
+                                                {
+                                                    editMode && (
+                                                        <LoaderButton
+                                                            type="submit"
+                                                            className="btn-success btn-save"
+                                                            disabled={!validateForm()}
+                                                            onClick={handleSubmit}
+                                                        >
+                                                            Guardar Cambios
+                                                        </LoaderButton>
+                                                    )
+                                                }
+                                            </div>
+                                        </>
                                     )}
-                                    <InputCostosList
-                                        costoEntregable={costoEntregable}
-                                        setCostoEntregable={setCostoEntregable}
-                                        costoReservaContingencia={costoReservaContingencia}
-                                        setCostoReservaContingencia={setCostoReservaContingencia}
-                                        costoReservaContingenciaReal={costoReservaContingenciaReal}
-                                        setCostoReservaContingenciaReal={setCostoReservaContingenciaReal}
-                                        costoReservaGestion={costoReservaGestion}
-                                        setCostoReservaGestion={setCostoReservaGestion}
-                                        costoReservaGestionReal={costoReservaGestionReal}
-                                        setCostoReservaGestionReal={setCostoReservaGestionReal}
-                                        presupuesto={presupuesto}
-                                        editMode={editMode}
-                                        regexValidator={regexValidator}
-                                        ejecutado={ejecutado}
-                                        cerrado={cerrado}
-                                        onSummaryChange={setPorcentajeCompletado}
-                                        onPerformanceChange={setDesempenoValue}
-                                    />
-                                    <div className="mt-5 pb-5">
-                                        {
-                                            editMode && (
-                                                <LoaderButton
-                                                    type="submit"
-                                                    className="btn-success btn-save"
-                                                    disabled={!validateForm()}
-                                                    onClick={handleSubmit}
-                                                >
-                                                    Guardar Cambios
-                                                </LoaderButton>
-                                            )
-                                        }
-                                    </div>
                                 </Tab.Pane>
 
                                 {/* --- Calidad --- */}
                                 <Tab.Pane eventKey="calidad">
-                                    {!editMode && !cerrado && (
-                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar calidad </p>
+                                    {esProyectoEquipoAgil ? (
+                                        <p>El tipo de proyecto no es apto para usar la Calidad</p>
+                                    ) : (
+                                        <>
+                                            {!editMode && !cerrado && (
+                                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar calidad </p>
+                                            )}
+                                            <InputCalidadList
+                                                costoEntregable={costoEntregable}
+                                                calidadMetricas={calidadMetricas}
+                                                setCalidadMetricas={setCalidadMetricas}
+                                                editMode={editMode}
+                                                ejecutado={ejecutado}
+                                                cerrado={cerrado}
+                                                onSummaryChange={setPorcentajeCompletado}
+                                            />
+                                            <div className="mt-5 pb-5">
+                                                {
+                                                    editMode && (
+                                                        <LoaderButton
+                                                            type="submit"
+                                                            className="btn-success btn-save"
+                                                            disabled={!validateForm()}
+                                                            onClick={handleSubmit}
+                                                        >
+                                                            Guardar Cambios
+                                                        </LoaderButton>
+                                                    )
+                                                }
+                                            </div>
+                                        </>
                                     )}
-                                    <InputCalidadList
-                                        costoEntregable={costoEntregable}
-                                        calidadMetricas={calidadMetricas}
-                                        setCalidadMetricas={setCalidadMetricas}
-                                        editMode={editMode}
-                                        ejecutado={ejecutado}
-                                        cerrado={cerrado}
-                                        onSummaryChange={setPorcentajeCompletado}
-                                    />
-                                    <div className="mt-5 pb-5">
-                                        {
-                                            editMode && (
-                                                <LoaderButton
-                                                    type="submit"
-                                                    className="btn-success btn-save"
-                                                    disabled={!validateForm()}
-                                                    onClick={handleSubmit}
-                                                >
-                                                    Guardar Cambios
-                                                </LoaderButton>
-                                            )
-                                        }
-                                    </div>
                                 </Tab.Pane>
 
                                 {/* --- Riesgos --- */}
                                 <Tab.Pane eventKey="riesgos">
-                                    {!editMode && !cerrado && (
-                                        <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar riesgos </p>
-                                    )}
-                                    <Form.Group controlId="riesgos-criticos">
-                                        <InputRiesgosList
-                                            disabled={!editMode}
-                                            riesgosList={riesgos}
-                                            setRiesgosList={setRiesgos}
-                                            interesados={interesado}
-                                            ejecutado={ejecutado}
-                                            cerrado={cerrado}
-                                            onSummaryChange={setRiesgoPromedio}
-                                        />
-                                    </Form.Group>
+                                    {esProyectoEquipoAgil ? (
+                                        <p>El tipo de proyecto no es apto para usar los Riesgos</p>
+                                    ) : (
+                                        <>
+                                            {!editMode && !cerrado && (
+                                                <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar riesgos </p>
+                                            )}
+                                            <Form.Group controlId="riesgos-criticos">
+                                                <InputRiesgosList
+                                                    disabled={!editMode}
+                                                    riesgosList={riesgos}
+                                                    setRiesgosList={setRiesgos}
+                                                    interesados={interesado}
+                                                    ejecutado={ejecutado}
+                                                    cerrado={cerrado}
+                                                    onSummaryChange={setRiesgoPromedio}
+                                                />
+                                            </Form.Group>
 
-                                    {/* Boton Guardar*/}
-                                    <div className="mt-5 pb-5">
-                                        {
-                                            editMode && (
-                                                <LoaderButton
-                                                    type="submit"
-                                                    className="btn-success btn-save"
-                                                    disabled={!validateForm()}
-                                                    onClick={handleSubmit}
-                                                >
-                                                    Guardar Cambios
-                                                </LoaderButton>
-                                            )
-                                        }
-                                    </div>
+                                            {/* Boton Guardar*/}
+                                            <div className="mt-5 pb-5">
+                                                {
+                                                    editMode && (
+                                                        <LoaderButton
+                                                            type="submit"
+                                                            className="btn-success btn-save"
+                                                            disabled={!validateForm()}
+                                                            onClick={handleSubmit}
+                                                        >
+                                                            Guardar Cambios
+                                                        </LoaderButton>
+                                                    )
+                                                }
+                                            </div>
+                                        </>
+                                    )}
 
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="gantt">
-                                    {tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
+                                    {esProyectoEquipoAgil ? (
+                                        <p>El tipo de proyecto no es apto para usar el Gantt</p>
+                                    ) : tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto && tipoProyecto.toString() === TIPO_PROYECTO_HIBRIDO
                                         ? <GanttChart
                                             projectId={projectId}
                                             interesados={interesado}
