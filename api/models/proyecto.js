@@ -61,6 +61,7 @@ module.exports = (db, Sequelize) => {
     const {
       TipoProyecto, Empresa, Departamento, DirectorProyecto,
       Patrocinador, Evaluacion, Usuario, UsuarioProyecto, RolProyecto, InformeAvance, GanttTask, KanbanStatus,
+      ScrumEpic, ScrumSprint, ScrumStory,
     } = models;
 
     Proyecto.TipoProyecto = Proyecto.belongsTo(TipoProyecto, {
@@ -136,6 +137,23 @@ module.exports = (db, Sequelize) => {
       foreignKey: 'programa_id',
       constraints: false,
     });
+
+
+    Proyecto.ScrumEpics = Proyecto.hasMany(ScrumEpic, {
+      as: 'ScrumEpics',
+      foreignKey: 'proyecto_id',
+    });
+
+    Proyecto.ScrumSprints = Proyecto.hasMany(ScrumSprint, {
+      as: 'ScrumSprints',
+      foreignKey: 'proyecto_id',
+    });
+
+    Proyecto.ScrumStories = Proyecto.hasMany(ScrumStory, {
+      as: 'ScrumStories',
+      foreignKey: 'proyecto_id',
+    });
+
 
 
   };

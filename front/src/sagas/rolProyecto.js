@@ -111,10 +111,33 @@ function* handleAssignRolProyecto({ payload }) {
 }
 // --- Handlers usuarios proyecto ---
 
+function normalizeUsuarioProyectoItem(item) {
+    const src = item?.dataValues ? item : item;
+    const plain = typeof src.toJSON === 'function' ? src.toJSON() : { ...src };
+    const usuario = plain.Usuario || plain.usuario || {};
+    const persona = usuario.Persona || usuario.persona || null;
+    const username = usuario.username || '';
+    const nombre = persona?.nombre
+        ? `${persona.nombre} ${persona.apellido || ''}`.trim()
+        : (username || (plain.usuario_id ? `Usuario ${plain.usuario_id}` : '—'));
+
+    return {
+        ...plain,
+        usuario_id: plain.usuario_id,
+        rol_proyecto_id: plain.rol_proyecto_id,
+        Usuario: usuario,
+        RolProyecto: plain.RolProyecto || plain.rolProyecto || null,
+        nombre,
+        email: username,
+    };
+}
+
 function* handleGetUsuariosProyecto({ proyectoId }) {
     try {
         const response = yield call(getUsuariosProyecto, proyectoId);
-        yield put({ type: types.GET_USUARIOS_PROYECTO_SUCCESS, data: response.data.data });
+        const raw = response.data?.data || [];
+        const data = raw.map(normalizeUsuarioProyectoItem);
+        yield put({ type: types.GET_USUARIOS_PROYECTO_SUCCESS, data });
     } catch (e) {
         onError(e);
         yield put({ type: types.GET_USUARIOS_PROYECTO_ERROR, errorMessage: "Error al cargar usuarios asignados." });

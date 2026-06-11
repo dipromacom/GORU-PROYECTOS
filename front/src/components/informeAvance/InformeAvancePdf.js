@@ -249,7 +249,6 @@ const styles = StyleSheet.create({
     },
     logo: {
         width: 160,
-        height: 'auto',
         marginBottom: 20,
         alignSelf: 'center',
     },
@@ -295,6 +294,66 @@ const calcularPromedioEncuesta = (enc) => {
 
 const getAnalisisImpacto = (s) =>
     typeof s.analisis_impacto === 'string' ? {} : (s.analisis_impacto || {});
+
+const parseAnalisisImpacto = (s) => {
+    if (!s?.analisis_impacto) return {};
+    if (typeof s.analisis_impacto === 'string') {
+        try {
+            return JSON.parse(s.analisis_impacto);
+        } catch {
+            return {};
+        }
+    }
+    return s.analisis_impacto;
+};
+
+const clean = (val) => {
+    if (val === null || val === undefined || val === false) return '';
+    return String(val);
+};
+
+const EmptyView = () => <View />;
+
+const formatLeccionesAprendidas = (data) => {
+    if (data == null || data === '') return 'No disponible por el momento';
+    if (typeof data === 'object') {
+        const texto = data.descripcion ?? '';
+        return String(texto).trim() !== '' ? String(texto) : 'No disponible por el momento';
+    }
+    if (typeof data === 'string') {
+        try {
+            const parsed = JSON.parse(data);
+            if (parsed && typeof parsed === 'object' && parsed.descripcion != null) {
+                return String(parsed.descripcion).trim() !== ''
+                    ? String(parsed.descripcion)
+                    : 'No disponible por el momento';
+            }
+        } catch {
+            // texto plano
+        }
+        return data.trim() !== '' ? data : 'No disponible por el momento';
+    }
+    return clean(data) || 'No disponible por el momento';
+};
+
+const getEstadoLabel = (estado) => {
+    switch (estado) {
+        case 'P': return 'Planificado';
+        case 'S': return 'Iniciado';
+        case 'X': return 'En Ejecución';
+        case 'E': return 'Cerrado';
+        default: return '';
+    }
+};
+
+const getTipoProyectoLabel = (tipo) => {
+    switch (Number(tipo)) {
+        case 1: return 'Ágil';
+        case 2: return 'Predictivo';
+        case 3: return 'Híbrido';
+        default: return '';
+    }
+};
 
 const InformeAvancePdf = ({
     informe,
@@ -414,6 +473,16 @@ const InformeAvancePdf = ({
     const matrixInicial = riesgosList && riesgosList.length > 0 ? generateRiskMatrix(false) : null;
     const hasResidual = riesgosList && riesgosList.some(r => r.completado);
     const matrixResidual = hasResidual ? generateRiskMatrix(true) : null;
+    const mostrarRecomendacionesIa = Boolean(
+        informe.recomendaciones_ia && String(informe.recomendaciones_ia).trim() !== ''
+    );
+    const mostrarPlanIa = Boolean(
+        informe.plan_sugerido_ia && String(informe.plan_sugerido_ia).trim() !== ''
+    );
+    const mostrarAnalisisImpacto = listaSolicitudes.some((s) => {
+        const ai = parseAnalisisImpacto(s);
+        return ai.tiempo || ai.dolares;
+    });
 
     return (
         <Document>
@@ -445,12 +514,7 @@ const InformeAvancePdf = ({
                     <View style={styles.row}><Text style={styles.label}>Nombre:</Text><Text style={styles.value}>{projectDetail?.nombre}</Text></View>
                     <View style={styles.row}>
                         <Text style={styles.label}>Estado:</Text>
-                        <Text style={styles.value}>
-                            {projectDetail?.estado === 'P' && 'Planificado'}
-                            {projectDetail?.estado === 'S' && 'Iniciado'}
-                            {projectDetail?.estado === 'X' && 'En Ejecución'}
-                            {projectDetail?.estado === 'E' && 'Cerrado'}
-                        </Text>
+                        <Text style={styles.value}>{getEstadoLabel(projectDetail?.estado)}</Text>
                     </View>
                     <View style={styles.row}>
                         <Text style={styles.label}>Director:</Text>
@@ -470,15 +534,13 @@ const InformeAvancePdf = ({
                     </View>
                     <View style={styles.row}><Text style={styles.label}>Departamento:</Text><Text style={styles.value}>{projectDetail?.Departamento?.nombre || 'N/A'}</Text></View>
                     <View style={styles.row}><Text style={styles.label}>Información breve:</Text><Text style={styles.value}>{projectDetail?.informacion || 'N/A'}</Text></View>
-                    {!esPrograma && (
+                    {!esPrograma ? (
                         <View style={styles.row}>
                             <Text style={styles.label}>Tipo de proyecto:</Text>
-                            <Text style={styles.value}>
-                                {projectDetail?.tipo_proyecto === 1 && 'Ágil'}
-                                {projectDetail?.tipo_proyecto === 2 && 'Predictivo'}
-                                {projectDetail?.tipo_proyecto === 3 && 'Híbrido'}
-                            </Text>
+                            <Text style={styles.value}>{getTipoProyectoLabel(projectDetail?.tipo_proyecto)}</Text>
                         </View>
+                    ) : (
+                        <EmptyView />
                     )}
                     {/* ── Datos financieros y temporales para análisis ── */}
                     <View style={styles.row}>
@@ -493,21 +555,23 @@ const InformeAvancePdf = ({
                         <Text style={styles.label}>Fecha de Cierre:</Text>
                         <Text style={styles.value}>{formatDate(projectDetail?.fecha_cierre)}</Text>
                     </View>
-                    {ganttSummary && (
-                        <>
+                    {ganttSummary ? (
+                        <View>
                             <View style={styles.row}>
                                 <Text style={styles.label}>Inicio del Proyecto (Gantt):</Text>
-                                <Text style={styles.value}>{ganttSummary.start}</Text>
+                                <Text style={styles.value}>{clean(ganttSummary.start)}</Text>
                             </View>
                             <View style={styles.row}>
                                 <Text style={styles.label}>Fin del Proyecto (Gantt):</Text>
-                                <Text style={styles.value}>{ganttSummary.end}</Text>
+                                <Text style={styles.value}>{clean(ganttSummary.end)}</Text>
                             </View>
                             <View style={styles.row}>
                                 <Text style={styles.label}>Total Días del Proyecto:</Text>
-                                <Text style={[styles.value, { fontWeight: 'bold' }]}>{ganttSummary.totalDays} días</Text>
+                                <Text style={[styles.value, { fontWeight: 'bold' }]}>{clean(ganttSummary.totalDays)} días</Text>
                             </View>
-                        </>
+                        </View>
+                    ) : (
+                        <EmptyView />
                     )}
                 </View>
 
@@ -573,27 +637,31 @@ const InformeAvancePdf = ({
                 </View>
 
                 {/* Resumen Ejecución (solo si aplica) */}
-                {(ejecutado || cerrado) && resumenEjecucion && !esActividad && (
+                {(ejecutado || cerrado) && resumenEjecucion && !esActividad ? (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Resumen de Ejecución</Text>
                         <View style={styles.gridContainer}>
-                            <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>Avance de Alcance</Text><Text style={[styles.cardValue, styles.cardValueSuccess]}>{resumenEjecucion.alcance}%</Text></View></View>
-                            <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>Avance de Hitos</Text><Text style={[styles.cardValue, styles.cardValueSuccess]}>{resumenEjecucion.hitos}%</Text></View></View>
+                            <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>Avance de Alcance</Text><Text style={[styles.cardValue, styles.cardValueSuccess]}>{clean(resumenEjecucion.alcance)}%</Text></View></View>
+                            <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>Avance de Hitos</Text><Text style={[styles.cardValue, styles.cardValueSuccess]}>{clean(resumenEjecucion.hitos)}%</Text></View></View>
                             <View style={styles.gridItem}>
                                 <View style={styles.card}>
                                     <Text style={styles.cardTitle}>Desviación de Costos</Text>
                                     <Text style={[styles.cardValue, resumenEjecucion.costoDesviacion >= 0 ? styles.cardValueSuccess : styles.cardValueDanger]}>
-                                        {resumenEjecucion.costoDesviacion}%
+                                        {clean(resumenEjecucion.costoDesviacion)}%
                                     </Text>
                                 </View>
                             </View>
-                            <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>{esPrograma ? 'Avance de Beneficios' : 'Avance de Calidad'}</Text><Text style={[styles.cardValue, styles.cardValueSuccess]}>{esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad}%</Text></View></View>
-                            <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>Nivel de Riesgo</Text><Text style={[styles.cardValue, styles.cardValueWarning]}>{resumenEjecucion.riesgoPromedio}%</Text></View></View>
-                            {resumenEjecucion.gantt > 0 && (
-                                <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>Avance de Gantt</Text><Text style={[styles.cardValue, styles.cardValueSuccess]}>{resumenEjecucion.gantt}%</Text></View></View>
+                            <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>{esPrograma ? 'Avance de Beneficios' : 'Avance de Calidad'}</Text><Text style={[styles.cardValue, styles.cardValueSuccess]}>{clean(esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad)}%</Text></View></View>
+                            <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>Nivel de Riesgo</Text><Text style={[styles.cardValue, styles.cardValueWarning]}>{clean(resumenEjecucion.riesgoPromedio)}%</Text></View></View>
+                            {resumenEjecucion.gantt > 0 ? (
+                                <View style={styles.gridItem}><View style={styles.card}><Text style={styles.cardTitle}>Avance de Gantt</Text><Text style={[styles.cardValue, styles.cardValueSuccess]}>{clean(resumenEjecucion.gantt)}%</Text></View></View>
+                            ) : (
+                                <EmptyView />
                             )}
                         </View>
                     </View>
+                ) : (
+                    <EmptyView />
                 )}
 
                 <Text style={styles.pageNumber} render={({ pageNumber }) => `Página ${pageNumber}`} fixed />
@@ -672,37 +740,40 @@ const InformeAvancePdf = ({
                         </View>
 
                         {/* Análisis de impacto — solo cuando tiempo o dólares tienen valor */}
-                        {listaSolicitudes.some(s => {
-                            const ai = typeof s.analisis_impacto === 'string'
-                                ? {}
-                                : (s.analisis_impacto || {});
-                            return ai.tiempo || ai.dolares;
-                        }) && (
-                                <>
-                                    <Text style={[styles.subSectionTitle, { marginTop: 14 }]}>Análisis de Impacto por Solicitud</Text>
-                                    {listaSolicitudes
-                                        .filter(s => {
-                                            const ai = typeof s.analisis_impacto === 'string'
-                                                ? {}
-                                                : (s.analisis_impacto || {});
-                                            return ai.tiempo || ai.dolares;
-                                        })
-                                        .map(sol => {
-                                            const ai = sol.analisis_impacto || {};
-                                            return (
-                                                <View key={sol.id} style={[styles.warningBox, { marginBottom: 6 }]}>
-                                                    <Text style={{ fontWeight: 'bold', marginBottom: 3 }}>#{sol.id} — {sol.nombre_cambio}</Text>
-                                                    {ai.descripcion ? <Text>Descripción: {ai.descripcion}</Text> : null}
-                                                    {ai.tiempo ? <Text>Impacto en tiempo: {ai.tiempo}</Text> : null}
-                                                    {ai.dolares ? <Text>Impacto económico: ${ai.dolares}</Text> : null}
-                                                </View>
-                                            );
-                                        })}
-                                </>
-                            )}
+                        {mostrarAnalisisImpacto ? (
+                            <View>
+                                <Text style={[styles.subSectionTitle, { marginTop: 14 }]}>Análisis de Impacto por Solicitud</Text>
+                                {listaSolicitudes
+                                    .filter(s => {
+                                        const ai = parseAnalisisImpacto(s);
+                                        return ai.tiempo || ai.dolares;
+                                    })
+                                    .map(sol => {
+                                        const ai = parseAnalisisImpacto(sol);
+                                        const impactoLines = [
+                                            ai.descripcion ? (
+                                                <Text key="desc">Descripción: {clean(ai.descripcion)}</Text>
+                                            ) : null,
+                                            ai.tiempo ? (
+                                                <Text key="time">Impacto en tiempo: {clean(ai.tiempo)}</Text>
+                                            ) : null,
+                                            ai.dolares ? (
+                                                <Text key="cost">Impacto económico: ${clean(ai.dolares)}</Text>
+                                            ) : null,
+                                        ].filter(Boolean);
+                                        return (
+                                            <View key={sol.id} style={[styles.warningBox, { marginBottom: 6 }]}>
+                                                <Text style={{ fontWeight: 'bold', marginBottom: 3 }}>#{clean(sol.id)} — {clean(sol.nombre_cambio)}</Text>
+                                                {impactoLines}
+                                            </View>
+                                        );
+                                    })}
+                            </View>
+                        ) : (
+                            <EmptyView />
+                        )}
 
-                        {/* Impacto acumulado de cambios Aprobados */}
-                        {solicitudesAprobadas.length > 0 && (
+                        {solicitudesAprobadas.length > 0 ? (
                             <View style={{ marginTop: 14 }}>
                                 <Text style={[styles.subSectionTitle, { color: '#28a745' }]}>
                                     Impacto Acumulado de Cambios Aprobados ({solicitudesAprobadas.length})
@@ -723,14 +794,14 @@ const InformeAvancePdf = ({
                                         <View style={[styles.card, { borderWidth: 1, borderColor: '#28a745' }]}>
                                             <Text style={styles.cardTitle}>Impacto en Tiempo</Text>
                                             {totalImpactoTiempo > 0 ? (
-                                                <>
+                                                <View>
                                                     <Text style={[styles.cardValue, styles.cardValueSuccess]}>
-                                                        {totalImpactoTiempo}
+                                                        {clean(totalImpactoTiempo)}
                                                     </Text>
                                                     <Text style={{ fontSize: 7, color: '#666', marginTop: 2 }}>
                                                         días laborables acumulados
                                                     </Text>
-                                                </>
+                                                </View>
                                             ) : (
                                                 <Text style={{ fontSize: 8, color: '#999', marginTop: 4 }}>
                                                     Sin impacto en tiempo registrado
@@ -740,6 +811,8 @@ const InformeAvancePdf = ({
                                     </View>
                                 </View>
                             </View>
+                        ) : (
+                            <EmptyView />
                         )}
                     </View>
                     <Text style={styles.pageNumber} render={({ pageNumber }) => `Página ${pageNumber}`} fixed />
@@ -751,10 +824,10 @@ const InformeAvancePdf = ({
             ══════════════════════════════════════════════════ */}
             {hayCualquierAlerta && (
                 <Page size="A4" style={styles.page}>
-                    <Text style={styles.sectionTitleDanger}>⚠ Elementos Retrasados / Pendientes</Text>
+                    <Text style={styles.sectionTitleDanger}>Elementos Retrasados / Pendientes</Text>
 
                     {/* Alcance: { nombre, deadline, completado, fecha_entregable } */}
-                    {alcanceRetrasado.length > 0 && (
+                    {alcanceRetrasado.length > 0 ? (
                         <View style={styles.section}>
                             <Text style={styles.subSectionTitle}>
                                 Alcance retrasado ({alcanceRetrasado.length} entregable(s))
@@ -778,10 +851,11 @@ const InformeAvancePdf = ({
                                 ))}
                             </View>
                         </View>
+                    ) : (
+                        <EmptyView />
                     )}
 
-                    {/* Hitos: { description, date, completado, fecha_hito } */}
-                    {hitosRetrasados.length > 0 && (
+                    {hitosRetrasados.length > 0 ? (
                         <View style={styles.section}>
                             <Text style={styles.subSectionTitle}>
                                 Hitos retrasados ({hitosRetrasados.length})
@@ -805,10 +879,11 @@ const InformeAvancePdf = ({
                                 ))}
                             </View>
                         </View>
+                    ) : (
+                        <EmptyView />
                     )}
 
-                    {/* Costos: { entregable, costo, costoReal, deadline, completado, fecha_cerrado } */}
-                    {costosRetrasados.length > 0 && (
+                    {costosRetrasados.length > 0 ? (
                         <View style={styles.section}>
                             <Text style={styles.subSectionTitle}>
                                 Costos retrasados ({costosRetrasados.length})
@@ -832,10 +907,11 @@ const InformeAvancePdf = ({
                                 ))}
                             </View>
                         </View>
+                    ) : (
+                        <EmptyView />
                     )}
 
-                    {/* Calidad: { entregable, metrica, completado } — sin deadline, se muestran pendientes */}
-                    {calidadPendiente.length > 0 && (
+                    {calidadPendiente.length > 0 ? (
                         <View style={styles.section}>
                             <Text style={styles.subSectionTitle}>
                                 Calidad pendiente ({calidadPendiente.length}) — sin fecha de cierre registrada
@@ -855,10 +931,11 @@ const InformeAvancePdf = ({
                                 ))}
                             </View>
                         </View>
+                    ) : (
+                        <EmptyView />
                     )}
 
-                    {/* Tareas: { task/name/descripcion, dueDate, done } */}
-                    {tareasAtrasadas.length > 0 && (
+                    {tareasAtrasadas.length > 0 ? (
                         <View style={styles.section}>
                             <Text style={styles.subSectionTitle}>
                                 Tareas retrasadas ({tareasAtrasadas.length})
@@ -878,6 +955,8 @@ const InformeAvancePdf = ({
                                 ))}
                             </View>
                         </View>
+                    ) : (
+                        <EmptyView />
                     )}
 
                     <Text style={styles.pageNumber} render={({ pageNumber }) => `Página ${pageNumber}`} fixed />
@@ -903,14 +982,14 @@ const InformeAvancePdf = ({
                                 <View style={styles.card}>
                                     <Text style={styles.cardTitle}>{label}</Text>
                                     <Text style={[styles.cardValue, resumenDesempeno[key] >= 1 ? styles.cardValueSuccess : styles.cardValueDanger]}>
-                                        {resumenDesempeno[key]?.toFixed(2)}
+                                        {clean(resumenDesempeno[key]?.toFixed(2))}
                                     </Text>
                                 </View>
                             </View>
                         ))}
                     </View>
 
-                    {matrixInicial && (
+                    {matrixInicial ? (
                         <View style={styles.section}>
                             <Text style={styles.sectionTitle}>Matriz de Calor de Riesgos (Inicial)</Text>
                             <View style={styles.matrixContainer}>
@@ -920,12 +999,12 @@ const InformeAvancePdf = ({
                                             {row.map((cell, colIndex) => (
                                                 <View key={colIndex} style={[styles.matrixCell, getCellStyle(cell.nivel)]}>
                                                     <Text style={styles.matrixCellLabel}>{getNivelLabel(cell.nivel)}</Text>
-                                                    <Text style={styles.matrixCellText}>({cell.valor})</Text>
-                                                    {cell.riesgos.length > 0 && (
-                                                        <Text style={styles.matrixCellRiesgos}>
-                                                            {cell.riesgos.map(r => r.id).join(', ')}
-                                                        </Text>
-                                                    )}
+                                                    <Text style={styles.matrixCellText}>({clean(cell.valor)})</Text>
+                                                    <Text style={styles.matrixCellRiesgos}>
+                                                        {cell.riesgos.length > 0
+                                                            ? cell.riesgos.map(r => clean(r.id)).join(', ')
+                                                            : ''}
+                                                    </Text>
                                                 </View>
                                             ))}
                                         </View>
@@ -941,6 +1020,8 @@ const InformeAvancePdf = ({
                                 </View>
                             </View>
                         </View>
+                    ) : (
+                        <EmptyView />
                     )}
 
                     <Text style={styles.pageNumber} render={({ pageNumber }) => `Página ${pageNumber}`} fixed />
@@ -960,12 +1041,12 @@ const InformeAvancePdf = ({
                                     {row.map((cell, colIndex) => (
                                         <View key={colIndex} style={[styles.matrixCell, getCellStyle(cell.nivel)]}>
                                             <Text style={styles.matrixCellLabel}>{getNivelLabel(cell.nivel)}</Text>
-                                            <Text style={styles.matrixCellText}>({cell.valor})</Text>
-                                            {cell.riesgos.length > 0 && (
-                                                <Text style={styles.matrixCellRiesgos}>
-                                                    {cell.riesgos.map(r => r.id).join(', ')}
-                                                </Text>
-                                            )}
+                                            <Text style={styles.matrixCellText}>({clean(cell.valor)})</Text>
+                                            <Text style={styles.matrixCellRiesgos}>
+                                                {cell.riesgos.length > 0
+                                                    ? cell.riesgos.map(r => clean(r.id)).join(', ')
+                                                    : ''}
+                                            </Text>
                                         </View>
                                     ))}
                                 </View>
@@ -993,45 +1074,51 @@ const InformeAvancePdf = ({
                 PÁGINA FINAL — Lecciones, Conclusiones, Próximos Pasos
             ══════════════════════════════════════════════════ */}
             <Page size="A4" style={styles.page}>
-                {cerrado && (
+                {cerrado ? (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Lecciones Aprendidas</Text>
                         <View style={styles.textBlock}>
-                            <Text>
-                                {leccionesAprendidas && leccionesAprendidas.trim() !== ''
-                                    ? leccionesAprendidas
-                                    : 'No disponible por el momento'}
-                            </Text>
+                            <Text>{formatLeccionesAprendidas(leccionesAprendidas)}</Text>
                         </View>
                     </View>
+                ) : (
+                    <EmptyView />
                 )}
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Conclusiones del Informe</Text>
-                    <View style={styles.textBlock}><Text>{informe.conclusiones}</Text></View>
+                    <View style={styles.textBlock}><Text>{clean(informe.conclusiones)}</Text></View>
                 </View>
 
                 <View style={styles.section}>
                     <Text style={styles.sectionTitle}>Próximos Pasos</Text>
-                    <View style={styles.textBlock}><Text>{informe.proximos_pasos}</Text></View>
+                    <View style={styles.textBlock}><Text>{clean(informe.proximos_pasos)}</Text></View>
                 </View>
 
-                {informe.recomendaciones_ia && String(informe.recomendaciones_ia).trim() !== '' && (
+                {mostrarRecomendacionesIa ? (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>Recomendaciones de IA (NOVA)</Text>
-                        <View style={styles.textBlock}><Text>{informe.recomendaciones_ia}</Text></View>
+                        <View style={styles.textBlock}>
+                            <Text>{clean(informe.recomendaciones_ia)}</Text>
+                        </View>
                     </View>
+                ) : (
+                    <EmptyView />
                 )}
 
-                {informe.plan_sugerido_ia && String(informe.plan_sugerido_ia).trim() !== '' && (
+                {mostrarPlanIa ? (
                     <View style={styles.section}>
                         <Text style={styles.sectionTitle}>¿Qué hacemos ahora? — Sugerencias de IA (NOVA)</Text>
-                        <View style={styles.textBlock}><Text>{informe.plan_sugerido_ia}</Text></View>
+                        <View style={styles.textBlock}>
+                            <Text>{clean(informe.plan_sugerido_ia)}</Text>
+                        </View>
                     </View>
+                ) : (
+                    <EmptyView />
                 )}
 
                 <Text style={styles.footer}>
-                    Documento generado automáticamente el {new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}
+                    {`Documento generado automáticamente el ${new Date().toLocaleDateString('es-ES', { year: 'numeric', month: 'long', day: 'numeric' })}`}
                 </Text>
                 <Text style={styles.pageNumber} render={({ pageNumber }) => `Página ${pageNumber}`} fixed />
             </Page>

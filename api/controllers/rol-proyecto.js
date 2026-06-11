@@ -206,12 +206,12 @@ const getUsuariosProyecto = async (req, res) => {
         if (!ok) return;
 
         const usuarios = await RolProyectoUtils.getUsuariosProyecto(proyectoId);
-        return res.status(200).json({ success: true, data: usuarios });
+        const data = usuarios.map((u) => (typeof u.toJSON === 'function' ? u.toJSON() : u));
+        return res.status(200).json({ success: true, data });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
 };
-
 const deleteUsuarioProyecto = async (req, res) => {
     const { usuarioId, proyectoId } = req.params;
     try {

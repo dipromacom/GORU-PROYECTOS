@@ -350,6 +350,77 @@ export const getGanttDashboard = (usuarioId, modo) =>
 export const getKanbanDashboard = (usuarioId, modo) =>
   apiWithToken.get(`/proyecto/dashboard/kanban/usuario/${usuarioId}${modo ? `?modo=${modo}` : ''}`);
 
+// --- SCRUM ---
+export const getScrumOverview = (projectId, params = {}) =>
+  apiWithToken.get(`/proyecto/${projectId}/scrum`, { params });
+
+export const createScrumEpic = (projectId, payload) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/epics`, payload);
+
+export const updateScrumEpic = (projectId, epicId, payload) =>
+  apiWithToken.put(`/proyecto/${projectId}/scrum/epics/${epicId}`, payload);
+
+export const deleteScrumEpic = (projectId, epicId) =>
+  apiWithToken.delete(`/proyecto/${projectId}/scrum/epics/${epicId}`);
+
+export const createScrumStory = (projectId, payload) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/stories`, payload);
+
+export const updateScrumStory = (projectId, storyId, payload) =>
+  apiWithToken.put(`/proyecto/${projectId}/scrum/stories/${storyId}`, payload);
+
+export const deleteScrumStory = (projectId, storyId) =>
+  apiWithToken.delete(`/proyecto/${projectId}/scrum/stories/${storyId}`);
+
+export const duplicateScrumStory = (projectId, storyId) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/stories/${storyId}/duplicate`);
+
+export const archiveScrumStory = (projectId, storyId) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/stories/${storyId}/archive`);
+
+export const unarchiveScrumStory = (projectId, storyId) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/stories/${storyId}/unarchive`);
+
+export const reorderScrumStories = (projectId, orderedIds) =>
+  apiWithToken.put(`/proyecto/${projectId}/scrum/stories/reorder`, { orderedIds });
+
+export const recalculateScrumPriorities = (projectId, metodo) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/priorities/recalculate`, { metodo });
+
+export const updateScrumConfig = (projectId, payload) =>
+  apiWithToken.put(`/proyecto/${projectId}/scrum/config`, payload);
+
+export const createScrumSprint = (projectId, payload) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/sprints`, payload);
+
+export const updateScrumSprint = (projectId, sprintId, payload) =>
+  apiWithToken.put(`/proyecto/${projectId}/scrum/sprints/${sprintId}`, payload);
+
+export const deleteScrumSprint = (projectId, sprintId) =>
+  apiWithToken.delete(`/proyecto/${projectId}/scrum/sprints/${sprintId}`);
+
+export const getSprintPlanning = (projectId, sprintId) =>
+  apiWithToken.get(`/proyecto/${projectId}/scrum/sprints/${sprintId}/planning`);
+
+export const saveSprintPlanning = (projectId, sprintId, storyIds) =>
+  apiWithToken.put(`/proyecto/${projectId}/scrum/sprints/${sprintId}/planning`, { storyIds });
+
+export const assignStoryToSprint = (projectId, sprintId, storyId) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/sprints/${sprintId}/stories/${storyId}`);
+
+export const removeStoryFromSprint = (projectId, sprintId, storyId) =>
+  apiWithToken.delete(`/proyecto/${projectId}/scrum/sprints/${sprintId}/stories/${storyId}`);
+
+export const clearSprintStories = (projectId, sprintId) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/sprints/${sprintId}/clear`);
+
+export const activateScrumSprint = (projectId, sprintId) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/sprints/${sprintId}/activate`);
+
+export const closeScrumSprint = (projectId, sprintId, payload = {}) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/sprints/${sprintId}/close`, payload);
+
+
 // --- CONTROL DE CAMBIOS ---
 export const getSolicitudesProyecto = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/control-cambio`);
 export const createSolicitudCambio = (payload) => apiWithToken.post('/proyecto/control-cambio', payload);

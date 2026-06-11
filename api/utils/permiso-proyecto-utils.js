@@ -47,6 +47,8 @@ const P = {
     CONTROL_CAMBIO_VER: 'control_cambio_ver',
     CONTROL_CAMBIO_GEST: 'control_cambio_gestionar',
     HISTORIAL_VER: 'historial_ver',
+    SCRUM_VER: 'scrum_ver',
+    SCRUM_GEST: 'scrum_gestionar',
 };
 
 function usuarioTienePermiso(nombres, claveRequerida) {

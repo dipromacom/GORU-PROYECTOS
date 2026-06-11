@@ -50,6 +50,7 @@ import GanttChart from "../components/GanttChart/GanttChart";
 
 //pizarra
 import Whiteboard from "../components/pizarra/Whiteboard";
+import ScrumModule from "../components/scrum/ScrumModule";
 //Importar el Modal de Configuración
 import RoleSettingsModal from "../components/proyectoDetails/RoleSettingsModal";
 //sesion action
@@ -344,6 +345,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [maxDesviacionPeriodo, setMaxDesviacionPeriodo] = useState("M")
     const [tipoProyecto, setTipoProyecto] = useState("")
     const esProyectoEquipoAgil = esProyecto && tipoProyecto?.toString() === TIPO_PROYECTO_AGIL
+    const esProyectoScrum = esProyecto && (
+        tipoProyecto?.toString() === TIPO_PROYECTO_AGIL
+        || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO
+    )
     const [leccionesAprendidas, setLeccionesAprendidas] = useState("")
     const [beneficios, setBeneficios] = useState("");
 
@@ -843,7 +848,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
     };
 
-    const isTodoOrKanban = () => (activeKey === 'to-do' || activeKey === 'project-management' || activeKey === 'Analisis-ambiental' || activeKey === 'gantt' || activeKey === 'pizarra')
+    const isTodoOrKanban = () => (activeKey === 'to-do' || activeKey === 'project-management' || activeKey === 'Analisis-ambiental' || activeKey === 'gantt' || activeKey === 'pizarra' || activeKey === 'scrum')
 
 
     function validateForm() {
@@ -1176,6 +1181,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
 
                                             {(!esActividad && !esPrograma) && puede(PermProy.PIZARRA_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
+                                            )}
+                                            {esProyectoScrum && puede(PermProy.SCRUM_VER) && (
+                                                <Nav.Item><Nav.Link eventKey="scrum">Scrum</Nav.Link></Nav.Item>
                                             )}
                                         </>
                                     )}
@@ -2486,6 +2494,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         cerrado={cerrado}
                                     />
                                 </Tab.Pane>
+                                {esProyectoScrum && (
+                                    <Tab.Pane eventKey="scrum">
+                                        <ScrumModule
+                                            projectId={numericId}
+                                            puedeGestionar={puede(PermProy.SCRUM_GEST)}
+                                        />
+                                    </Tab.Pane>
+                                )}
                                 <Tab.Pane eventKey="beneficios">
                                     {!editMode && !cerrado && (
                                         <p>Debe hacer click en "Editar" situado en la parte superior derecha para crear o revisar beneficios </p>

@@ -53,6 +53,10 @@ const models = {
   ChatMensaje: require('./chat-mensaje')(db, Sequelize),
   ChatLectura: require('./chat-lectura')(db, Sequelize),
   MadurezDireccionProyectos: require('./madurez-direccion-proyectos')(db, Sequelize),
+  ScrumEpic: require('./scrum-epic')(db, Sequelize),
+  ScrumSprint: require('./scrum-sprint')(db, Sequelize),
+  ScrumStory: require('./scrum-story')(db, Sequelize),
+  ScrumConfig: require('./scrum-config')(db, Sequelize),
 };
 
 Object.keys(models).forEach((modelKey) => {

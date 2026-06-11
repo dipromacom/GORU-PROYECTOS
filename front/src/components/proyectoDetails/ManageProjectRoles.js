@@ -4,6 +4,43 @@ import LoaderButton from '../loaderButton/LoaderButton';
 import { actions } from '../../reducers/rolProyecto';
 import { toast } from 'react-toastify';
 
+const PERMISO_LABELS = {
+    scrum_ver: 'Scrum — Ver',
+    scrum_gestionar: 'Scrum — Gestionar',
+};
+
+const permisoDisplayName = (nombre) => PERMISO_LABELS[nombre] || nombre;
+
+const groupPermisos = (permisos) => {
+    const scrum = [];
+    const general = [];
+
+    (permisos || []).forEach((permiso) => {
+        if (permiso.nombre?.startsWith('scrum_')) {
+            scrum.push(permiso);
+        } else {
+            general.push(permiso);
+        }
+    });
+
+    return { general, scrum };
+};
+
+const renderPermisoSwitch = (permiso, permisosActivos, togglePermiso) => (
+    <Col md={6} key={permiso.id} className="mb-2">
+        <Form.Check
+            type="switch"
+            id={`perm-${permiso.id}`}
+            label={permisoDisplayName(permiso.nombre)}
+            checked={permisosActivos.includes(permiso.id)}
+            onChange={() => togglePermiso(permiso.id)}
+        />
+        <small className="text-muted ms-5 d-block" style={{ marginTop: '-5px' }}>
+            {permiso.descripcion}
+        </small>
+    </Col>
+);
+
 export default function ManageProjectRoles({ roles, permisos, isLoading, dispatch }) {
     const [selectedRol, setSelectedRol] = useState(null);
     const [nombre, setNombre] = useState('');
@@ -60,6 +97,8 @@ export default function ManageProjectRoles({ roles, permisos, isLoading, dispatc
 
         setTimeout(() => setIsSaving(false), 1000);
     };
+
+    const { general: permisosGenerales, scrum: permisosScrum } = groupPermisos(permisos);
 
     return (
         <Row>
@@ -119,26 +158,34 @@ export default function ManageProjectRoles({ roles, permisos, isLoading, dispatc
                             </Row>
 
                             <hr />
-                            <h6 className="mb-3">Permisos Asignados</h6>
+                            <h6 className="mb-3">Permisos generales del proyecto</h6>
 
-                            <div className="bg-light p-3 rounded" style={{ maxHeight: '40vh', overflowY: 'auto' }}>
+                            <div className="bg-light p-3 rounded mb-3" style={{ maxHeight: '32vh', overflowY: 'auto' }}>
                                 <Row>
-                                    {permisos && permisos.map(permiso => (
-                                        <Col md={6} key={permiso.id} className="mb-2">
-                                            <Form.Check
-                                                type="switch"
-                                                id={`perm-${permiso.id}`}
-                                                label={permiso.nombre}
-                                                checked={permisosActivos.includes(permiso.id)}
-                                                onChange={() => togglePermiso(permiso.id)}
-                                            />
-                                            <small className="text-muted ms-5 d-block" style={{ marginTop: '-5px' }}>
-                                                {permiso.descripcion}
-                                            </small>
-                                        </Col>
-                                    ))}
+                                    {permisosGenerales.map((permiso) =>
+                                        renderPermisoSwitch(permiso, permisosActivos, togglePermiso)
+                                    )}
                                 </Row>
                             </div>
+
+                            {permisosScrum.length > 0 && (
+                                <>
+                                    <h6 className="mb-2 mt-2">
+                                        <i className="bi bi-kanban me-2" />
+                                        Permisos Scrum
+                                    </h6>
+                                    <p className="text-muted small mb-2">
+                                        Visualizador: solo ver. Colaborador: ver y editar. Administrador: control total.
+                                    </p>
+                                    <div className="bg-light p-3 rounded border-start border-4 border-primary" style={{ maxHeight: '20vh', overflowY: 'auto' }}>
+                                        <Row>
+                                            {permisosScrum.map((permiso) =>
+                                                renderPermisoSwitch(permiso, permisosActivos, togglePermiso)
+                                            )}
+                                        </Row>
+                                    </div>
+                                </>
+                            )}
 
                             <div className="mt-4 d-flex justify-content-end">
                                 <LoaderButton

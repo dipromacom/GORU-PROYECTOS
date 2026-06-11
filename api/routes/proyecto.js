@@ -10,6 +10,7 @@ const informeAvanceController = require('../controllers/informe-avance');
 const solicitudCambioController = require('../controllers/solicitud-cambio');
 const ProgramaController = require('../controllers/programa');
 const interesadoController = require('../controllers/interesado');
+const ScrumController = require('../controllers/scrum');
 
 const router = express.Router();
 
@@ -106,6 +107,32 @@ router.delete('/proyecto/:id/gantt/:taskId', GanttController.deleteGantt);
 router.post('/proyecto/:id/whiteboard', WhiteBoartController.setWhiteboard);
 router.get('/proyecto/:id/whiteboard', WhiteBoartController.getWhiteboard);
 router.delete('/proyecto/:id/whiteboard', WhiteBoartController.deleteWhiteboard);
+
+// Scrum
+router.get('/proyecto/:id/scrum', ScrumController.getScrumOverview);
+router.post('/proyecto/:id/scrum/epics', ScrumController.createEpic);
+router.put('/proyecto/:id/scrum/epics/:epicId', ScrumController.updateEpic);
+router.delete('/proyecto/:id/scrum/epics/:epicId', ScrumController.deleteEpic);
+router.post('/proyecto/:id/scrum/stories', ScrumController.createStory);
+router.put('/proyecto/:id/scrum/stories/:storyId', ScrumController.updateStory);
+router.post('/proyecto/:id/scrum/stories/:storyId/duplicate', ScrumController.duplicateStory);
+router.post('/proyecto/:id/scrum/stories/:storyId/archive', ScrumController.archiveStory);
+router.post('/proyecto/:id/scrum/stories/:storyId/unarchive', ScrumController.unarchiveStory);
+router.delete('/proyecto/:id/scrum/stories/:storyId', ScrumController.deleteStory);
+router.put('/proyecto/:id/scrum/stories/reorder', ScrumController.reorderStories);
+router.post('/proyecto/:id/scrum/priorities/recalculate', ScrumController.recalculatePriorities);
+router.put('/proyecto/:id/scrum/config', ScrumController.updateConfig);
+router.post('/proyecto/:id/scrum/sprints', ScrumController.createSprint);
+router.put('/proyecto/:id/scrum/sprints/:sprintId', ScrumController.updateSprint);
+router.delete('/proyecto/:id/scrum/sprints/:sprintId', ScrumController.deleteSprint);
+router.get('/proyecto/:id/scrum/sprints/:sprintId/planning', ScrumController.getSprintPlanning);
+router.put('/proyecto/:id/scrum/sprints/:sprintId/planning', ScrumController.saveSprintPlanning);
+router.post('/proyecto/:id/scrum/sprints/:sprintId/stories/:storyId', ScrumController.assignStoryToSprint);
+router.delete('/proyecto/:id/scrum/sprints/:sprintId/stories/:storyId', ScrumController.removeStoryFromSprint);
+router.post('/proyecto/:id/scrum/sprints/:sprintId/clear', ScrumController.clearSprintStories);
+router.post('/proyecto/:id/scrum/sprints/:sprintId/activate', ScrumController.activateSprint);
+router.post('/proyecto/:id/scrum/sprints/:sprintId/close', ScrumController.closeSprint);
+
 
 // Historial de estados
 router.get('/proyecto/:proyectoId/estados', logController.getHistorialEstados);

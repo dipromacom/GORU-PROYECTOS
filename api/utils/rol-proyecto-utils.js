@@ -1,7 +1,6 @@
 // utils/rol-proyecto-utils.js
 
-const { RolProyecto, PermisoProyecto, UsuarioProyecto, Usuario, Proyecto } = require('../models/index');
-const ColabConfigUtils = require('./config-colaboradores-proyecto-utils');
+const { RolProyecto, PermisoProyecto, UsuarioProyecto, Usuario, Proyecto, Persona } = require('../models/index');
 const { Op } = require('sequelize');
 // const logger = require('../logger/logger'); // Asumiendo que tienes logger y path importados
 
@@ -182,7 +181,12 @@ const getUsuariosProyecto = async (proyectoId) => {
             {
                 model: Usuario,
                 as: 'Usuario',
-                attributes: ['id', 'username'] // Solo username e id
+                attributes: ['id', 'username'],
+                include: [{
+                    model: Persona,
+                    as: 'Persona',
+                    attributes: ['nombre', 'apellido'],
+                }],
             },
             {
                 model: RolProyecto,

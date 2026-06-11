@@ -21,6 +21,7 @@ import projectLogSagas from "./projectLogSagas";
 import informeAvance from "./informe-avance";
 import controlCambio from "./controlCambio";
 import programa from "./programa";
+import scrum from "./scrum";
 
 
 
@@ -48,18 +49,19 @@ const sagas = [
   ...informeAvance,
   ...controlCambio,
   ...programa,
+  ...scrum,
 ];
 
 export default function* rootSaga() {
   yield all(
-    sagas.map((saga) => 
+    sagas.map((saga) =>
       spawn(function* listenSagas() {
-        while(true) {
+        while (true) {
           yield call(function* execSaga() {
             yield saga;
           })
         }
-      }  
-    ))
+      }
+      ))
   );
 }
