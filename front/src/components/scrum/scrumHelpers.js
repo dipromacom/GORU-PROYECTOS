@@ -26,13 +26,9 @@ export const normalizeUsuariosProyecto = (list) =>
 
 export const getUsuarioLabel = (u) => {
     if (!u) return '—';
-    if (u.nombre) return u.nombre;
     const usuario = u.Usuario || u.usuario;
-    const persona = usuario?.Persona || usuario?.persona;
-    if (persona?.nombre) return `${persona.nombre} ${persona.apellido || ''}`.trim();
     if (usuario?.username) return usuario.username;
     if (u.email) return u.email;
-    if (u.usuario_id) return `Usuario ${u.usuario_id}`;
     return '—';
 };
 
@@ -45,8 +41,6 @@ export const getUsuarioInitials = (u) => {
 };
 
 export const getAssigneeName = (story) => {
-    const p = story?.Asignado?.Persona;
-    if (p?.nombre) return `${p.nombre || ''} ${p.apellido || ''}`.trim();
     return story?.Asignado?.username || '—';
 };
 
@@ -60,8 +54,6 @@ export const getAssigneeInitials = (story) => {
 
 export const getSprintUserName = (usuario) => {
     if (!usuario) return '—';
-    const p = usuario.Persona;
-    if (p?.nombre) return `${p.nombre} ${p.apellido || ''}`.trim();
     return usuario.username || '—';
 };
 
@@ -91,6 +83,29 @@ export const getValorEsfuerzoRatio = (story) => {
     const eff = Number(story.story_points) || 0;
     if (!val || !eff) return null;
     return val / eff;
+};
+
+export const calculatePrioridadScore = (s) => {
+    const valor = Number(s.valor_negocio) || 0;
+    const urgencia = Number(s.urgencia) || 0;
+    const reduccionRiesgo = Number(s.reduccion_riesgo) || 0;
+
+    const totalValue = valor + urgencia + reduccionRiesgo;
+    const divisor = (Number(s.esfuerzo) || Number(s.complejidad) || 1);
+    const score = totalValue / divisor;
+    return Number(score.toFixed(2));
+};
+
+export const calculatePuntuacionFinal = (s) => {
+    const vn = Number(s.valor_negocio) || 0;
+    const urg = Number(s.urgencia) || 0;
+    const rr = Number(s.reduccion_riesgo) || 0;
+    const de = Number(s.dependencia_estrategica) || 0;
+    const ic = Number(s.impacto_cliente) || 0;
+    const comp = Number(s.complejidad) || 0;
+    const esf = Number(s.esfuerzo) || 0;
+    const cd = Number(s.costo_demora) || 0;
+    return vn + urg + rr + de + ic + cd - comp - esf;
 };
 
 export const getSuggestedPriorities = (stories, limit = 5) => {

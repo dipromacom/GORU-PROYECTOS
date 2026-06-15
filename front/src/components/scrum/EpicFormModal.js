@@ -181,6 +181,7 @@ export default function EpicFormModal({
                             </Form.Group>
                         </Col>
                     </Row>
+                    {/* Comentado por solicitud del usuario (se maneja centralizado en módulo de riesgos)
                     <Form.Group>
                         <Form.Label>Riesgos asociados</Form.Label>
                         <Form.Control
@@ -191,6 +192,7 @@ export default function EpicFormModal({
                             onChange={(e) => set('riesgos_asociados', e.target.value)}
                         />
                     </Form.Group>
+                    */}
                 </Modal.Body>
                 <Modal.Footer>
                     <Button variant="secondary" onClick={onHide}>Cancelar</Button>

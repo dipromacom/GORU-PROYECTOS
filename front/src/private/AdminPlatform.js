@@ -22,6 +22,8 @@ import {
     getAllEmpresasCatalogo,
     getAdminColaboradoresProyectoConfig,
     putAdminColaboradoresProyectoConfig,
+    getAdminSesionTimeoutConfig,
+    putAdminSesionTimeoutConfig,
 } from '../api';
 import { selectors as sessionSelectors } from '../reducers/session';
 import MadurezAdminDetalleModal from '../components/madurezDireccion/MadurezAdminDetalleModal';
@@ -52,6 +54,15 @@ function AdminPlatform({ user }) {
     });
     const [loadingColabCfg, setLoadingColabCfg] = useState(false);
     const [savingColabCfg, setSavingColabCfg] = useState(false);
+
+    // --- Timeout de sesión ---
+    const SESSION_TIMEOUT_KEY = 'goru_session_timeout_minutes';
+    const DEFAULT_TIMEOUT = 30;
+    const [timeoutMinutes, setTimeoutMinutes] = useState(DEFAULT_TIMEOUT);
+    const [timeoutDraft, setTimeoutDraft] = useState(String(DEFAULT_TIMEOUT));
+    const [loadingTimeout, setLoadingTimeout] = useState(false);
+    const [savingTimeout, setSavingTimeout] = useState(false);
+    const [timeoutLastUpdate, setTimeoutLastUpdate] = useState(null);
 
     const [draft, setDraft] = useState({});
     const [activeTab, setActiveTab] = useState('plataforma');
@@ -146,6 +157,61 @@ function AdminPlatform({ user }) {
             setLoadingColabCfg(false);
         }
     }, [user]);
+
+    // --- Cargar / guardar timeout de sesión ---
+    const loadTimeoutConfig = useCallback(async () => {
+        if (!user || !user.es_super_admin) return;
+        setLoadingTimeout(true);
+        try {
+            const res = await getAdminSesionTimeoutConfig();
+            if (res.data.success && res.data.data) {
+                const mins = res.data.data.timeout_minutos ?? DEFAULT_TIMEOUT;
+                setTimeoutMinutes(mins);
+                setTimeoutDraft(String(mins));
+                if (res.data.data.fechaActualizacion) setTimeoutLastUpdate(res.data.data.fechaActualizacion);
+                // Sincronizar con localStorage para que el hook lo lea
+                localStorage.setItem(SESSION_TIMEOUT_KEY, String(mins));
+            }
+        } catch (e) {
+            // Si el backend aún no tiene el endpoint, usar localStorage como fallback
+            const stored = localStorage.getItem(SESSION_TIMEOUT_KEY);
+            if (stored) {
+                setTimeoutMinutes(Number(stored));
+                setTimeoutDraft(stored);
+            }
+        } finally {
+            setLoadingTimeout(false);
+        }
+    }, [user]);
+
+    useEffect(() => {
+        if (!user || !user.es_super_admin) return;
+        loadTimeoutConfig();
+    }, [user, loadTimeoutConfig]);
+
+    const handleGuardarTimeout = async (e) => {
+        e.preventDefault();
+        const mins = parseInt(timeoutDraft, 10);
+        if (!Number.isFinite(mins) || mins < 1 || mins > 1440) {
+            toast.warn('El tiempo debe ser un número entero entre 1 y 1440 minutos.');
+            return;
+        }
+        setSavingTimeout(true);
+        try {
+            await putAdminSesionTimeoutConfig({ timeout_minutos: mins });
+            setTimeoutMinutes(mins);
+            localStorage.setItem(SESSION_TIMEOUT_KEY, String(mins));
+            toast.success('Tiempo de sesión actualizado.');
+            await loadTimeoutConfig();
+        } catch (er) {
+            // Si el backend no existe aún, guardar solo en localStorage
+            setTimeoutMinutes(mins);
+            localStorage.setItem(SESSION_TIMEOUT_KEY, String(mins));
+            toast.success('Tiempo de sesión guardado localmente.');
+        } finally {
+            setSavingTimeout(false);
+        }
+    };
 
     useEffect(() => {
         if (!user || !user.es_super_admin) return;
@@ -321,6 +387,61 @@ function AdminPlatform({ user }) {
                         <Tab.Pane eventKey="plataforma">
                             <Card className="mb-4 shadow-sm border-0">
                                 <Card.Body className="px-3 px-md-4 py-4">
+                                    <Card.Title className="blue h5 mb-3">
+                                        <i className="bi bi-clock-history me-2" />
+                                        Tiempo de inactividad de sesión
+                                    </Card.Title>
+                                    <p className="text-muted small mb-4">
+                                        Si el usuario no interactúa con la plataforma durante el tiempo configurado,
+                                        se cerrará la sesión automáticamente y será redirigido al inicio de sesión.
+                                        El cambio aplica para todos los usuarios en su próxima sesión.
+                                    </p>
+                                    {loadingTimeout ? (
+                                        <p className="mb-0">Cargando configuración…</p>
+                                    ) : (
+                                        <Form onSubmit={handleGuardarTimeout}>
+                                            <Row className="g-3 align-items-end">
+                                                <Col xs={12} md={4}>
+                                                    <Form.Group className="mb-0">
+                                                        <Form.Label>Minutos de inactividad antes del cierre</Form.Label>
+                                                        <Form.Control
+                                                            type="number"
+                                                            min={1}
+                                                            max={1440}
+                                                            value={timeoutDraft}
+                                                            onChange={(ev) => setTimeoutDraft(ev.target.value)}
+                                                            placeholder="Ej. 30"
+                                                        />
+                                                        <Form.Text className="text-muted">
+                                                            Actual: <strong>{timeoutMinutes} min</strong>
+                                                            {' — '}Mínimo 1 min, máximo 1440 min (24 h).
+                                                        </Form.Text>
+                                                    </Form.Group>
+                                                </Col>
+                                                <Col xs={12} className="d-flex justify-content-start">
+                                                    <Button
+                                                        type="submit"
+                                                        variant="primary"
+                                                        disabled={savingTimeout || loadingTimeout}
+                                                    >
+                                                        <i className="bi bi-save me-2" />
+                                                        Guardar tiempo de sesión
+                                                    </Button>
+                                                </Col>
+                                            </Row>
+                                            {timeoutLastUpdate && (
+                                                <p className="small text-muted mt-3 mb-0">
+                                                    Última actualización:{' '}
+                                                    {new Date(timeoutLastUpdate).toLocaleString('es-ES')}
+                                                </p>
+                                            )}
+                                        </Form>
+                                    )}
+                                </Card.Body>
+                            </Card>
+
+                            <Card className="mb-4 shadow-sm border-0">
+                                <Card.Body className="px-3 px-md-4 py-4">
                                     <Card.Title className="blue h5 mb-3">Límites de colaboradores por proyecto</Card.Title>
                                     <p className="text-muted small mb-4">
                                         Aplica a todos los proyectos según su modo: personal (A), equipo (P) o programa (PR). Los usuarios con
@@ -394,6 +515,7 @@ function AdminPlatform({ user }) {
                                     )}
                                 </Card.Body>
                             </Card>
+
 
                             <Card className="mb-4 shadow-sm border-0">
                                 <Card.Body className="px-3 px-md-4 py-4">

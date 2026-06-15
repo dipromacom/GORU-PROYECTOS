@@ -288,6 +288,12 @@ export const postAdminEmpresa = (payload) => apiWithToken.post('/admin/empresas'
 export const getAdminColaboradoresProyectoConfig = () => apiWithToken.get('/admin/colaboradores-proyecto-config');
 export const putAdminColaboradoresProyectoConfig = (payload) =>
   apiWithToken.put('/admin/colaboradores-proyecto-config', payload);
+
+// --- CONFIGURACIÓN TIMEOUT DE SESIÓN ---
+export const getAdminSesionTimeoutConfig = () =>
+  apiWithToken.get('/admin/sesion-timeout-config');
+export const putAdminSesionTimeoutConfig = (payload) =>
+  apiWithToken.put('/admin/sesion-timeout-config', payload);
 export const getColaboradoresMaxConfig = () => apiWithToken.get('/proyecto/config/colaboradores-max');
 export const postInvitacionCorreoExterno = (proyectoId, payload) =>
   apiWithToken.post(`/proyecto/${proyectoId}/invitacion-correo-externo`, payload);

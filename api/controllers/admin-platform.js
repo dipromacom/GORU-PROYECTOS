@@ -3,6 +3,7 @@ const UsuarioUtils = require('../utils/usuario-utils');
 const EmpresaUtils = require('../utils/empresa-utils');
 const { assertSuperAdmin } = require('../utils/super-admin-utils');
 const ColabConfigUtils = require('../utils/config-colaboradores-proyecto-utils');
+const SesionTimeoutUtils = require('../utils/sesion-timeout-utils');
 
 const toPlainUsuario = (instance) => {
     if (!instance) return null;
@@ -121,6 +122,40 @@ const putColaboradoresProyectoConfig = async (req, res) => {
     }
 };
 
+const getSesionTimeoutConfig = async (req, res) => {
+    try {
+        if (!(await assertSuperAdmin(req, res))) return;
+        const data = await SesionTimeoutUtils.getConfigPlain();
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        const status = error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
+        return res.status(status).json({ success: false, message: error.message });
+    }
+};
+
+const putSesionTimeoutConfig = async (req, res) => {
+    try {
+        if (!(await assertSuperAdmin(req, res))) return;
+        const { timeout_minutos } = req.body || {};
+        if (timeout_minutos === undefined || timeout_minutos === null || timeout_minutos === '') {
+            return res.status(400).json({
+                success: false,
+                message: 'Debe enviar timeout_minutos (entero entre 1 y 1440).',
+            });
+        }
+        const payload = req.userPayload || {};
+        const uid = payload.id != null ? parseInt(payload.id, 10) : null;
+        const data = await SesionTimeoutUtils.updateConfig(
+            { timeout_minutos },
+            Number.isFinite(uid) ? uid : null
+        );
+        return res.status(200).json({ success: true, data });
+    } catch (error) {
+        const status = error.statusCode >= 400 && error.statusCode < 600 ? error.statusCode : 500;
+        return res.status(status).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     listUsuarios,
     patchUsuarioTipoLicencia,
@@ -128,4 +163,6 @@ module.exports = {
     createEmpresa,
     getColaboradoresProyectoConfig,
     putColaboradoresProyectoConfig,
+    getSesionTimeoutConfig,
+    putSesionTimeoutConfig,
 };

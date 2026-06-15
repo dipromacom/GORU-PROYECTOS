@@ -3,10 +3,10 @@ import { Card, Badge } from 'react-bootstrap';
 import { getSuggestedPriorities, getValorEsfuerzoRatio } from './scrumHelpers';
 
 const QUADRANTS = [
-    { key: 'planificar', label: 'Planificar', className: 'bg-warning bg-opacity-10' },
     { key: 'hacer', label: 'Hacer primero', className: 'bg-success bg-opacity-10' },
-    { key: 'evitar', label: 'Evitar o posponer', className: 'bg-danger bg-opacity-10' },
+    { key: 'planificar', label: 'Planificar', className: 'bg-warning bg-opacity-10' },
     { key: 'relleno', label: 'Relleno', className: 'bg-secondary bg-opacity-10' },
+    { key: 'evitar', label: 'Evitar o posponer', className: 'bg-danger bg-opacity-10' },
 ];
 
 function getQuadrant(story) {
@@ -26,24 +26,28 @@ export default function BacklogSidebar({ stories }) {
     const withQuadrant = stories
         .map((s) => ({ ...s, quadrant: getQuadrant(s) }))
         .filter((s) => s.quadrant);
+    const sinDatos = stories.filter((s) => !getQuadrant(s)).length;
 
     return (
         <div className="d-flex flex-column gap-3">
             <Card className="border-0 shadow-sm">
                 <Card.Header className="bg-white fw-semibold small">Matriz Valor vs Esfuerzo</Card.Header>
                 <Card.Body className="p-2">
+                    <div className="d-flex text-muted mb-1" style={{ fontSize: 10 }}>
+                        <span className="me-auto">↑ Valor (Y)</span>
+                    </div>
                     <div className="row g-1">
                         {QUADRANTS.map((q) => {
                             const items = withQuadrant.filter((s) => s.quadrant === q.key).slice(0, 3);
                             return (
                                 <div className="col-6" key={q.key}>
                                     <div className={`rounded p-2 h-100 ${q.className}`} style={{ minHeight: 90 }}>
-                                        <div className="">{q.label}</div>
+                                        <div className="small fw-semibold">{q.label}</div>
                                         {items.length === 0 ? (
-                                            <div className="" style={{ fontSize: 11 }}>—</div>
+                                            <div style={{ fontSize: 11 }} className="text-muted">—</div>
                                         ) : items.map((s) => (
-                                            <div key={s.id} className="" style={{ fontSize: 11 }}>
-                                                <p bg="" text="dark" className="me-1">{s.codigo}</p>
+                                            <div key={s.id} style={{ fontSize: 11 }}>
+                                                <span className="me-1">{s.codigo}</span>
                                             </div>
                                         ))}
                                     </div>
@@ -52,9 +56,14 @@ export default function BacklogSidebar({ stories }) {
                         })}
                     </div>
                     <div className="d-flex justify-content-between text-muted mt-2 px-1" style={{ fontSize: 10 }}>
-                        <span>← Bajo esfuerzo</span>
-                        <span>Alto esfuerzo →</span>
+                        <span>← Bajo esfuerzo (X)</span>
+                        <span>Alto esfuerzo (X) →</span>
                     </div>
+                    {sinDatos > 0 && (
+                        <div className="text-muted mt-2" style={{ fontSize: 10 }}>
+                            {sinDatos} historias sin valor o story points no aparecen en la matriz.
+                        </div>
+                    )}
                 </Card.Body>
             </Card>
 

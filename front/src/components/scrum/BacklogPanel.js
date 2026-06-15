@@ -1,6 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import {
-    Row, Col, Form, Button, Table, Card, ButtonGroup, Alert, Modal, Collapse, Pagination,
+    Row, Col, Form, Button, Table, Card, ButtonGroup, Alert, Modal, Tabs, Tab, Pagination,
 } from 'react-bootstrap';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { CSVLink } from 'react-csv';
@@ -107,7 +107,7 @@ export default function BacklogPanel({
 }) {
     const [viewMode, setViewMode] = useState('table');
     const [subView, setSubView] = useState('backlog');
-    const [showEpics, setShowEpics] = useState(false);
+    const [activeTab, setActiveTab] = useState('historias');
     const [showArchived, setShowArchived] = useState(false);
     const [page, setPage] = useState(1);
     const [filters, setFilters] = useState({
@@ -118,12 +118,12 @@ export default function BacklogPanel({
     const [editingEpic, setEditingEpic] = useState(null);
     const [editingStory, setEditingStory] = useState(null);
     const [saving, setSaving] = useState(false);
-    const [metodoPriorizacion, setMetodoPriorizacion] = useState(config?.metodo_priorizacion || 'manual');
+    const [metodoPriorizacion, setMetodoPriorizacion] = useState(config?.metodo_priorizacion || 'moscow');
     const [confirmDelete, setConfirmDelete] = useState(null);
     const [confirmArchive, setConfirmArchive] = useState(null);
 
     useEffect(() => {
-        setMetodoPriorizacion(config?.metodo_priorizacion || 'manual');
+        setMetodoPriorizacion(config?.metodo_priorizacion || 'moscow');
     }, [config]);
 
     useEffect(() => {
@@ -364,8 +364,17 @@ export default function BacklogPanel({
         );
     };
 
+    const activeMethods = PRIORIZATION_METHODS.filter((m) =>
+        ['formula', 'valor_esfuerzo', 'moscow'].includes(m.value),
+    );
+
     const renderPriorizacion = () => (
         <div>
+            <Alert variant="info" className="py-2 small mb-3">
+                <i className="bi bi-info-circle me-1" />
+                Seleccioná el método de priorización del proyecto y presioná <strong>Recalcular prioridad</strong> para aplicarlo.
+                La configuración queda guardada por proyecto.
+            </Alert>
             <Row className="mb-3 align-items-end">
                 <Col md={5}>
                     <Form.Group>
@@ -376,7 +385,7 @@ export default function BacklogPanel({
                             value={metodoPriorizacion}
                             onChange={(e) => setMetodoPriorizacion(e.target.value)}
                         >
-                            {PRIORIZATION_METHODS.map((m) => (
+                            {activeMethods.map((m) => (
                                 <option key={m.value} value={m.value}>{m.label}</option>
                             ))}
                         </Form.Control>
@@ -499,17 +508,9 @@ export default function BacklogPanel({
                 </Row>
             )}
 
-            <div className="mb-3">
-                <Button
-                    variant="link"
-                    className="p-0 text-decoration-none small"
-                    onClick={() => setShowEpics(!showEpics)}
-                >
-                    <i className={`bi bi-chevron-${showEpics ? 'down' : 'right'} me-1`} />
-                    {showEpics ? 'Ocultar' : 'Ver'} épicas ({epics.length})
-                </Button>
-                <Collapse in={showEpics}>
-                    <div className="mt-2">
+            {subView === 'priorizacion' ? renderPriorizacion() : (
+                <Tabs activeKey={activeTab} onSelect={(k) => setActiveTab(k)} className="mb-3">
+                    <Tab eventKey="epicas" title={`Épicas (${epics.length})`}>
                         <EpicPanel
                             epics={epics}
                             puedeGestionar={puedeGestionar}
@@ -517,153 +518,150 @@ export default function BacklogPanel({
                             onEdit={(ep) => { setEditingEpic(ep); setShowEpicModal(true); }}
                             onDelete={(ep) => setConfirmDelete({ type: 'epic', item: ep })}
                         />
-                    </div>
-                </Collapse>
-            </div>
-
-            {subView === 'priorizacion' ? renderPriorizacion() : (
-                <>
-                    <Card className="border-0 shadow-sm mb-3">
-                        <Card.Body className="py-3">
-                            <Row className="g-2 align-items-center">
-                                <Col md={4}>
-                                    <Form.Control
-                                        placeholder="Buscar historias o épicas..."
-                                        value={filters.search}
-                                        onChange={(e) => setFilters({ ...filters, search: e.target.value })}
-                                    />
-                                </Col>
-                                <Col md={2}>
-                                    <Form.Control as="select" value={filters.prioridad} onChange={(e) => setFilters({ ...filters, prioridad: e.target.value })}>
-                                        <option value="">Prioridad</option>
-                                        {PRIORITIES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                    </Form.Control>
-                                </Col>
-                                <Col md={2}>
-                                    <Form.Control as="select" value={filters.estado} onChange={(e) => setFilters({ ...filters, estado: e.target.value })}>
-                                        <option value="">Estado</option>
-                                        {STORY_STATES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                    </Form.Control>
-                                </Col>
-                                <Col md={2}>
-                                    <Form.Control as="select" value={filters.epic_id} onChange={(e) => setFilters({ ...filters, epic_id: e.target.value })}>
-                                        <option value="">Épica</option>
-                                        {epics.map((e) => <option key={e.id} value={e.id}>{e.codigo} — {e.nombre}</option>)}
-                                    </Form.Control>
-                                </Col>
-                                <Col md={2}>
-                                    <Form.Control as="select" value={filters.sprint_id} onChange={(e) => setFilters({ ...filters, sprint_id: e.target.value })}>
-                                        <option value="">Sprint</option>
-                                        <option value="none">Sin sprint</option>
-                                        {sprints.map((sp) => (
-                                            <option key={sp.id} value={sp.id}>{sp.nombre || sp.codigo}</option>
-                                        ))}
-                                    </Form.Control>
-                                </Col>
-                            </Row>
-                            <Row className="g-2 mt-2 align-items-center">
-                                <Col md={3}>
-                                    <Form.Control as="select" value={filters.asignado_a} onChange={(e) => setFilters({ ...filters, asignado_a: e.target.value })}>
-                                        <option value="">Responsable</option>
-                                        {usuariosLista.map((u) => (
-                                            <option key={u.usuario_id} value={u.usuario_id}>{getUsuarioLabel(u)}</option>
-                                        ))}
-                                    </Form.Control>
-                                </Col>
-                                <Col md={2}>
-                                    <Form.Control as="select" value={filters.tipo} onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}>
-                                        <option value="">Tipo</option>
-                                        {STORY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
-                                    </Form.Control>
-                                </Col>
-                                <Col md={7} className="d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
-                                    <ButtonGroup size="sm">
-                                        <Button variant={viewMode === 'table' ? 'secondary' : 'outline-secondary'} onClick={() => setViewMode('table')}>Tabla</Button>
-                                        <Button variant={viewMode === 'cards' ? 'secondary' : 'outline-secondary'} onClick={() => setViewMode('cards')}>Tarjetas</Button>
-                                    </ButtonGroup>
-                                    <Form.Check
-                                        type="switch"
-                                        id="toggle-archived"
-                                        label={`Archivados (${stats?.archivedStories ?? archivedStories.length})`}
-                                        checked={showArchived}
-                                        onChange={handleToggleArchived}
-                                        className="small ms-2"
-                                    />
-                                    {!canDrag && !showArchived && filtered.length > PAGE_SIZE && (
-                                        <span className="small text-muted">Reordenar: ver ≤{PAGE_SIZE} ítems</span>
-                                    )}
-                                </Col>
-                            </Row>
-                        </Card.Body>
-                    </Card>
-
-                    {showArchived && (
-                        <Alert variant="info" className="py-2 small">
-                            Mostrando historias archivadas. Podés restaurarlas al backlog activo.
-                        </Alert>
-                    )}
-
-                    <Row>
-                        <Col lg={viewMode === 'table' ? 8 : 12}>
-                            {viewMode === 'table' ? (
-                                <>
-                                    {renderTable(paginated, 'backlog-table')}
-                                    {renderPagination()}
-                                </>
-                            ) : (
-                                <DragDropContext onDragEnd={handleDragEnd}>
-                                    <Droppable droppableId="backlog-cards" direction="horizontal">
-                                        {(provided) => (
-                                            <Row ref={provided.innerRef} {...provided.droppableProps} className="g-3">
-                                                {paginated.map((story, index) => (
-                                                    <Col md={4} key={story.id}>
-                                                        <Draggable draggableId={`card-${story.id}`} index={index} isDragDisabled={!canDrag}>
-                                                            {(dragProvided) => (
-                                                                <Card
-                                                                    ref={dragProvided.innerRef}
-                                                                    {...dragProvided.draggableProps}
-                                                                    {...dragProvided.dragHandleProps}
-                                                                    className="h-100 shadow-sm"
-                                                                >
-                                                                    <Card.Body>
-                                                                        <div className="d-flex justify-content-between align-items-center mb-2 gap-2">
-                                                                            <code>{story.codigo}</code>
-                                                                            <PriorityPill prioridad={story.prioridad} />
-                                                                        </div>
-                                                                        <Card.Title className="h6">{story.titulo}</Card.Title>
-                                                                        <div className="small text-muted mb-2">
-                                                                            {getEpicLabel(story)} · SP: {story.story_points ?? '—'} · {getSprintLabel(story)}
-                                                                        </div>
-                                                                        <AssigneeCell story={story} />
-                                                                        <Button variant="outline-primary" size="sm" className="mt-2" onClick={() => openStory(story)}>
-                                                                            Abrir
-                                                                        </Button>
-                                                                    </Card.Body>
-                                                                </Card>
-                                                            )}
-                                                        </Draggable>
-                                                    </Col>
-                                                ))}
-                                                {provided.placeholder}
-                                            </Row>
+                    </Tab>
+                    <Tab eventKey="historias" title="Historias">
+                        <Card className="border-0 shadow-sm mb-3">
+                            <Card.Body className="py-3">
+                                <Row className="g-2 align-items-center">
+                                    <Col md={4}>
+                                        <Form.Control
+                                            placeholder="Buscar historias..."
+                                            value={filters.search}
+                                            onChange={(e) => setFilters({ ...filters, search: e.target.value })}
+                                        />
+                                    </Col>
+                                    <Col md={2}>
+                                        <Form.Control as="select" value={filters.prioridad} onChange={(e) => setFilters({ ...filters, prioridad: e.target.value })}>
+                                            <option value="">Prioridad</option>
+                                            {PRIORITIES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                        </Form.Control>
+                                    </Col>
+                                    <Col md={2}>
+                                        <Form.Control as="select" value={filters.estado} onChange={(e) => setFilters({ ...filters, estado: e.target.value })}>
+                                            <option value="">Estado</option>
+                                            {STORY_STATES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                        </Form.Control>
+                                    </Col>
+                                    <Col md={2}>
+                                        <Form.Control as="select" value={filters.epic_id} onChange={(e) => setFilters({ ...filters, epic_id: e.target.value })}>
+                                            <option value="">Épica</option>
+                                            {epics.map((e) => <option key={e.id} value={e.id}>{e.codigo} — {e.nombre}</option>)}
+                                        </Form.Control>
+                                    </Col>
+                                    <Col md={2}>
+                                        <Form.Control as="select" value={filters.sprint_id} onChange={(e) => setFilters({ ...filters, sprint_id: e.target.value })}>
+                                            <option value="">Sprint</option>
+                                            <option value="none">Sin sprint</option>
+                                            {sprints.map((sp) => (
+                                                <option key={sp.id} value={sp.id}>{sp.nombre || sp.codigo}</option>
+                                            ))}
+                                        </Form.Control>
+                                    </Col>
+                                </Row>
+                                <Row className="g-2 mt-2 align-items-center">
+                                    <Col md={3}>
+                                        <Form.Control as="select" value={filters.asignado_a} onChange={(e) => setFilters({ ...filters, asignado_a: e.target.value })}>
+                                            <option value="">Responsable</option>
+                                            {usuariosLista.map((u) => (
+                                                <option key={u.usuario_id} value={u.usuario_id}>{getUsuarioLabel(u)}</option>
+                                            ))}
+                                        </Form.Control>
+                                    </Col>
+                                    <Col md={2}>
+                                        <Form.Control as="select" value={filters.tipo} onChange={(e) => setFilters({ ...filters, tipo: e.target.value })}>
+                                            <option value="">Tipo</option>
+                                            {STORY_TYPES.map((t) => <option key={t.value} value={t.value}>{t.label}</option>)}
+                                        </Form.Control>
+                                    </Col>
+                                    <Col md={7} className="d-flex flex-wrap gap-2 justify-content-md-end align-items-center">
+                                        <ButtonGroup size="sm">
+                                            <Button variant={viewMode === 'table' ? 'secondary' : 'outline-secondary'} onClick={() => setViewMode('table')}>Tabla</Button>
+                                            <Button variant={viewMode === 'cards' ? 'secondary' : 'outline-secondary'} onClick={() => setViewMode('cards')}>Tarjetas</Button>
+                                        </ButtonGroup>
+                                        <Form.Check
+                                            type="switch"
+                                            id="toggle-archived"
+                                            label={`Archivados (${stats?.archivedStories ?? archivedStories.length})`}
+                                            checked={showArchived}
+                                            onChange={handleToggleArchived}
+                                            className="small ms-2"
+                                        />
+                                        {!canDrag && !showArchived && filtered.length > PAGE_SIZE && (
+                                            <span className="small text-muted">Reordenar: ver ≤{PAGE_SIZE} ítems</span>
                                         )}
-                                    </Droppable>
-                                </DragDropContext>
-                            )}
+                                    </Col>
+                                </Row>
+                            </Card.Body>
+                        </Card>
 
-                            {filtered.length === 0 && (
-                                <Alert variant="secondary" className="text-center">
-                                    {showArchived ? 'No hay historias archivadas.' : 'No hay ítems en el backlog con los filtros actuales.'}
-                                </Alert>
-                            )}
-                        </Col>
-                        {viewMode === 'table' && subView === 'backlog' && !showArchived && (
-                            <Col lg={4} className="d-none d-lg-block">
-                                <BacklogSidebar stories={filtered} />
-                            </Col>
+                        {showArchived && (
+                            <Alert variant="info" className="py-2 small">
+                                Mostrando historias archivadas. Podés restaurarlas al backlog activo.
+                            </Alert>
                         )}
-                    </Row>
-                </>
+
+                        <Row>
+                            <Col lg={viewMode === 'table' ? 8 : 12}>
+                                {viewMode === 'table' ? (
+                                    <>
+                                        {renderTable(paginated, 'backlog-table')}
+                                        {renderPagination()}
+                                    </>
+                                ) : (
+                                    <DragDropContext onDragEnd={handleDragEnd}>
+                                        <Droppable droppableId="backlog-cards" direction="horizontal">
+                                            {(provided) => (
+                                                <Row ref={provided.innerRef} {...provided.droppableProps} className="g-3">
+                                                    {paginated.map((story, index) => (
+                                                        <Col md={4} key={story.id}>
+                                                            <Draggable draggableId={`card-${story.id}`} index={index} isDragDisabled={!canDrag}>
+                                                                {(dragProvided) => (
+                                                                    <Card
+                                                                        ref={dragProvided.innerRef}
+                                                                        {...dragProvided.draggableProps}
+                                                                        {...dragProvided.dragHandleProps}
+                                                                        className="h-100 shadow-sm"
+                                                                    >
+                                                                        <Card.Body>
+                                                                            <div className="d-flex justify-content-between align-items-center mb-2 gap-2">
+                                                                                <code>{story.codigo}</code>
+                                                                                <PriorityPill prioridad={story.prioridad} />
+                                                                            </div>
+                                                                            <Card.Title className="h6">{story.titulo}</Card.Title>
+                                                                            <div className="small text-muted mb-2">
+                                                                                {getEpicLabel(story)} · SP: {story.story_points ?? '—'} · {getSprintLabel(story)}
+                                                                            </div>
+                                                                            <AssigneeCell story={story} />
+                                                                            <Button variant="outline-primary" size="sm" className="mt-2" onClick={() => openStory(story)}>
+                                                                                Abrir
+                                                                            </Button>
+                                                                        </Card.Body>
+                                                                    </Card>
+                                                                )}
+                                                            </Draggable>
+                                                        </Col>
+                                                    ))}
+                                                    {provided.placeholder}
+                                                </Row>
+                                            )}
+                                        </Droppable>
+                                    </DragDropContext>
+                                )}
+
+                                {filtered.length === 0 && (
+                                    <Alert variant="secondary" className="text-center">
+                                        {showArchived ? 'No hay historias archivadas.' : 'No hay ítems en el backlog con los filtros actuales.'}
+                                    </Alert>
+                                )}
+                            </Col>
+                            {viewMode === 'table' && !showArchived && (
+                                <Col lg={4} className="d-none d-lg-block">
+                                    <BacklogSidebar stories={filtered} />
+                                </Col>
+                            )}
+                        </Row>
+                    </Tab>
+                </Tabs>
             )}
 
             <EpicFormModal

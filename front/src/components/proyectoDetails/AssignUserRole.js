@@ -1,5 +1,5 @@
 // components/proyectoDetails/AssignUserRole.js
-import React, { useState, useEffect, useMemo, useCallback } from 'react';
+import React, { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import { Form, Row, Col, Card, Table, Alert, Button } from 'react-bootstrap';
 import LoaderButton from '../loaderButton/LoaderButton';
 import { actions } from '../../reducers/rolProyecto';
@@ -31,7 +31,39 @@ function AssignUserRole({
     const [inviteEmail, setInviteEmail] = useState('');
     const [sendingInvite, setSendingInvite] = useState(false);
 
+    // --- Searchable combobox state ---
+    const [userSearch, setUserSearch] = useState('');
+    const [comboOpen, setComboOpen] = useState(false);
+    const comboRef = useRef(null);
+
     const modo = projectModo || 'P';
+
+    // Filtrar usuarios según texto de búsqueda
+    const usuariosFiltrados = useMemo(() => {
+        if (!usuariosEmpresa) return [];
+        if (!userSearch.trim()) return usuariosEmpresa;
+        const q = userSearch.toLowerCase();
+        return usuariosEmpresa.filter((u) =>
+            (u.username || '').toLowerCase().includes(q)
+        );
+    }, [usuariosEmpresa, userSearch]);
+
+    const selectedUserLabel = useMemo(() => {
+        if (!selectedUserId || !usuariosEmpresa) return '';
+        const u = usuariosEmpresa.find((x) => String(x.id) === String(selectedUserId));
+        return u ? u.username : '';
+    }, [selectedUserId, usuariosEmpresa]);
+
+    // Cerrar dropdown al hacer click fuera
+    useEffect(() => {
+        const handleClickOutside = (e) => {
+            if (comboRef.current && !comboRef.current.contains(e.target)) {
+                setComboOpen(false);
+            }
+        };
+        document.addEventListener('mousedown', handleClickOutside);
+        return () => document.removeEventListener('mousedown', handleClickOutside);
+    }, []);
 
     const loadColabConfig = useCallback(async () => {
         setCfgLoadError(null);
@@ -101,6 +133,7 @@ function AssignUserRole({
         dispatch(actions.assignRolProyecto(payload));
         setSelectedUserId('');
         setSelectedRolId('');
+        setUserSearch('');
         setIsUpdating(false);
     };
 
@@ -165,20 +198,130 @@ function AssignUserRole({
                             <Col md={5}>
                                 <Form.Group controlId="selectUsuario">
                                     <Form.Label>Usuario (Empresa)</Form.Label>
-                                    <Form.Control
-                                        as="select"
-                                        value={selectedUserId}
-                                        onChange={(e) => setSelectedUserId(e.target.value)}
-                                        disabled={isLoading || isUpdating || blockNewAssign}
-                                        className="form-select"
+                                    {/* Combobox con búsqueda */}
+                                    <div
+                                        ref={comboRef}
+                                        style={{ position: 'relative' }}
                                     >
-                                        <option value="">-- Seleccione Usuario --</option>
-                                        {usuariosEmpresa && usuariosEmpresa.map((u) => (
-                                            <option key={u.id} value={u.id}>
-                                                {u.username}
-                                            </option>
-                                        ))}
-                                    </Form.Control>
+                                        <div
+                                            className="form-control d-flex align-items-center"
+                                            style={{
+                                                cursor: (isLoading || isUpdating || blockNewAssign) ? 'not-allowed' : 'pointer',
+                                                opacity: (isLoading || isUpdating || blockNewAssign) ? 0.65 : 1,
+                                                padding: '0',
+                                                overflow: 'hidden',
+                                            }}
+                                            onClick={() => {
+                                                if (!isLoading && !isUpdating && !blockNewAssign) {
+                                                    setComboOpen((o) => !o);
+                                                }
+                                            }}
+                                        >
+                                            <input
+                                                type="text"
+                                                className="border-0 bg-transparent w-100"
+                                                style={{
+                                                    outline: 'none',
+                                                    padding: '6px 10px',
+                                                    fontSize: '0.875rem',
+                                                    cursor: (isLoading || isUpdating || blockNewAssign) ? 'not-allowed' : 'text',
+                                                }}
+                                                placeholder={selectedUserLabel || '-- Buscar usuario... --'}
+                                                value={comboOpen ? userSearch : (selectedUserLabel || '')}
+                                                disabled={isLoading || isUpdating || blockNewAssign}
+                                                onChange={(e) => {
+                                                    setUserSearch(e.target.value);
+                                                    setComboOpen(true);
+                                                }}
+                                                onFocus={() => {
+                                                    if (!isLoading && !isUpdating && !blockNewAssign) {
+                                                        setComboOpen(true);
+                                                        setUserSearch('');
+                                                    }
+                                                }}
+                                                autoComplete="off"
+                                            />
+                                            <span
+                                                style={{
+                                                    padding: '0 10px',
+                                                    color: '#6c757d',
+                                                    pointerEvents: 'none',
+                                                    flexShrink: 0,
+                                                }}
+                                            >
+                                                <i className={`bi bi-chevron-${comboOpen ? 'up' : 'down'}`} />
+                                            </span>
+                                        </div>
+                                        {comboOpen && (
+                                            <div
+                                                style={{
+                                                    position: 'absolute',
+                                                    top: '100%',
+                                                    left: 0,
+                                                    right: 0,
+                                                    zIndex: 9999,
+                                                    background: '#fff',
+                                                    border: '1px solid #ced4da',
+                                                    borderRadius: '0 0 6px 6px',
+                                                    maxHeight: '240px',
+                                                    overflowY: 'auto',
+                                                    boxShadow: '0 4px 12px rgba(0,0,0,0.12)',
+                                                }}
+                                            >
+                                                {usuariosFiltrados.length === 0 ? (
+                                                    <div
+                                                        style={{
+                                                            padding: '10px 14px',
+                                                            color: '#6c757d',
+                                                            fontSize: '0.85rem',
+                                                        }}
+                                                    >
+                                                        Sin resultados
+                                                    </div>
+                                                ) : (
+                                                    usuariosFiltrados.map((u) => (
+                                                        <div
+                                                            key={u.id}
+                                                            onMouseDown={(e) => {
+                                                                e.preventDefault();
+                                                                setSelectedUserId(String(u.id));
+                                                                setUserSearch('');
+                                                                setComboOpen(false);
+                                                            }}
+                                                            style={{
+                                                                padding: '8px 14px',
+                                                                cursor: 'pointer',
+                                                                fontSize: '0.875rem',
+                                                                background:
+                                                                    String(selectedUserId) === String(u.id)
+                                                                        ? '#e8f0fe'
+                                                                        : 'transparent',
+                                                                color:
+                                                                    String(selectedUserId) === String(u.id)
+                                                                        ? '#122544'
+                                                                        : '#212529',
+                                                                fontWeight:
+                                                                    String(selectedUserId) === String(u.id)
+                                                                        ? '600'
+                                                                        : 'normal',
+                                                            }}
+                                                            onMouseEnter={(e) => {
+                                                                if (String(selectedUserId) !== String(u.id))
+                                                                    e.currentTarget.style.background = '#f0f4ff';
+                                                            }}
+                                                            onMouseLeave={(e) => {
+                                                                if (String(selectedUserId) !== String(u.id))
+                                                                    e.currentTarget.style.background = 'transparent';
+                                                            }}
+                                                        >
+                                                            <i className="bi bi-person me-2 text-muted" />
+                                                            {u.username}
+                                                        </div>
+                                                    ))
+                                                )}
+                                            </div>
+                                        )}
+                                    </div>
                                 </Form.Group>
                             </Col>
                             <Col md={4}>

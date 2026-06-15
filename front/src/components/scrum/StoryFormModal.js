@@ -6,13 +6,12 @@ import {
     STORY_TYPES,
     STORY_STATES,
     PRIORITIES,
-    RISK_LEVELS,
     MOSCOW_OPTIONS,
     FIBONACCI_POINTS,
     SCORE_FIELDS,
     buildUserStoryText,
 } from './scrumConstants';
-import { getUsuarioLabel, normalizeUsuariosProyecto } from './scrumHelpers';
+import { getUsuarioLabel, normalizeUsuariosProyecto, calculatePuntuacionFinal } from './scrumHelpers';
 
 export default function StoryFormModal({
     show,
@@ -324,55 +323,81 @@ export default function StoryFormModal({
                         </Tab>
 
                         <Tab eventKey="priorizacion" title="Priorización">
-                            <Row className="mb-3">
-                                {SCORE_FIELDS.map(({ key, label }) => (
-                                    <Col md={3} key={key} className="mb-2">
-                                        <Form.Label className="small">{label} (1-5)</Form.Label>
-                                        <Form.Control
-                                            type="number"
-                                            min={1}
-                                            max={5}
-                                            disabled={readOnly}
-                                            value={form[key] ?? ''}
-                                            onChange={(e) => setScore(key, e.target.value)}
-                                        />
+                            <Form.Group className="mb-3">
+                                <Form.Label>Método de priorización</Form.Label>
+                                <div>
+                                    <Form.Check
+                                        inline
+                                        type="radio"
+                                        label="MoSCoW"
+                                        name="metodo_priorizacion"
+                                        disabled={readOnly}
+                                        checked={form.metodo_priorizacion === 'moscow'}
+                                        onChange={() => set('metodo_priorizacion', 'moscow')}
+                                    />
+                                    <Form.Check
+                                        inline
+                                        type="radio"
+                                        label="Puntuación (1-5)"
+                                        name="metodo_priorizacion"
+                                        disabled={readOnly}
+                                        checked={form.metodo_priorizacion === 'puntuacion'}
+                                        onChange={() => set('metodo_priorizacion', 'puntuacion')}
+                                    />
+                                </div>
+                            </Form.Group>
+
+                            {form.metodo_priorizacion === 'moscow' ? (
+                                <Row className="mb-3">
+                                    <Col md={4}>
+                                        <Form.Group>
+                                            <Form.Label>MoSCoW</Form.Label>
+                                            <Form.Control
+                                                as="select"
+                                                disabled={readOnly}
+                                                value={form.moscow}
+                                                onChange={(e) => set('moscow', e.target.value)}
+                                            >
+                                                <option value="">—</option>
+                                                {MOSCOW_OPTIONS.map((o) => (
+                                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                                ))}
+                                            </Form.Control>
+                                        </Form.Group>
                                     </Col>
-                                ))}
-                            </Row>
+                                </Row>
+                            ) : (
+                                <>
+                                    <Row className="mb-3">
+                                        {SCORE_FIELDS.map(({ key, label }) => (
+                                            <Col md={3} key={key} className="mb-2">
+                                                <Form.Label className="small">{label} (1-5)</Form.Label>
+                                                <Form.Control
+                                                    type="number"
+                                                    min={1}
+                                                    max={5}
+                                                    disabled={readOnly}
+                                                    value={form[key] ?? ''}
+                                                    onChange={(e) => setScore(key, e.target.value)}
+                                                />
+                                            </Col>
+                                        ))}
+                                    </Row>
+                                    <Alert variant="info" className="py-2 small">
+                                        <strong>Valor final calculado:</strong>{' '}
+                                        {calculatePuntuacionFinal(form)}
+                                        {' '}
+                                        <span className="text-muted">
+                                            (suma criterios positivos − complejidad − esfuerzo)
+                                        </span>
+                                    </Alert>
+                                </>
+                            )}
+                        </Tab>
+
+                        <Tab eventKey="estimacion" title="Estimación / Puntos de historia">
                             <Row className="mb-3">
-                                <Col md={3}>
-                                    <Form.Group>
-                                        <Form.Label>MoSCoW</Form.Label>
-                                        <Form.Control
-                                            as="select"
-                                            disabled={readOnly}
-                                            value={form.moscow}
-                                            onChange={(e) => set('moscow', e.target.value)}
-                                        >
-                                            <option value="">—</option>
-                                            {MOSCOW_OPTIONS.map((o) => (
-                                                <option key={o.value} value={o.value}>{o.label}</option>
-                                            ))}
-                                        </Form.Control>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={3}>
-                                    <Form.Group>
-                                        <Form.Label>Riesgo</Form.Label>
-                                        <Form.Control
-                                            as="select"
-                                            disabled={readOnly}
-                                            value={form.riesgo}
-                                            onChange={(e) => set('riesgo', e.target.value)}
-                                        >
-                                            <option value="">—</option>
-                                            {RISK_LEVELS.map((o) => (
-                                                <option key={o.value} value={o.value}>{o.label}</option>
-                                            ))}
-                                        </Form.Control>
-                                    </Form.Group>
-                                </Col>
-                                <Col md={3}>
+                                <Col md={4}>
                                     <Form.Group>
                                         <Form.Label>Story points (Fibonacci)</Form.Label>
                                         <Form.Control
@@ -388,7 +413,7 @@ export default function StoryFormModal({
                                         </Form.Control>
                                     </Form.Group>
                                 </Col>
-                                <Col md={3}>
+                                <Col md={4}>
                                     <Form.Group>
                                         <Form.Label>Comentario estimación</Form.Label>
                                         <Form.Control
@@ -444,13 +469,14 @@ export default function StoryFormModal({
                                 />
                             </Form.Group>
                             <Form.Group className="mb-3">
-                                <Form.Label>Riesgos asociados</Form.Label>
+                                <Form.Label>Requisitos de culminación</Form.Label>
                                 <Form.Control
                                     as="textarea"
                                     rows={2}
                                     disabled={readOnly}
-                                    value={form.riesgos_asociados}
-                                    onChange={(e) => set('riesgos_asociados', e.target.value)}
+                                    value={form.requisitos_culminacion}
+                                    onChange={(e) => set('requisitos_culminacion', e.target.value)}
+                                    placeholder="Criterios que deben cumplirse para considerar la historia terminada"
                                 />
                             </Form.Group>
                             <Form.Check

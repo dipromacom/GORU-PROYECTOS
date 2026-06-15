@@ -1,5 +1,5 @@
 /* eslint-disable react-hooks/exhaustive-deps */
-import React, { useEffect } from "react";
+import React, { useEffect, useCallback } from "react";
 import Routes from "./Routes";
 import "./css/Commons.css";
 import './App.css';
@@ -12,11 +12,13 @@ import { ConnectedRouter } from "connected-react-router";
 import { history } from "./store";
 
 import 'react-dates/initialize';
-import 'react-dates/lib/css/_datepicker.css'
+import 'react-dates/lib/css/_datepicker.css';
+
+import useSessionTimeout from "./hooks/useSessionTimeout";
 
 
 
-function App({ dispatch, isValidatingSession }) {
+function App({ dispatch, isValidatingSession, isAuthenticated }) {
 
   useEffect(() => {
     onLoad();
@@ -26,18 +28,26 @@ function App({ dispatch, isValidatingSession }) {
     try {
       dispatch(sessionActions.getCurrentSession());
 
-    } catch(e) {
+    } catch (e) {
       onError(e);
     }
   }
 
+  // Cierre de sesión por inactividad
+  const handleInactivityTimeout = useCallback(() => {
+    dispatch(sessionActions.logout());
+    history.push('/login');
+  }, [dispatch]);
+
+  useSessionTimeout(isAuthenticated === true, handleInactivityTimeout);
+
   return (
     !isValidatingSession && (
-      <div className="App">     
-      <ConnectedRouter history={history}>
-      <Routes />
-      </ConnectedRouter>
-    </div>
+      <div className="App">
+        <ConnectedRouter history={history}>
+          <Routes />
+        </ConnectedRouter>
+      </div>
     )
   );
 }
@@ -48,3 +58,4 @@ const mapStateToProps = state => ({
 });
 
 export default connect(mapStateToProps)(App);
+

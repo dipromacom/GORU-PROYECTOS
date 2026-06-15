@@ -2,6 +2,7 @@
 
 const { RolProyecto, PermisoProyecto, UsuarioProyecto, Usuario, Proyecto, Persona } = require('../models/index');
 const { Op } = require('sequelize');
+const ColabConfigUtils = require('./config-colaboradores-proyecto-utils');
 // const logger = require('../logger/logger'); // Asumiendo que tienes logger y path importados
 
 // --- Funciones CRUD de Rol de Proyecto ---

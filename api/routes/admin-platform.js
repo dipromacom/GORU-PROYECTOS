@@ -8,6 +8,10 @@ const router = express.Router();
 router.get('/admin/colaboradores-proyecto-config', SecurityUtils.validateToken(AdminPlatformController.getColaboradoresProyectoConfig));
 router.put('/admin/colaboradores-proyecto-config', SecurityUtils.validateToken(AdminPlatformController.putColaboradoresProyectoConfig));
 
+router.get('/admin/sesion-timeout-config', SecurityUtils.validateToken(AdminPlatformController.getSesionTimeoutConfig));
+router.put('/admin/sesion-timeout-config', SecurityUtils.validateToken(AdminPlatformController.putSesionTimeoutConfig));
+
+
 router.get('/admin/usuarios', SecurityUtils.validateToken(AdminPlatformController.listUsuarios));
 router.patch('/admin/usuarios/:id/tipo-licencia', SecurityUtils.validateToken(AdminPlatformController.patchUsuarioTipoLicencia));
 router.patch('/admin/usuarios/:id/empresa', SecurityUtils.validateToken(AdminPlatformController.patchUsuarioEmpresa));

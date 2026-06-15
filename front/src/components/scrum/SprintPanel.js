@@ -1,9 +1,10 @@
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-    Row, Col, Card, Button, Table, Badge, ProgressBar, Alert, Form, Modal, Spinner,
+    Row, Col, Card, Button, Table, Badge, ProgressBar, Alert, Form, Modal, Spinner, Tabs, Tab,
 } from 'react-bootstrap';
 import { toast } from 'react-toastify';
 import SprintFormModal from './SprintFormModal';
+import ScrumBan from './ScrumBan';
 import { SPRINT_STATES, PRIORITIES, labelFor } from './scrumConstants';
 import {
     getEpicLabel, getPriorityVariant, getSprintUserName, formatSprintDates,
@@ -38,6 +39,7 @@ export default function SprintPanel({
     const [showCloseModal, setShowCloseModal] = useState(false);
     const [closeComment, setCloseComment] = useState('');
     const [readyFilter, setReadyFilter] = useState('');
+    const [activeSprintTab, setActiveSprintTab] = useState('planificacion');
 
     const usuariosLista = useMemo(() => normalizeUsuariosProyecto(usuarios), [usuarios]);
 
@@ -78,6 +80,9 @@ export default function SprintPanel({
     const sprint = planning?.sprint;
     const isPlanificable = sprint?.estado === 'planificado';
     const isActive = sprint?.estado === 'activo';
+    const isClosed = sprint?.estado === 'cerrado';
+    const canShowScrumban = (isActive || isPlanificable) && (planning?.sprintStories?.length > 0);
+    const canShowMetrics = isActive || isClosed;
     const capacidad = Number(sprint?.capacidad_puntos) || 0;
     const comprometidos = Number(sprint?.puntos_comprometidos) || 0;
     const capacityPct = planning?.capacityPct ?? 0;
@@ -247,7 +252,7 @@ export default function SprintPanel({
 
             {loadingPlanning ? (
                 <div className="text-center py-5"><Spinner animation="border" variant="primary" /></div>
-            ) : sprint && (
+            ) : sprint ? (
                 <>
                     <Row className="g-3 mb-4">
                         <Col md={3}>
@@ -274,6 +279,12 @@ export default function SprintPanel({
                                     <div className="text-muted small">Capacidad del equipo</div>
                                     <div className="fs-4 fw-bold">{capacidad} <span className="fs-6 text-muted">pts</span></div>
                                     <div className="small text-muted">{usuariosLista.length} miembro(s) en proyecto</div>
+                                    {capacidad === 0 && isPlanificable && (
+                                        <div className="small text-warning mt-1">
+                                            <i className="bi bi-exclamation-triangle me-1" />
+                                            Definila en Editar sprint
+                                        </div>
+                                    )}
                                 </Card.Body>
                             </Card>
                         </Col>
@@ -316,164 +327,266 @@ export default function SprintPanel({
                         </Alert>
                     )}
 
-                    {isPlanificable && (
-                        <Row className="g-3 mb-4">
-                            <Col lg={6}>
-                                <Card className="border-0 shadow-sm h-100">
-                                    <Card.Header className="bg-white d-flex justify-content-between align-items-center">
-                                        <strong className="small">Historias Ready</strong>
-                                        <Form.Control
-                                            size="sm"
-                                            placeholder="Filtrar..."
-                                            style={{ maxWidth: 160 }}
-                                            value={readyFilter}
-                                            onChange={(e) => setReadyFilter(e.target.value)}
-                                        />
-                                    </Card.Header>
+                    <Tabs activeKey={activeSprintTab} onSelect={(k) => setActiveSprintTab(k)} className="mb-3">
+                        <Tab eventKey="planificacion" title="Planificación">
+                            {isPlanificable && !planning?.readyStories?.length && (
+                                <Alert variant="info" className="py-2 small mb-3">
+                                    <i className="bi bi-info-circle me-1" />
+                                    No hay historias <strong>Ready</strong> disponibles. Las historias deben estar en estado <strong>Ready</strong> (desde el backlog) para poder asignarlas al sprint.
+                                </Alert>
+                            )}
+                            {isPlanificable && (
+                                <Row className="g-3 mb-4">
+                                    <Col lg={6}>
+                                        <Card className="border-0 shadow-sm h-100">
+                                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                                                <strong className="small">Historias Ready</strong>
+                                                <Form.Control
+                                                    size="sm"
+                                                    placeholder="Filtrar..."
+                                                    style={{ maxWidth: 160 }}
+                                                    value={readyFilter}
+                                                    onChange={(e) => setReadyFilter(e.target.value)}
+                                                />
+                                            </Card.Header>
+                                            <Card.Body className="p-0">
+                                                <Table responsive hover size="sm" className="mb-0">
+                                                    <thead className="table-light">
+                                                        <tr>
+                                                            <th>Código</th><th>Historia</th><th>Prioridad</th>
+                                                            <th>SP</th><th>Épica</th><th></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {filteredReady.map((story) => renderStoryRow(story,
+                                                            puedeGestionar && (
+                                                                <Button variant="outline-success" size="sm" onClick={() => handleAssign(story.id)} title="Agregar al sprint">
+                                                                    <i className="bi bi-plus-lg" />
+                                                                </Button>
+                                                            ),
+                                                        ))}
+                                                        {filteredReady.length === 0 && (
+                                                            <tr><td colSpan={6} className="text-center text-muted small py-3">No hay historias Ready disponibles</td></tr>
+                                                        )}
+                                                    </tbody>
+                                                </Table>
+                                            </Card.Body>
+                                        </Card>
+                                    </Col>
+                                    <Col lg={6}>
+                                        <Card className="border-0 shadow-sm h-100">
+                                            <Card.Header className="bg-white d-flex justify-content-between align-items-center">
+                                                <strong className="small">Sprint seleccionado</strong>
+                                                {puedeGestionar && (planning?.sprintStories?.length > 0) && (
+                                                    <Button variant="link" size="sm" className="text-danger p-0" onClick={handleClear}>
+                                                        Vaciar sprint
+                                                    </Button>
+                                                )}
+                                            </Card.Header>
+                                            <Card.Body className="p-0">
+                                                <Table responsive hover size="sm" className="mb-0">
+                                                    <thead className="table-light">
+                                                        <tr>
+                                                            <th>Código</th><th>Historia</th><th>Prioridad</th>
+                                                            <th>SP</th><th>Épica</th><th></th>
+                                                        </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                        {(planning?.sprintStories || []).map((story) => renderStoryRow(story,
+                                                            puedeGestionar && (
+                                                                <Button variant="outline-danger" size="sm" onClick={() => handleRemove(story.id)} title="Quitar del sprint">
+                                                                    <i className="bi bi-x-lg" />
+                                                                </Button>
+                                                            ),
+                                                        ))}
+                                                        {!(planning?.sprintStories?.length) && (
+                                                            <tr><td colSpan={6} className="text-center text-muted small py-3">Agregá historias desde la columna izquierda</td></tr>
+                                                        )}
+                                                    </tbody>
+                                                </Table>
+                                                <div className="p-2 border-top small text-muted">
+                                                    Total comprometido: <strong>{comprometidos} pts</strong>
+                                                </div>
+                                            </Card.Body>
+                                        </Card>
+                                    </Col>
+                                </Row>
+                            )}
+
+                            {isActive && (planning?.sprintStories?.length > 0) && (
+                                <Card className="border-0 shadow-sm mb-4">
+                                    <Card.Header className="bg-white"><strong className="small">Historias del sprint activo</strong></Card.Header>
                                     <Card.Body className="p-0">
-                                        <Table responsive hover size="sm" className="mb-0">
+                                        <Table responsive size="sm" className="mb-0">
                                             <thead className="table-light">
-                                                <tr>
-                                                    <th>Código</th><th>Historia</th><th>Prioridad</th>
-                                                    <th>SP</th><th>Épica</th><th></th>
-                                                </tr>
+                                                <tr><th>Código</th><th>Historia</th><th>SP</th><th>Estado</th><th>Épica</th></tr>
                                             </thead>
                                             <tbody>
-                                                {filteredReady.map((story) => renderStoryRow(story,
-                                                    puedeGestionar && (
-                                                        <Button variant="outline-success" size="sm" onClick={() => handleAssign(story.id)} title="Agregar">
-                                                            <i className="bi bi-plus-lg" />
-                                                        </Button>
-                                                    ),
+                                                {planning.sprintStories.map((s) => (
+                                                    <tr key={s.id}>
+                                                        <td><code>{s.codigo}</code></td>
+                                                        <td>{s.titulo}</td>
+                                                        <td>{s.story_points ?? '—'}</td>
+                                                        <td><Badge bg="dark">{s.estado}</Badge></td>
+                                                        <td>{getEpicLabel(s)}</td>
+                                                    </tr>
                                                 ))}
-                                                {filteredReady.length === 0 && (
-                                                    <tr><td colSpan={6} className="text-center text-muted small py-3">No hay historias Ready disponibles</td></tr>
-                                                )}
                                             </tbody>
                                         </Table>
                                     </Card.Body>
                                 </Card>
-                            </Col>
-                            <Col lg={6}>
-                                <Card className="border-0 shadow-sm h-100">
-                                    <Card.Header className="bg-white d-flex justify-content-between align-items-center">
-                                        <strong className="small">Sprint seleccionado</strong>
-                                        {puedeGestionar && (planning?.sprintStories?.length > 0) && (
-                                            <Button variant="link" size="sm" className="text-danger p-0" onClick={handleClear}>
-                                                Vaciar sprint
-                                            </Button>
-                                        )}
-                                    </Card.Header>
-                                    <Card.Body className="p-0">
-                                        <Table responsive hover size="sm" className="mb-0">
-                                            <thead className="table-light">
-                                                <tr>
-                                                    <th>Código</th><th>Historia</th><th>Prioridad</th>
-                                                    <th>SP</th><th>Épica</th><th></th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {(planning?.sprintStories || []).map((story) => renderStoryRow(story,
-                                                    puedeGestionar && (
-                                                        <Button variant="outline-danger" size="sm" onClick={() => handleRemove(story.id)} title="Quitar">
-                                                            <i className="bi bi-x-lg" />
-                                                        </Button>
-                                                    ),
+                            )}
+
+                            {isClosed && !planning?.sprintStories?.length && (
+                                <Alert variant="secondary" className="small">
+                                    Este sprint no tiene historias asignadas.
+                                </Alert>
+                            )}
+
+                            <Row className="g-3 mb-4">
+                                <Col md={4}>
+                                    <Card className="border-0 shadow-sm h-100">
+                                        <Card.Header className="bg-white fw-semibold small">Equipo del sprint</Card.Header>
+                                        <Card.Body className="small">
+                                            <div className="mb-2">
+                                                <span className="text-muted">Product Owner:</span><br />
+                                                <strong>{getSprintUserName(sprint.ProductOwner)}</strong>
+                                            </div>
+                                            <div>
+                                                <span className="text-muted">Scrum Master:</span><br />
+                                                <strong>{getSprintUserName(sprint.ScrumMaster)}</strong>
+                                            </div>
+                                        </Card.Body>
+                                    </Card>
+                                </Col>
+                                <Col md={4}>
+                                    <Card className="border-0 shadow-sm h-100">
+                                        <Card.Header className="bg-white fw-semibold small">Checklist de activación</Card.Header>
+                                        <Card.Body className="small p-0">
+                                            <ul className="list-group list-group-flush">
+                                                {planning?.checklist && Object.entries(CHECKLIST_LABELS).map(([key, label]) => (
+                                                    <li key={key} className="list-group-item d-flex align-items-center py-2">
+                                                        <i className={`bi ${planning.checklist[key] ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'} me-2`} />
+                                                        {label}
+                                                    </li>
                                                 ))}
-                                                {!(planning?.sprintStories?.length) && (
-                                                    <tr><td colSpan={6} className="text-center text-muted small py-3">Agregá historias desde la columna izquierda</td></tr>
-                                                )}
-                                            </tbody>
-                                        </Table>
-                                        <div className="p-2 border-top small text-muted">
-                                            Total comprometido: <strong>{comprometidos} pts</strong>
-                                        </div>
-                                    </Card.Body>
-                                </Card>
-                            </Col>
-                        </Row>
-                    )}
+                                            </ul>
+                                        </Card.Body>
+                                    </Card>
+                                </Col>
+                                <Col md={4}>
+                                    <Card className="border-0 shadow-sm h-100">
+                                        <Card.Header className="bg-white fw-semibold small">Acciones</Card.Header>
+                                        <Card.Body className="d-flex flex-column gap-2">
+                                            {puedeGestionar && isPlanificable && (
+                                                <Button variant="success" onClick={handleActivate}>
+                                                    <i className="bi bi-play-fill me-1" /> Activar sprint
+                                                </Button>
+                                            )}
+                                            {puedeGestionar && isActive && (
+                                                <Button variant="outline-primary" onClick={() => setShowCloseModal(true)}>
+                                                    <i className="bi bi-check2-circle me-1" /> Cerrar sprint
+                                                </Button>
+                                            )}
+                                            {isClosed && (
+                                                <Alert variant="secondary" className="mb-0 py-2 small">
+                                                    Sprint cerrado. {sprint.comentarios_cierre || ''}
+                                                </Alert>
+                                            )}
+                                        </Card.Body>
+                                    </Card>
+                                </Col>
+                            </Row>
+                        </Tab>
 
-                    {isActive && (planning?.sprintStories?.length > 0) && (
-                        <Card className="border-0 shadow-sm mb-4">
-                            <Card.Header className="bg-white"><strong className="small">Historias del sprint activo</strong></Card.Header>
-                            <Card.Body className="p-0">
-                                <Table responsive size="sm" className="mb-0">
-                                    <thead className="table-light">
-                                        <tr><th>Código</th><th>Historia</th><th>SP</th><th>Estado</th><th>Épica</th></tr>
-                                    </thead>
-                                    <tbody>
-                                        {planning.sprintStories.map((s) => (
-                                            <tr key={s.id}>
-                                                <td><code>{s.codigo}</code></td>
-                                                <td>{s.titulo}</td>
-                                                <td>{s.story_points ?? '—'}</td>
-                                                <td><Badge bg="dark">{s.estado}</Badge></td>
-                                                <td>{getEpicLabel(s)}</td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </Table>
-                            </Card.Body>
-                        </Card>
-                    )}
+                        {canShowScrumban && (
+                            <Tab eventKey="scrumban" title="Scrumban">
+                                <ScrumBan
+                                    projectId={projectId}
+                                    sprintStories={planning?.sprintStories || []}
+                                    onMove={(storyId, newCol) => {
+                                        const updated = (planning?.sprintStories || []).map((s) =>
+                                            s.id === storyId ? { ...s, kanban_column: newCol } : s,
+                                        );
+                                        setPlanning({ ...planning, sprintStories: updated });
+                                    }}
+                                />
+                            </Tab>
+                        )}
 
-                    <Row className="g-3 mb-4">
-                        <Col md={4}>
-                            <Card className="border-0 shadow-sm h-100">
-                                <Card.Header className="bg-white fw-semibold small">Equipo del sprint</Card.Header>
-                                <Card.Body className="small">
-                                    <div className="mb-2">
-                                        <span className="text-muted">Product Owner:</span><br />
-                                        <strong>{getSprintUserName(sprint.ProductOwner)}</strong>
-                                    </div>
-                                    <div>
-                                        <span className="text-muted">Scrum Master:</span><br />
-                                        <strong>{getSprintUserName(sprint.ScrumMaster)}</strong>
-                                    </div>
-                                </Card.Body>
-                            </Card>
-                        </Col>
-                        <Col md={4}>
-                            <Card className="border-0 shadow-sm h-100">
-                                <Card.Header className="bg-white fw-semibold small">Checklist de activación</Card.Header>
-                                <Card.Body className="small p-0">
-                                    <ul className="list-group list-group-flush">
-                                        {planning?.checklist && Object.entries(CHECKLIST_LABELS).map(([key, label]) => (
-                                            <li key={key} className="list-group-item d-flex align-items-center py-2">
-                                                <i className={`bi ${planning.checklist[key] ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'} me-2`} />
-                                                {label}
-                                            </li>
-                                        ))}
-                                    </ul>
-                                </Card.Body>
-                            </Card>
-                        </Col>
-                        <Col md={4}>
-                            <Card className="border-0 shadow-sm h-100">
-                                <Card.Header className="bg-white fw-semibold small">Acciones</Card.Header>
-                                <Card.Body className="d-flex flex-column gap-2">
-                                    {puedeGestionar && isPlanificable && (
-                                        <Button variant="success" onClick={handleActivate}>
-                                            <i className="bi bi-play-fill me-1" /> Activar sprint
-                                        </Button>
-                                    )}
-                                    {puedeGestionar && isActive && (
-                                        <Button variant="outline-primary" onClick={() => setShowCloseModal(true)}>
-                                            <i className="bi bi-check2-circle me-1" /> Cerrar sprint
-                                        </Button>
-                                    )}
-                                    {sprint.estado === 'cerrado' && (
-                                        <Alert variant="secondary" className="mb-0 py-2 small">
-                                            Sprint cerrado. {sprint.comentarios_cierre || ''}
-                                        </Alert>
-                                    )}
-                                </Card.Body>
-                            </Card>
-                        </Col>
-                    </Row>
+                        {canShowMetrics && (
+                            <Tab eventKey="metricas" title="Métricas">
+                                <Row className="g-3 mb-4">
+                                    <Col md={4}>
+                                        <Card className="border-0 shadow-sm h-100">
+                                            <Card.Body>
+                                                <div className="text-muted small">Velocidad del equipo</div>
+                                                <div className="fs-3 fw-bold text-primary">
+                                                    {comprometidos} <span className="fs-6 text-muted">pts</span>
+                                                </div>
+                                                <div className="small text-muted">Puntos comprometidos en este sprint</div>
+                                            </Card.Body>
+                                        </Card>
+                                    </Col>
+                                    <Col md={4}>
+                                        <Card className="border-0 shadow-sm h-100">
+                                            <Card.Body>
+                                                <div className="text-muted small">Puntos completados</div>
+                                                <div className="fs-3 fw-bold text-success">
+                                                    {planning?.sprintStories?.filter((s) => s.kanban_column === 'done').reduce((a, s) => a + (Number(s.story_points) || 0), 0) || 0}
+                                                    {' '}<span className="fs-6 text-muted">pts</span>
+                                                </div>
+                                                <div className="small text-muted">
+                                                    {comprometidos > 0
+                                                        ? `${Math.round((planning?.sprintStories?.filter((s) => s.kanban_column === 'done').reduce((a, s) => a + (Number(s.story_points) || 0), 0) || 0) / comprometidos * 100)}% completado`
+                                                        : 'Sin datos'}
+                                                </div>
+                                            </Card.Body>
+                                        </Card>
+                                    </Col>
+                                    <Col md={4}>
+                                        <Card className="border-0 shadow-sm h-100">
+                                            <Card.Body>
+                                                <div className="text-muted small">Historias</div>
+                                                <div className="fs-3 fw-bold">
+                                                    {planning?.sprintStories?.length || 0}
+                                                </div>
+                                                <div className="small text-muted">
+                                                    {planning?.sprintStories?.filter((s) => s.kanban_column === 'done').length || 0} terminadas
+                                                </div>
+                                            </Card.Body>
+                                        </Card>
+                                    </Col>
+                                </Row>
+                                {planning?.sprintStories && (
+                                    <Card className="border-0 shadow-sm">
+                                        <Card.Header className="bg-white fw-semibold small">Detalle por historia</Card.Header>
+                                        <Card.Body className="p-0">
+                                            <Table responsive size="sm" className="mb-0">
+                                                <thead className="table-light">
+                                                    <tr><th>Código</th><th>Historia</th><th>SP</th><th>Estado Kanban</th><th>Prioridad</th><th>Épica</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    {planning.sprintStories.map((s) => (
+                                                        <tr key={s.id}>
+                                                            <td><code>{s.codigo}</code></td>
+                                                            <td>{s.titulo}</td>
+                                                            <td>{s.story_points ?? '—'}</td>
+                                                            <td><Badge bg={s.kanban_column === 'done' ? 'success' : s.kanban_column === 'doing' ? 'primary' : 'secondary'}>{s.kanban_column || 'todo'}</Badge></td>
+                                                            <td><Badge bg="info">{s.prioridad || '—'}</Badge></td>
+                                                            <td className="small">{getEpicLabel(s)}</td>
+                                                        </tr>
+                                                    ))}
+                                                </tbody>
+                                            </Table>
+                                        </Card.Body>
+                                    </Card>
+                                )}
+                            </Tab>
+                        )}
+                    </Tabs>
                 </>
-            )}
+            ) : null}
 
             <SprintFormModal
                 show={showForm}

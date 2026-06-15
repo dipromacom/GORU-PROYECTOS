@@ -78,6 +78,9 @@ export default function SprintFormModal({
                                     value={form.capacidad_puntos}
                                     onChange={(e) => set('capacidad_puntos', e.target.value)}
                                 />
+                                <Form.Text className="text-muted" style={{ fontSize: 11 }}>
+                                    Sugerencia: <em>miembros × días hábiles × horas/día ÷ horas por punto (ej. 4×10×6÷6=40)</em>
+                                </Form.Text>
                             </Form.Group>
                         </Col>
                     </Row>
