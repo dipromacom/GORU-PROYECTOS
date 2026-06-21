@@ -6,6 +6,7 @@ import Card from 'react-bootstrap/Card';
 import Table from 'react-bootstrap/Table';
 import Form from 'react-bootstrap/Form';
 import Button from 'react-bootstrap/Button';
+import Modal from 'react-bootstrap/Modal';
 import Row from 'react-bootstrap/Row';
 import Col from 'react-bootstrap/Col';
 import Container from 'react-bootstrap/Container';
@@ -17,6 +18,7 @@ import {
     getAdminMadurezDireccionList,
     patchAdminUsuarioTipoLicencia,
     patchAdminUsuarioEmpresa,
+    deleteAdminUsuario,
     postAdminEmpresa,
     getAllTipoLicenciaCatalogo,
     getAllEmpresasCatalogo,
@@ -74,6 +76,10 @@ function AdminPlatform({ user }) {
     const [fechaHastaInput, setFechaHastaInput] = useState('');
     const [filtroFechaDesde, setFiltroFechaDesde] = useState('');
     const [filtroFechaHasta, setFiltroFechaHasta] = useState('');
+
+    const [deleteTarget, setDeleteTarget] = useState(null);
+    const [deleteConfirmText, setDeleteConfirmText] = useState('');
+    const [deleting, setDeleting] = useState(false);
 
     useEffect(() => {
         if (!user) return;
@@ -334,6 +340,26 @@ function AdminPlatform({ user }) {
             toast.error(e.response && e.response.data && e.response.data.message ? e.response.data.message : e.message);
         } finally {
             setSavingUserId(null);
+        }
+    };
+
+    const handleDeleteUsuario = async () => {
+        if (!deleteTarget) return;
+        if (deleteConfirmText !== deleteTarget.username) {
+            toast.warn('Escribí exactamente el email del usuario para confirmar.');
+            return;
+        }
+        setDeleting(true);
+        try {
+            await deleteAdminUsuario(deleteTarget.id);
+            toast.success('Usuario eliminado permanentemente.');
+            setDeleteTarget(null);
+            setDeleteConfirmText('');
+            await loadUsuarios();
+        } catch (e) {
+            toast.error(e.response?.data?.message || 'Error al eliminar usuario');
+        } finally {
+            setDeleting(false);
         }
     };
 
@@ -643,14 +669,23 @@ function AdminPlatform({ user }) {
                                                                             ))}
                                                                         </Form.Control>
                                                                     </td>
-                                                                    <td>
+                                                                    <td className="text-nowrap">
                                                                         <Button
                                                                             size="sm"
                                                                             variant="success"
                                                                             disabled={savingUserId === u.id}
                                                                             onClick={() => handleGuardarUsuario(u.id)}
+                                                                            className="me-1"
                                                                         >
                                                                             Guardar
+                                                                        </Button>
+                                                                        <Button
+                                                                            size="sm"
+                                                                            variant="outline-danger"
+                                                                            disabled={savingUserId === u.id}
+                                                                            onClick={() => { setDeleteTarget(u); setDeleteConfirmText(''); }}
+                                                                        >
+                                                                            <i className="bi bi-trash" />
                                                                         </Button>
                                                                     </td>
                                                                 </tr>
@@ -664,6 +699,44 @@ function AdminPlatform({ user }) {
                                 </Card.Body>
                             </Card>
                         </Tab.Pane>
+
+                        <Modal show={!!deleteTarget} onHide={() => { setDeleteTarget(null); setDeleteConfirmText(''); }} centered>
+                            <Modal.Header closeButton>
+                                <Modal.Title>Eliminar usuario permanentemente</Modal.Title>
+                            </Modal.Header>
+                            <Modal.Body>
+                                <p className="text-danger fw-semibold">
+                                    <i className="bi bi-exclamation-triangle me-2" />
+                                    Esta acción no se puede deshacer.
+                                </p>
+                                <p>
+                                    Se eliminará el usuario <strong>{deleteTarget?.username}</strong> y todos sus datos asociados
+                                    (proyectos, evaluaciones, criterios, etc.).
+                                </p>
+                                <Form.Group>
+                                    <Form.Label>
+                                        Escribí <strong>{deleteTarget?.username}</strong> para confirmar:
+                                    </Form.Label>
+                                    <Form.Control
+                                        value={deleteConfirmText}
+                                        onChange={(e) => setDeleteConfirmText(e.target.value)}
+                                        placeholder={deleteTarget?.username}
+                                    />
+                                </Form.Group>
+                            </Modal.Body>
+                            <Modal.Footer>
+                                <Button variant="secondary" onClick={() => { setDeleteTarget(null); setDeleteConfirmText(''); }}>
+                                    Cancelar
+                                </Button>
+                                <Button
+                                    variant="danger"
+                                    disabled={deleteConfirmText !== deleteTarget?.username || deleting}
+                                    onClick={handleDeleteUsuario}
+                                >
+                                    {deleting ? 'Eliminando…' : 'Eliminar usuario'}
+                                </Button>
+                            </Modal.Footer>
+                        </Modal>
 
                         <Tab.Pane eventKey="madurez">
                             <Card className="mb-4 shadow-sm border-0">

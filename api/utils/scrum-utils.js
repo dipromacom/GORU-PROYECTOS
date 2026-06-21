@@ -297,16 +297,16 @@ async function createStory(proyectoId, data, userId) {
         riesgos_asociados: data.riesgos_asociados || null,
         riesgo: data.riesgo || null,
         prioridad: data.prioridad || null,
-        valor_negocio: (data.valor_negocio !== null && data.valor_negocio !== undefined) ? data.valor_negocio : null,
-        urgencia: (data.urgencia !== null && data.urgencia !== undefined) ? data.urgencia : null,
-        reduccion_riesgo: (data.reduccion_riesgo !== null && data.reduccion_riesgo !== undefined) ? data.reduccion_riesgo : null,
-        dependencia_estrategica: (data.dependencia_estrategica !== null && data.dependencia_estrategica !== undefined) ? data.dependencia_estrategica : null,
-        impacto_cliente: (data.impacto_cliente !== null && data.impacto_cliente !== undefined) ? data.impacto_cliente : null,
-        complejidad: (data.complejidad !== null && data.complejidad !== undefined) ? data.complejidad : null,
-        esfuerzo: (data.esfuerzo !== null && data.esfuerzo !== undefined) ? data.esfuerzo : null,
-        costo_demora: (data.costo_demora !== null && data.costo_demora !== undefined) ? data.costo_demora : null,
+        valor_negocio: data.valor_negocio ?? null,
+        urgencia: data.urgencia ?? null,
+        reduccion_riesgo: data.reduccion_riesgo ?? null,
+        dependencia_estrategica: data.dependencia_estrategica ?? null,
+        impacto_cliente: data.impacto_cliente ?? null,
+        complejidad: data.complejidad ?? null,
+        esfuerzo: data.esfuerzo ?? null,
+        costo_demora: data.costo_demora ?? null,
         moscow: data.moscow || null,
-        story_points: (data.story_points !== null && data.story_points !== undefined) ? data.story_points : null,
+        story_points: data.story_points ?? null,
         estado: data.estado || 'idea',
         asignado_a: data.asignado_a || null,
         aprobado_po: Boolean(data.aprobado_po),
@@ -359,10 +359,22 @@ async function updateStory(storyId, proyectoId, data, userId) {
     }
 
     const updates = { ...data };
+
+    if (data.kanban_column !== undefined) {
+        if (data.kanban_column === 'done') {
+            updates.estado = 'done';
+        } else {
+            updates.estado = 'en_sprint';
+        }
+    }
+
+    const histDetail = [];
+    if (data.estado) histDetail.push(`Estado → ${data.estado}`);
+    if (data.kanban_column) histDetail.push(`Kanban → ${data.kanban_column}`);
     updates.historial = pushHistorial(story.historial, {
         usuario_id: userId,
-        accion: 'actualizacion',
-        detalle: data.estado ? `Estado → ${data.estado}` : 'Campos actualizados',
+        accion: data.kanban_column === 'done' ? 'completada' : 'actualizacion',
+        detalle: histDetail.join(', ') || 'Campos actualizados',
     });
 
     if (data.story_points !== undefined && data.story_points !== story.story_points) {
@@ -759,6 +771,13 @@ async function activateSprint(sprintId, proyectoId, userId) {
     }
 
     await sprint.update({ estado: 'activo' });
+
+    const sprintCount = await ScrumSprint.count({
+        where: { proyecto_id: proyectoId, estado: { [Op.in]: ['activo', 'cerrado'] } },
+    });
+    if (sprintCount <= 1) {
+        await Proyecto.update({ estado: 'X' }, { where: { id: proyectoId } });
+    }
 
     const stories = await ScrumStory.findAll({
         where: { sprint_id: sprintId, archivado: false },

@@ -284,6 +284,8 @@ export const patchAdminUsuarioTipoLicencia = (usuarioId, tipoLicenciaId) =>
   apiWithToken.patch(`/admin/usuarios/${usuarioId}/tipo-licencia`, { tipoLicenciaId });
 export const patchAdminUsuarioEmpresa = (usuarioId, empresaId) =>
   apiWithToken.patch(`/admin/usuarios/${usuarioId}/empresa`, { empresaId });
+export const deleteAdminUsuario = (usuarioId) =>
+  apiWithToken.delete(`/admin/usuarios/${usuarioId}`);
 export const postAdminEmpresa = (payload) => apiWithToken.post('/admin/empresas', payload);
 export const getAdminColaboradoresProyectoConfig = () => apiWithToken.get('/admin/colaboradores-proyecto-config');
 export const putAdminColaboradoresProyectoConfig = (payload) =>

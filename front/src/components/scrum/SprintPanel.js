@@ -5,7 +5,9 @@ import {
 import { toast } from 'react-toastify';
 import SprintFormModal from './SprintFormModal';
 import ScrumBan from './ScrumBan';
+import BurndownChart from './BurndownChart';
 import { SPRINT_STATES, PRIORITIES, labelFor } from './scrumConstants';
+import { EstadoPill } from './ScrumPill';
 import {
     getEpicLabel, getPriorityVariant, getSprintUserName, formatSprintDates,
     normalizeUsuariosProyecto,
@@ -427,7 +429,7 @@ export default function SprintPanel({
                                                         <td><code>{s.codigo}</code></td>
                                                         <td>{s.titulo}</td>
                                                         <td>{s.story_points ?? '—'}</td>
-                                                        <td><Badge bg="dark">{s.estado}</Badge></td>
+                                                        <td><EstadoPill estado={s.estado} /></td>
                                                         <td>{getEpicLabel(s)}</td>
                                                     </tr>
                                                 ))}
@@ -459,21 +461,23 @@ export default function SprintPanel({
                                         </Card.Body>
                                     </Card>
                                 </Col>
-                                <Col md={4}>
-                                    <Card className="border-0 shadow-sm h-100">
-                                        <Card.Header className="bg-white fw-semibold small">Checklist de activación</Card.Header>
-                                        <Card.Body className="small p-0">
-                                            <ul className="list-group list-group-flush">
-                                                {planning?.checklist && Object.entries(CHECKLIST_LABELS).map(([key, label]) => (
-                                                    <li key={key} className="list-group-item d-flex align-items-center py-2">
-                                                        <i className={`bi ${planning.checklist[key] ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'} me-2`} />
-                                                        {label}
-                                                    </li>
-                                                ))}
-                                            </ul>
-                                        </Card.Body>
-                                    </Card>
-                                </Col>
+                                {isPlanificable && (
+                                    <Col md={4}>
+                                        <Card className="border-0 shadow-sm h-100">
+                                            <Card.Header className="bg-white fw-semibold small">Checklist de activación</Card.Header>
+                                            <Card.Body className="small p-0">
+                                                <ul className="list-group list-group-flush">
+                                                    {planning?.checklist && Object.entries(CHECKLIST_LABELS).map(([key, label]) => (
+                                                        <li key={key} className="list-group-item d-flex align-items-center py-2">
+                                                            <i className={`bi ${planning.checklist[key] ? 'bi-check-circle-fill text-success' : 'bi-circle text-muted'} me-2`} />
+                                                            {label}
+                                                        </li>
+                                                    ))}
+                                                </ul>
+                                            </Card.Body>
+                                        </Card>
+                                    </Col>
+                                )}
                                 <Col md={4}>
                                     <Card className="border-0 shadow-sm h-100">
                                         <Card.Header className="bg-white fw-semibold small">Acciones</Card.Header>
@@ -505,8 +509,9 @@ export default function SprintPanel({
                                     projectId={projectId}
                                     sprintStories={planning?.sprintStories || []}
                                     onMove={(storyId, newCol) => {
+                                        const newEstado = newCol === 'done' ? 'done' : 'en_sprint';
                                         const updated = (planning?.sprintStories || []).map((s) =>
-                                            s.id === storyId ? { ...s, kanban_column: newCol } : s,
+                                            s.id === storyId ? { ...s, kanban_column: newCol, estado: newEstado } : s,
                                         );
                                         setPlanning({ ...planning, sprintStories: updated });
                                     }}
@@ -558,6 +563,51 @@ export default function SprintPanel({
                                         </Card>
                                     </Col>
                                 </Row>
+
+                                {isActive && (
+                                    <Card className="border-0 shadow-sm mb-4">
+                                        <Card.Header className="bg-white fw-semibold small">Burndown del sprint</Card.Header>
+                                        <Card.Body>
+                                            <BurndownChart
+                                                sprint={sprint}
+                                                stories={planning?.sprintStories || []}
+                                            />
+                                        </Card.Body>
+                                    </Card>
+                                )}
+
+                                {planning?.sprintStories && planning.sprintStories.filter((s) => s.estado === 'done' || s.kanban_column === 'done').length > 0 && (
+                                    <Card className="border-0 shadow-sm mb-4">
+                                        <Card.Header className="bg-white fw-semibold small d-flex justify-content-between align-items-center">
+                                            <span>✓ Historias cerradas en este sprint</span>
+                                            <Badge bg="success">
+                                                {planning.sprintStories.filter((s) => s.estado === 'done' || s.kanban_column === 'done').length} historias
+                                            </Badge>
+                                        </Card.Header>
+                                        <Card.Body className="p-0">
+                                            <Table responsive size="sm" className="mb-0">
+                                                <thead className="table-light">
+                                                    <tr><th>Código</th><th>Historia</th><th>SP</th><th>Prioridad</th><th>Épica</th><th>Sprint</th></tr>
+                                                </thead>
+                                                <tbody>
+                                                    {planning.sprintStories
+                                                        .filter((s) => s.estado === 'done' || s.kanban_column === 'done')
+                                                        .map((s) => (
+                                                            <tr key={s.id}>
+                                                                <td><code>{s.codigo}</code></td>
+                                                                <td>{s.titulo}</td>
+                                                                <td className="fw-semibold">{s.story_points ?? '—'}</td>
+                                                                <td><Badge bg="info">{s.prioridad || '—'}</Badge></td>
+                                                                <td className="small">{getEpicLabel(s)}</td>
+                                                                <td><Badge bg="dark">{sprint.codigo || sprint.nombre}</Badge></td>
+                                                            </tr>
+                                                        ))}
+                                                </tbody>
+                                            </Table>
+                                        </Card.Body>
+                                    </Card>
+                                )}
+
                                 {planning?.sprintStories && (
                                     <Card className="border-0 shadow-sm">
                                         <Card.Header className="bg-white fw-semibold small">Detalle por historia</Card.Header>

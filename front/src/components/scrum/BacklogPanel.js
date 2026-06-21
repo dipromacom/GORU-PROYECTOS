@@ -12,7 +12,7 @@ import StoryFormModal from './StoryFormModal';
 import BacklogSidebar from './BacklogSidebar';
 import ScrumPill, { PriorityPill, EstadoPill } from './ScrumPill';
 import {
-    STORY_TYPES, STORY_STATES, PRIORITIES, PRIORIZATION_METHODS, WARNING_PILL_STYLE,
+    STORY_TYPES, STORY_STATES, PRIORITIES, PRIORIZATION_METHODS, WARNING_PILL_STYLE, labelFor,
 } from './scrumConstants';
 import {
     filterStories, getAssigneeName, getAssigneeInitials, getEpicLabel, getSprintLabel,
@@ -118,20 +118,17 @@ export default function BacklogPanel({
     const [editingEpic, setEditingEpic] = useState(null);
     const [editingStory, setEditingStory] = useState(null);
     const [saving, setSaving] = useState(false);
-    const [metodoPriorizacion, setMetodoPriorizacion] = useState(config?.metodo_priorizacion || 'moscow');
     const [confirmDelete, setConfirmDelete] = useState(null);
     const [confirmArchive, setConfirmArchive] = useState(null);
-
-    useEffect(() => {
-        setMetodoPriorizacion(config?.metodo_priorizacion || 'moscow');
-    }, [config]);
 
     useEffect(() => {
         setPage(1);
     }, [filters, showArchived, viewMode]);
 
     const usuariosLista = useMemo(() => normalizeUsuariosProyecto(usuarios), [usuarios]);
-    const sourceStories = showArchived ? archivedStories : stories;
+    const sourceStories = showArchived
+        ? archivedStories
+        : (stories || []).filter((s) => s.estado !== 'done');
     const filtered = useMemo(() => filterStories(sourceStories, filters), [sourceStories, filters]);
     const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
     const paginated = filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE);
@@ -253,10 +250,10 @@ export default function BacklogPanel({
     };
 
     const handleRecalculate = async () => {
+        const metodo = config?.metodo_priorizacion || 'moscow';
         try {
-            await Api.updateScrumConfig(projectId, { metodo_priorizacion: metodoPriorizacion });
-            await Api.recalculateScrumPriorities(projectId, metodoPriorizacion);
-            toast.success('Prioridades recalculadas');
+            await Api.recalculateScrumPriorities(projectId, metodo);
+            toast.success('Prioridades recalculadas según ' + labelFor(PRIORIZATION_METHODS, metodo));
             refresh();
         } catch (e) {
             toast.error(e.response?.data?.message || 'Error al recalcular');
@@ -364,33 +361,16 @@ export default function BacklogPanel({
         );
     };
 
-    const activeMethods = PRIORIZATION_METHODS.filter((m) =>
-        ['formula', 'valor_esfuerzo', 'moscow'].includes(m.value),
-    );
+    const metodoLabel = labelFor(PRIORIZATION_METHODS, config?.metodo_priorizacion || 'moscow');
 
     const renderPriorizacion = () => (
         <div>
             <Alert variant="info" className="py-2 small mb-3">
                 <i className="bi bi-info-circle me-1" />
-                Seleccioná el método de priorización del proyecto y presioná <strong>Recalcular prioridad</strong> para aplicarlo.
-                La configuración queda guardada por proyecto.
+                Método de priorización del proyecto: <strong>{metodoLabel}</strong>.
+                Presioná <strong>Recalcular prioridad</strong> para reordenar la lista de mayor a menor según este criterio.
             </Alert>
             <Row className="mb-3 align-items-end">
-                <Col md={5}>
-                    <Form.Group>
-                        <Form.Label>Método de priorización</Form.Label>
-                        <Form.Control
-                            as="select"
-                            disabled={!puedeGestionar}
-                            value={metodoPriorizacion}
-                            onChange={(e) => setMetodoPriorizacion(e.target.value)}
-                        >
-                            {activeMethods.map((m) => (
-                                <option key={m.value} value={m.value}>{m.label}</option>
-                            ))}
-                        </Form.Control>
-                    </Form.Group>
-                </Col>
                 <Col md="auto">
                     {puedeGestionar && (
                         <Button variant="success" onClick={handleRecalculate}>
@@ -684,6 +664,7 @@ export default function BacklogPanel({
                 onSave={handleSaveStory}
                 saving={saving}
                 readOnly={!puedeGestionar}
+                config={config}
             />
 
             <Modal show={!!confirmDelete} onHide={() => setConfirmDelete(null)} centered>

@@ -136,6 +136,13 @@ const createUsuario = async (data) => {
       throw new Error('No se pudo determinar el ID del rol para el nuevo usuario.');
     }
 
+    const normalizedEmail = username.toLowerCase().trim();
+
+    const existente = await Usuario.findOne({ where: { username: normalizedEmail } });
+    if (existente) {
+      throw new Error(`Ya existe un usuario con el email ${normalizedEmail}.`);
+    }
+
     const hashedPassword = bcrypt.hashSync(clave, Number(process.env.SALT_ROUNDS));
 
     const tipoLicenciaFinal = (tipoLicencia !== undefined && tipoLicencia !== null)
@@ -147,7 +154,7 @@ const createUsuario = async (data) => {
       persona,
       tipo_licencia: tipoLicenciaFinal,
       nivel_permiso: nivelPermiso,
-      username: username.toLowerCase(),
+      username: normalizedEmail,
       clave: hashedPassword,
       fecha_creacion: DateUils.getLocalDate(),
       ultima_sesion: null,
