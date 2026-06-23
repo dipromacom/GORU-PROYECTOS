@@ -428,6 +428,41 @@ export const activateScrumSprint = (projectId, sprintId) =>
 export const closeScrumSprint = (projectId, sprintId, payload = {}) =>
   apiWithToken.post(`/proyecto/${projectId}/scrum/sprints/${sprintId}/close`, payload);
 
+export const getScrumMetrics = (projectId) =>
+  apiWithToken.get(`/proyecto/${projectId}/scrum/metrics`);
+
+export const getScrumDocuments = (projectId, params = {}) =>
+  apiWithToken.get(`/proyecto/${projectId}/scrum/documents`, { params });
+
+export const getScrumDocument = (projectId, docId) =>
+  apiWithToken.get(`/proyecto/${projectId}/scrum/documents/${docId}`);
+
+export const createScrumDocument = (projectId, payload) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/documents`, payload);
+
+export const updateScrumDocument = (projectId, docId, payload) =>
+  apiWithToken.put(`/proyecto/${projectId}/scrum/documents/${docId}`, payload);
+
+export const deleteScrumDocument = (projectId, docId) =>
+  apiWithToken.delete(`/proyecto/${projectId}/scrum/documents/${docId}`);
+
+export const addScrumDocumentAttachment = (projectId, docId, payload) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/documents/${docId}/attachments`, payload);
+
+export const downloadScrumDocumentAttachment = (projectId, docId, fileId) =>
+  apiWithToken.get(`/proyecto/${projectId}/scrum/documents/${docId}/attachments/${fileId}`, { responseType: 'blob' });
+
+export const removeScrumDocumentAttachment = (projectId, docId, fileId) =>
+  apiWithToken.delete(`/proyecto/${projectId}/scrum/documents/${docId}/attachments/${fileId}`);
+
+export const addScrumDocumentComment = (projectId, docId, texto) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/documents/${docId}/comments`, { texto });
+
+export const deleteScrumDocumentComment = (projectId, docId, commentId) =>
+  apiWithToken.delete(`/proyecto/${projectId}/scrum/documents/${docId}/comments/${commentId}`);
+
+export const restoreScrumDocumentVersion = (projectId, docId, version) =>
+  apiWithToken.post(`/proyecto/${projectId}/scrum/documents/${docId}/restore-version`, { version });
 
 // --- CONTROL DE CAMBIOS ---
 export const getSolicitudesProyecto = (proyectoId) => apiWithToken.get(`/proyecto/${proyectoId}/control-cambio`);

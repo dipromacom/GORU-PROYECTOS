@@ -7,6 +7,7 @@ api/**.crt
 api/**.pem
 api/**.key
 api/nohup.out
+api/uploads/
 
 front/node_modules
 front/.env.development

@@ -132,7 +132,18 @@ router.delete('/proyecto/:id/scrum/sprints/:sprintId/stories/:storyId', ScrumCon
 router.post('/proyecto/:id/scrum/sprints/:sprintId/clear', ScrumController.clearSprintStories);
 router.post('/proyecto/:id/scrum/sprints/:sprintId/activate', ScrumController.activateSprint);
 router.post('/proyecto/:id/scrum/sprints/:sprintId/close', ScrumController.closeSprint);
-
+router.get('/proyecto/:id/scrum/metrics', ScrumController.getScrumMetrics);
+router.get('/proyecto/:id/scrum/documents', ScrumController.listDocuments);
+router.get('/proyecto/:id/scrum/documents/:docId', ScrumController.getDocument);
+router.post('/proyecto/:id/scrum/documents', ScrumController.createDocument);
+router.put('/proyecto/:id/scrum/documents/:docId', ScrumController.updateDocument);
+router.delete('/proyecto/:id/scrum/documents/:docId', ScrumController.deleteDocument);
+router.post('/proyecto/:id/scrum/documents/:docId/attachments', ScrumController.addDocumentAttachment);
+router.get('/proyecto/:id/scrum/documents/:docId/attachments/:fileId', ScrumController.downloadDocumentAttachment);
+router.delete('/proyecto/:id/scrum/documents/:docId/attachments/:fileId', ScrumController.removeDocumentAttachment);
+router.post('/proyecto/:id/scrum/documents/:docId/comments', ScrumController.addDocumentComment);
+router.delete('/proyecto/:id/scrum/documents/:docId/comments/:commentId', ScrumController.deleteDocumentComment);
+router.post('/proyecto/:id/scrum/documents/:docId/restore-version', ScrumController.restoreDocumentVersion);
 
 // Historial de estados
 router.get('/proyecto/:proyectoId/estados', logController.getHistorialEstados);

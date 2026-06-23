@@ -1,7 +1,12 @@
 const { Op } = require('sequelize');
+const path = require('path');
+const fs = require('fs-extra');
+const { v4: uuidv4 } = require('uuid');
 const {
-    Proyecto, ScrumEpic, ScrumStory, ScrumSprint, ScrumConfig,
+    Proyecto, ScrumEpic, ScrumStory, ScrumSprint, ScrumConfig, ScrumDocument,
 } = require('../models/index');
+
+const MAX_DOC_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
 const TIPO_PROYECTO_AGIL = 1;
 const TIPO_PROYECTO_HIBRIDO = 3;
@@ -838,6 +843,488 @@ async function clearSprintStories(sprintId, proyectoId, userId) {
     return getSprintPlanning(proyectoId, sprintId);
 }
 
+function computeBurndownAlerts(sprint, stories) {
+    const alerts = [];
+    if (!sprint?.fecha_inicio || !sprint?.fecha_fin) return alerts;
+
+    const start = new Date(sprint.fecha_inicio);
+    const end = new Date(sprint.fecha_fin);
+    const totalDays = Math.max(1, Math.round((end - start) / 86400000) + 1);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const totalPoints = (stories || []).reduce((a, s) => a + (Number(s.story_points) || 0), 0);
+    if (totalPoints <= 0) return alerts;
+
+    let consecutiveAbove = 0;
+    for (let i = 0; i < totalDays; i += 1) {
+        const d = new Date(start);
+        d.setDate(d.getDate() + i);
+        d.setHours(23, 59, 59, 999);
+        if (d > today) break;
+
+        const ideal = totalPoints - (totalPoints / Math.max(totalDays - 1, 1)) * i;
+        const doneByDay = (stories || []).filter((s) => {
+            if (s.kanban_column !== 'done' && s.estado !== 'done') return false;
+            const movedAt = s.estimado_at || s.updatedAt;
+            return movedAt && new Date(movedAt) <= d;
+        });
+        const donePoints = doneByDay.reduce((a, s) => a + (Number(s.story_points) || 0), 0);
+        const actual = totalPoints - donePoints;
+        if (actual > ideal) consecutiveAbove += 1;
+        else consecutiveAbove = 0;
+    }
+
+    if (consecutiveAbove >= 2) {
+        alerts.push({
+            severity: 'warning',
+            message: 'Burndown: la línea real está por encima de la ideal por más de 2 días consecutivos.',
+        });
+    }
+
+    const elapsed = Math.max(1, Math.round((today - start) / 86400000) + 1);
+    const pctTime = elapsed / totalDays;
+    const completedPoints = (stories || [])
+        .filter((s) => s.estado === 'done' || s.kanban_column === 'done')
+        .reduce((a, s) => a + (Number(s.story_points) || 0), 0);
+    const pendingPoints = totalPoints - completedPoints;
+
+    if (pctTime >= 0.7 && pendingPoints / totalPoints > 0.5) {
+        alerts.push({
+            severity: 'danger',
+            message: 'Burndown: al 70% del sprint aún queda más del 50% de puntos pendientes.',
+        });
+    }
+
+    return alerts;
+}
+
+async function getScrumMetrics(proyectoId) {
+    const pid = parseInt(proyectoId, 10);
+    const [sprintsRaw, allStories, epicsRaw] = await Promise.all([
+        ScrumSprint.findAll({ where: { proyecto_id: pid }, order: [['fecha_inicio', 'ASC']] }),
+        ScrumStory.findAll({
+            where: { proyecto_id: pid, archivado: false },
+            include: storyIncludes(),
+        }),
+        ScrumEpic.findAll({ where: { proyecto_id: pid } }),
+    ]);
+
+    const stories = allStories.map((s) => s.toJSON());
+    const sprints = await Promise.all(sprintsRaw.map((s) => enrichSprint(s)));
+    const epics = enrichEpicsWithStats(epicsRaw, stories, sprints);
+
+    const velocitySprints = sprints.filter((s) => ['cerrado', 'activo'].includes(s.estado));
+    const velocity = velocitySprints.map((s) => ({
+        sprintId: s.id,
+        codigo: s.codigo,
+        nombre: s.nombre,
+        comprometidos: s.puntos_comprometidos || 0,
+        completados: s.puntos_completados || 0,
+        diff: (s.puntos_completados || 0) - (s.puntos_comprometidos || 0),
+        estado: s.estado,
+        predictibilidad: s.puntos_comprometidos > 0
+            ? Math.round((s.puntos_completados / s.puntos_comprometidos) * 100)
+            : null,
+    }));
+
+    const closedVelocities = velocity.filter((v) => v.estado === 'cerrado');
+    const avgVelocity = closedVelocities.length
+        ? Math.round(closedVelocities.reduce((a, v) => a + v.completados, 0) / closedVelocities.length)
+        : 0;
+
+    let velocityTrendPct = 0;
+    if (closedVelocities.length >= 2) {
+        const last3 = closedVelocities.slice(-3);
+        const prev3 = closedVelocities.slice(-6, -3);
+        const lastAvg = last3.reduce((a, v) => a + v.completados, 0) / last3.length;
+        const prevAvg = prev3.length
+            ? prev3.reduce((a, v) => a + v.completados, 0) / prev3.length
+            : lastAvg;
+        velocityTrendPct = prevAvg > 0 ? Math.round(((lastAvg - prevAvg) / prevAvg) * 100) : 0;
+    }
+
+    const predictabilities = velocity.filter((v) => v.predictibilidad !== null).map((v) => v.predictibilidad);
+    const avgPredictability = predictabilities.length
+        ? Math.round(predictabilities.reduce((a, p) => a + p, 0) / predictabilities.length)
+        : null;
+
+    const totalPoints = stories.reduce((a, s) => a + (Number(s.story_points) || 0), 0);
+    const completedPoints = stories
+        .filter((s) => s.estado === 'done')
+        .reduce((a, s) => a + (Number(s.story_points) || 0), 0);
+    const pendingPoints = totalPoints - completedPoints;
+    const progressPct = totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0;
+
+    const epicsCompleted = epics.filter((e) => e.estado === 'completada'
+        || (e.stats?.porcentajeAvance === 100 && e.stats?.totalHistorias > 0)).length;
+    const epicsInProgress = epics.filter((e) => ['en_ejecucion', 'aprobada'].includes(e.estado)
+        && e.stats?.porcentajeAvance > 0 && e.stats?.porcentajeAvance < 100).length;
+    const epicsPending = Math.max(0, epics.length - epicsCompleted - epicsInProgress);
+
+    const effectiveVelocity = avgVelocity
+        || (velocitySprints[velocitySprints.length - 1]?.completados || 0)
+        || 0;
+    const sprintsRemaining = effectiveVelocity > 0 ? Math.ceil(pendingPoints / effectiveVelocity) : null;
+
+    const closedSprints = sprints.filter((s) => s.estado === 'cerrado' && s.fecha_inicio && s.fecha_fin);
+    let avgSprintDays = 14;
+    if (closedSprints.length) {
+        avgSprintDays = Math.round(closedSprints.reduce((a, s) => {
+            const days = Math.round((new Date(s.fecha_fin) - new Date(s.fecha_inicio)) / 86400000) + 1;
+            return a + days;
+        }, 0) / closedSprints.length);
+    }
+
+    const estimatedEndDate = sprintsRemaining !== null && effectiveVelocity > 0
+        ? new Date(Date.now() + sprintsRemaining * avgSprintDays * 86400000).toISOString().slice(0, 10)
+        : null;
+
+    const activeSprint = sprints.find((s) => s.estado === 'activo') || null;
+    let activeSprintStories = [];
+    if (activeSprint) {
+        activeSprintStories = stories.filter((s) => s.sprint_id === activeSprint.id);
+    }
+
+    const complianceTrend = sprints
+        .filter((s) => s.estado === 'cerrado')
+        .map((s) => ({
+            sprintId: s.id,
+            nombre: s.nombre,
+            codigo: s.codigo,
+            pct: s.puntos_comprometidos > 0
+                ? Math.round((s.puntos_completados / s.puntos_comprometidos) * 100)
+                : 0,
+        }));
+
+    const alerts = [];
+    const unestimated = stories.filter((s) => s.estado !== 'done' && !s.story_points).length;
+    if (unestimated > 0) {
+        alerts.push({ severity: 'warning', message: `${unestimated} historias sin estimación (SP).` });
+    }
+    if (avgPredictability !== null && avgPredictability < 75) {
+        alerts.push({
+            severity: 'danger',
+            message: `Predictibilidad promedio baja (${avgPredictability}%). Revisá la planificación.`,
+        });
+    }
+    if (activeSprint) {
+        computeBurndownAlerts(activeSprint, activeSprintStories).forEach((a) => alerts.push(a));
+        const blocked = activeSprintStories.filter((s) => s.kanban_column === 'blocked').length;
+        if (blocked > 0) {
+            alerts.push({ severity: 'warning', message: `${blocked} historias bloqueadas en el sprint activo.` });
+        }
+    }
+
+    return {
+        velocity,
+        velocityAvg: avgVelocity,
+        velocityTrendPct,
+        predictabilityAvg: avgPredictability,
+        productProgress: {
+            totalPoints,
+            completedPoints,
+            pendingPoints,
+            progressPct,
+            epicsCompleted,
+            epicsInProgress,
+            epicsPending,
+        },
+        epicProgress: epics.map((e) => ({
+            id: e.id,
+            codigo: e.codigo,
+            nombre: e.nombre,
+            estado: e.estado,
+            ...e.stats,
+        })),
+        forecast: {
+            sprintsRemaining,
+            estimatedEndDate,
+            avgVelocity: effectiveVelocity,
+            confidence: closedVelocities.length >= 3 ? 'alta' : closedVelocities.length >= 1 ? 'media' : 'baja',
+        },
+        complianceTrend,
+        activeSprint: activeSprint ? { ...activeSprint, stories: activeSprintStories } : null,
+        alerts,
+    };
+}
+
+const documentIncludes = () => {
+    const { Usuario, Persona, SolicitudCambio } = require('../models/index');
+    return [
+        { model: ScrumSprint, as: 'Sprint', attributes: ['id', 'codigo', 'nombre'] },
+        { model: ScrumEpic, as: 'Epic', attributes: ['id', 'codigo', 'nombre'] },
+        { model: ScrumStory, as: 'Story', attributes: ['id', 'codigo', 'titulo'] },
+        {
+            model: SolicitudCambio,
+            as: 'SolicitudCambio',
+            attributes: ['id', 'nombre_cambio', 'estado'],
+        },
+        {
+            model: Usuario,
+            as: 'Autor',
+            attributes: ['id', 'username'],
+            include: [{ model: Persona, as: 'Persona', attributes: ['nombre', 'apellido'] }],
+        },
+    ];
+};
+
+function documentUploadsDir(proyectoId, docId) {
+    return path.join(__dirname, '..', 'uploads', 'scrum', String(proyectoId), String(docId));
+}
+
+async function listDocuments(proyectoId, filters = {}) {
+    const pid = parseInt(proyectoId, 10);
+    const where = { proyecto_id: pid };
+    if (filters.tipo) where.tipo = filters.tipo;
+    if (filters.sprint_id) where.sprint_id = parseInt(filters.sprint_id, 10);
+    if (filters.epic_id) where.epic_id = parseInt(filters.epic_id, 10);
+    if (filters.estado) where.estado = filters.estado;
+
+    const docs = await ScrumDocument.findAll({
+        where,
+        include: documentIncludes(),
+        order: [['updated_at', 'DESC']],
+    });
+
+    return docs.map((d) => d.toJSON());
+}
+
+async function getDocumentById(docId, proyectoId) {
+    const doc = await ScrumDocument.findOne({
+        where: { id: docId, proyecto_id: proyectoId },
+        include: documentIncludes(),
+    });
+    if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+    return doc.toJSON();
+}
+
+function bumpVersion(current) {
+    const parts = String(current || '1.0').split('.');
+    const minor = parseInt(parts[1] || '0', 10) + 1;
+    return `${parts[0]}.${minor}`;
+}
+
+async function createDocument(proyectoId, data, userId) {
+    const contenido = data.contenido || null;
+    return ScrumDocument.create({
+        proyecto_id: proyectoId,
+        tipo: data.tipo,
+        titulo: data.titulo,
+        descripcion: data.descripcion || null,
+        contenido,
+        sprint_id: data.sprint_id || null,
+        epic_id: data.epic_id || null,
+        story_id: data.story_id || null,
+        relacion_ref: data.relacion_ref || null,
+        relacion_tipo: data.relacion_tipo || null,
+        solicitud_cambio_id: data.solicitud_cambio_id || null,
+        riesgo_ref: data.riesgo_ref || null,
+        archivos: [],
+        comentarios: [],
+        version: '1.0',
+        estado: data.estado || 'borrador',
+        autor_id: userId,
+        historial: [{
+            version: '1.0',
+            fecha: new Date().toISOString(),
+            autor_id: userId,
+            accion: 'creacion',
+            contenido,
+        }],
+    });
+}
+
+async function updateDocument(docId, proyectoId, data, userId) {
+    const doc = await ScrumDocument.findOne({ where: { id: docId, proyecto_id: proyectoId } });
+    if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+
+    const historial = Array.isArray(doc.historial) ? [...doc.historial] : [];
+    let newVersion = doc.version;
+
+    if (data.contenido !== undefined && data.contenido !== doc.contenido) {
+        historial.push({
+            version: doc.version,
+            fecha: new Date().toISOString(),
+            autor_id: userId,
+            accion: 'snapshot',
+            contenido: doc.contenido,
+        });
+        newVersion = bumpVersion(doc.version);
+        historial.push({
+            version: newVersion,
+            fecha: new Date().toISOString(),
+            autor_id: userId,
+            accion: 'version',
+            contenido: data.contenido,
+        });
+    }
+
+    await doc.update({
+        tipo: data.tipo ?? doc.tipo,
+        titulo: data.titulo ?? doc.titulo,
+        descripcion: data.descripcion !== undefined ? data.descripcion : doc.descripcion,
+        contenido: data.contenido !== undefined ? data.contenido : doc.contenido,
+        sprint_id: data.sprint_id !== undefined ? data.sprint_id : doc.sprint_id,
+        epic_id: data.epic_id !== undefined ? data.epic_id : doc.epic_id,
+        story_id: data.story_id !== undefined ? data.story_id : doc.story_id,
+        relacion_ref: data.relacion_ref !== undefined ? data.relacion_ref : doc.relacion_ref,
+        relacion_tipo: data.relacion_tipo !== undefined ? data.relacion_tipo : doc.relacion_tipo,
+        solicitud_cambio_id: data.solicitud_cambio_id !== undefined
+            ? data.solicitud_cambio_id
+            : doc.solicitud_cambio_id,
+        riesgo_ref: data.riesgo_ref !== undefined ? data.riesgo_ref : doc.riesgo_ref,
+        estado: data.estado ?? doc.estado,
+        version: newVersion,
+        historial,
+    });
+
+    return getDocumentById(docId, proyectoId);
+}
+
+async function deleteDocument(docId, proyectoId) {
+    const doc = await ScrumDocument.findOne({ where: { id: docId, proyecto_id: proyectoId } });
+    if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+    const dir = documentUploadsDir(proyectoId, docId);
+    await fs.remove(dir).catch(() => { });
+    await doc.destroy();
+}
+
+async function addDocumentAttachment(docId, proyectoId, fileData, userId) {
+    const doc = await ScrumDocument.findOne({ where: { id: docId, proyecto_id: proyectoId } });
+    if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+
+    const { nombre, mime, data: base64Data } = fileData;
+    if (!nombre || !base64Data) {
+        throw Object.assign(new Error('Nombre y archivo son requeridos'), { statusCode: 400 });
+    }
+
+    const buffer = Buffer.from(base64Data, 'base64');
+    if (buffer.length > MAX_DOC_ATTACHMENT_BYTES) {
+        throw Object.assign(new Error('El archivo supera el límite de 5 MB'), { statusCode: 400 });
+    }
+
+    const fileId = uuidv4();
+    const dir = documentUploadsDir(proyectoId, docId);
+    await fs.ensureDir(dir);
+    const safeName = String(nombre).replace(/[^a-zA-Z0-9._-]/g, '_');
+    await fs.writeFile(path.join(dir, `${fileId}-${safeName}`), buffer);
+
+    const archivos = Array.isArray(doc.archivos) ? [...doc.archivos] : [];
+    archivos.push({
+        id: fileId,
+        nombre,
+        mime: mime || 'application/octet-stream',
+        size: buffer.length,
+        uploaded_at: new Date().toISOString(),
+        uploaded_by: userId,
+    });
+    await doc.update({ archivos });
+    return getDocumentById(docId, proyectoId);
+}
+
+async function getDocumentAttachmentFile(docId, proyectoId, fileId) {
+    const doc = await ScrumDocument.findOne({ where: { id: docId, proyecto_id: proyectoId } });
+    if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+
+    const fileMeta = (doc.archivos || []).find((f) => f.id === fileId);
+    if (!fileMeta) throw Object.assign(new Error('Archivo no encontrado'), { statusCode: 404 });
+
+    const dir = documentUploadsDir(proyectoId, docId);
+    const files = await fs.readdir(dir);
+    const match = files.find((f) => f.startsWith(fileId));
+    if (!match) throw Object.assign(new Error('Archivo no encontrado en disco'), { statusCode: 404 });
+
+    return {
+        fileMeta,
+        filePath: path.join(dir, match),
+    };
+}
+
+async function removeDocumentAttachment(docId, proyectoId, fileId) {
+    const doc = await ScrumDocument.findOne({ where: { id: docId, proyecto_id: proyectoId } });
+    if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+
+    const archivos = (doc.archivos || []).filter((f) => f.id !== fileId);
+    if (archivos.length === (doc.archivos || []).length) {
+        throw Object.assign(new Error('Archivo no encontrado'), { statusCode: 404 });
+    }
+
+    const dir = documentUploadsDir(proyectoId, docId);
+    const files = await fs.readdir(dir).catch(() => []);
+    const match = files.find((f) => f.startsWith(fileId));
+    if (match) await fs.remove(path.join(dir, match)).catch(() => { });
+
+    await doc.update({ archivos });
+    return getDocumentById(docId, proyectoId);
+}
+
+async function addDocumentComment(docId, proyectoId, texto, userId) {
+    const doc = await ScrumDocument.findOne({ where: { id: docId, proyecto_id: proyectoId } });
+    if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+    if (!texto || !String(texto).trim()) {
+        throw Object.assign(new Error('El comentario no puede estar vacío'), { statusCode: 400 });
+    }
+
+    const comentarios = Array.isArray(doc.comentarios) ? [...doc.comentarios] : [];
+    comentarios.push({
+        id: uuidv4(),
+        texto: String(texto).trim(),
+        autor_id: userId,
+        fecha: new Date().toISOString(),
+    });
+    await doc.update({ comentarios });
+    return getDocumentById(docId, proyectoId);
+}
+
+async function deleteDocumentComment(docId, proyectoId, commentId, userId) {
+    const doc = await ScrumDocument.findOne({ where: { id: docId, proyecto_id: proyectoId } });
+    if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+
+    const comentarios = (doc.comentarios || []).filter((c) => c.id !== commentId);
+    if (comentarios.length === (doc.comentarios || []).length) {
+        throw Object.assign(new Error('Comentario no encontrado'), { statusCode: 404 });
+    }
+    await doc.update({ comentarios });
+    return getDocumentById(docId, proyectoId);
+}
+
+async function restoreDocumentVersion(docId, proyectoId, version, userId) {
+    const doc = await ScrumDocument.findOne({ where: { id: docId, proyecto_id: proyectoId } });
+    if (!doc) throw Object.assign(new Error('Documento no encontrado'), { statusCode: 404 });
+
+    const historial = Array.isArray(doc.historial) ? [...doc.historial] : [];
+    const entry = historial.find((h) => h.version === version && h.contenido !== undefined);
+    if (!entry) {
+        throw Object.assign(new Error('Versión no encontrada en el historial'), { statusCode: 404 });
+    }
+
+    historial.push({
+        version: doc.version,
+        fecha: new Date().toISOString(),
+        autor_id: userId,
+        accion: 'snapshot',
+        contenido: doc.contenido,
+    });
+
+    const newVersion = bumpVersion(doc.version);
+    historial.push({
+        version: newVersion,
+        fecha: new Date().toISOString(),
+        autor_id: userId,
+        accion: 'restauracion',
+        contenido: entry.contenido,
+        restaurado_desde: version,
+    });
+
+    await doc.update({
+        contenido: entry.contenido,
+        version: newVersion,
+        historial,
+    });
+
+    return getDocumentById(docId, proyectoId);
+}
+
 module.exports = {
     TIPO_PROYECTO_AGIL,
     TIPO_PROYECTO_HIBRIDO,
@@ -871,4 +1358,16 @@ module.exports = {
     closeSprint,
     clearSprintStories,
     recalcSprintPoints,
+    getScrumMetrics,
+    listDocuments,
+    getDocumentById,
+    createDocument,
+    updateDocument,
+    deleteDocument,
+    addDocumentAttachment,
+    getDocumentAttachmentFile,
+    removeDocumentAttachment,
+    addDocumentComment,
+    deleteDocumentComment,
+    restoreDocumentVersion,
 };

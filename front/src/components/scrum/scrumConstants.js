@@ -167,3 +167,58 @@ export const emptyEpic = () => ({
     entregable_ref: '',
     riesgos_asociados: '',
 });
+
+export const DOCUMENT_TYPES = [
+    { value: 'vision', label: 'Visión del producto' },
+    { value: 'roadmap', label: 'Roadmap' },
+    { value: 'dor', label: 'Definition of Ready' },
+    { value: 'dod', label: 'Definition of Done' },
+    { value: 'planning', label: 'Acta Sprint Planning' },
+    { value: 'daily', label: 'Daily notes' },
+    { value: 'review', label: 'Sprint Review' },
+    { value: 'retro', label: 'Sprint Retrospective' },
+    { value: 'decision', label: 'Decisiones del proyecto' },
+    { value: 'evidencia', label: 'Evidencias de entrega' },
+    { value: 'manual', label: 'Manuales' },
+    { value: 'funcional', label: 'Documento funcional' },
+    { value: 'tecnico', label: 'Documento técnico' },
+    { value: 'lecciones', label: 'Lecciones aprendidas' },
+];
+
+export const DOCUMENT_STATES = [
+    { value: 'borrador', label: 'Borrador' },
+    { value: 'vigente', label: 'Vigente' },
+    { value: 'obsoleto', label: 'Obsoleto' },
+];
+
+export const DOCUMENT_STATE_STYLES = {
+    borrador: { background: '#f1f5f9', color: '#475569', border: '#e2e8f0' },
+    vigente: { background: '#d1fae5', color: '#065f46', border: '#a7f3d0' },
+    obsoleto: { background: '#fef3c7', color: '#92400e', border: '#fde68a' },
+};
+
+export const emptyDocument = () => ({
+    tipo: 'planning',
+    titulo: '',
+    descripcion: '',
+    contenido: '',
+    sprint_id: '',
+    epic_id: '',
+    story_id: '',
+    relacion_ref: '',
+    relacion_tipo: 'proyecto',
+    solicitud_cambio_id: '',
+    riesgo_ref: '',
+    archivos: [],
+    comentarios: [],
+    estado: 'borrador',
+});
+
+export const DOCUMENT_RELATION_TYPES = [
+    { value: 'proyecto', label: 'Proyecto' },
+    { value: 'sprint', label: 'Sprint' },
+    { value: 'epic', label: 'Épica' },
+    { value: 'story', label: 'Historia' },
+    { value: 'riesgo', label: 'Riesgo' },
+    { value: 'cambio', label: 'Cambio' },
+];

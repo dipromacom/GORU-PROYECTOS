@@ -54,8 +54,12 @@ export const getAssigneeInitials = (story) => {
 
 export const getSprintUserName = (usuario) => {
     if (!usuario) return '—';
+    const persona = usuario.Persona;
+    if (persona?.nombre) return `${persona.nombre} ${persona.apellido || ''}`.trim();
     return usuario.username || '—';
 };
+
+export const getAutorName = (doc) => getSprintUserName(doc?.Autor);
 
 export const formatSprintDates = (inicio, fin) => {
     if (!inicio || !fin) return '—';

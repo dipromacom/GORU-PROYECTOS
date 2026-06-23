@@ -58,6 +58,7 @@ const models = {
   ScrumSprint: require('./scrum-sprint')(db, Sequelize),
   ScrumStory: require('./scrum-story')(db, Sequelize),
   ScrumConfig: require('./scrum-config')(db, Sequelize),
+  ScrumDocument: require('./scrum-document')(db, Sequelize),
 };
 
 Object.keys(models).forEach((modelKey) => {

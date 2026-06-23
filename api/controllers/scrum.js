@@ -195,6 +195,112 @@ const closeSprint = (req, res) =>
         return r.status(200).json({ success: true, sprint });
     });
 
+const getScrumMetrics = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_VER, async ({ res: r, projectId }) => {
+        const metrics = await ScrumUtils.getScrumMetrics(projectId);
+        return r.status(200).json({ success: true, metrics });
+    });
+
+const listDocuments = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_VER, async ({ res: r, projectId }) => {
+        const documents = await ScrumUtils.listDocuments(projectId, req.query);
+        return r.status(200).json({ success: true, documents });
+    });
+
+const getDocument = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_VER, async ({ res: r, projectId }) => {
+        const document = await ScrumUtils.getDocumentById(req.params.docId, projectId);
+        return r.status(200).json({ success: true, document });
+    });
+
+const createDocument = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_GEST, async ({ res: r, projectId, usuarioId }) => {
+        const document = await ScrumUtils.createDocument(projectId, req.body, usuarioId);
+        const full = await ScrumUtils.getDocumentById(document.id, projectId);
+        return r.status(201).json({ success: true, document: full });
+    });
+
+const updateDocument = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_GEST, async ({ res: r, projectId, usuarioId }) => {
+        const document = await ScrumUtils.updateDocument(req.params.docId, projectId, req.body, usuarioId);
+        return r.status(200).json({ success: true, document });
+    });
+
+const deleteDocument = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_GEST, async ({ res: r, projectId }) => {
+        await ScrumUtils.deleteDocument(req.params.docId, projectId);
+        return r.status(200).json({ success: true });
+    });
+
+const addDocumentAttachment = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_GEST, async ({ res: r, projectId, usuarioId }) => {
+        const document = await ScrumUtils.addDocumentAttachment(
+            req.params.docId,
+            projectId,
+            req.body,
+            usuarioId,
+        );
+        return r.status(200).json({ success: true, document });
+    });
+
+const downloadDocumentAttachment = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_VER, async ({ res: r, projectId }) => {
+        const { fileMeta, filePath } = await ScrumUtils.getDocumentAttachmentFile(
+            req.params.docId,
+            projectId,
+            req.params.fileId,
+        );
+        return r.download(filePath, fileMeta.nombre, (err) => {
+            if (err && !r.headersSent) {
+                return r.status(404).json({ success: false, message: 'No se pudo descargar el archivo' });
+            }
+            return undefined;
+        });
+    });
+
+const removeDocumentAttachment = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_GEST, async ({ res: r, projectId }) => {
+        const document = await ScrumUtils.removeDocumentAttachment(
+            req.params.docId,
+            projectId,
+            req.params.fileId,
+        );
+        return r.status(200).json({ success: true, document });
+    });
+
+const addDocumentComment = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_GEST, async ({ res: r, projectId, usuarioId }) => {
+        const document = await ScrumUtils.addDocumentComment(
+            req.params.docId,
+            projectId,
+            req.body.texto,
+            usuarioId,
+        );
+        return r.status(200).json({ success: true, document });
+    });
+
+const deleteDocumentComment = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_GEST, async ({ res: r, projectId, usuarioId }) => {
+        const document = await ScrumUtils.deleteDocumentComment(
+            req.params.docId,
+            projectId,
+            req.params.commentId,
+            usuarioId,
+        );
+        return r.status(200).json({ success: true, document });
+    });
+
+const restoreDocumentVersion = (req, res) =>
+    withScrumAccess(req, res, P.SCRUM_GEST, async ({ res: r, projectId, usuarioId }) => {
+        const document = await ScrumUtils.restoreDocumentVersion(
+            req.params.docId,
+            projectId,
+            req.body.version,
+            usuarioId,
+        );
+        return r.status(200).json({ success: true, document });
+    });
+
 module.exports = {
     getScrumOverview,
     createEpic,
@@ -219,4 +325,16 @@ module.exports = {
     clearSprintStories,
     activateSprint,
     closeSprint,
+    getScrumMetrics,
+    listDocuments,
+    getDocument,
+    createDocument,
+    updateDocument,
+    deleteDocument,
+    addDocumentAttachment,
+    downloadDocumentAttachment,
+    removeDocumentAttachment,
+    addDocumentComment,
+    deleteDocumentComment,
+    restoreDocumentVersion,
 };

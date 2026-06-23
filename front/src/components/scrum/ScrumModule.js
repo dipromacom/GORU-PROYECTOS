@@ -5,6 +5,8 @@ import { actions as scrumActions, selectors as scrumSelectors } from '../../redu
 import { actions as rolProyectoActions, selectors as rolProyectoSelectors } from '../../reducers/rolProyecto';
 import BacklogPanel from './BacklogPanel';
 import SprintPanel from './SprintPanel';
+import MetricsPanel from './MetricsPanel';
+import DocsPanel from './DocsPanel';
 
 const SECTIONS = [
     { key: 'resumen', label: 'Resumen', icon: 'bi-speedometer2' },
@@ -153,16 +155,16 @@ function ScrumModule({
                     />
                 );
             case 'metricas':
-                return (
-                    <Alert variant="secondary" className="mb-0">
-                        Burndown, velocity y predictibilidad estarán disponibles en una fase posterior.
-                    </Alert>
-                );
+                return <MetricsPanel projectId={projectId} />;
             case 'docs':
                 return (
-                    <Alert variant="secondary" className="mb-0">
-                        DoR, DoD, retrospectivas y actas se integrarán en una fase posterior.
-                    </Alert>
+                    <DocsPanel
+                        projectId={projectId}
+                        sprints={sprints}
+                        epics={epics}
+                        stories={stories}
+                        puedeGestionar={puedeGestionar}
+                    />
                 );
             default:
                 return null;
