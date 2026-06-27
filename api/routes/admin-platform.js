@@ -15,7 +15,9 @@ router.put('/admin/sesion-timeout-config', SecurityUtils.validateToken(AdminPlat
 router.get('/admin/usuarios', SecurityUtils.validateToken(AdminPlatformController.listUsuarios));
 router.patch('/admin/usuarios/:id/tipo-licencia', SecurityUtils.validateToken(AdminPlatformController.patchUsuarioTipoLicencia));
 router.patch('/admin/usuarios/:id/empresa', SecurityUtils.validateToken(AdminPlatformController.patchUsuarioEmpresa));
+router.delete('/admin/usuarios/:id', SecurityUtils.validateToken(AdminPlatformController.deleteUsuario));
 router.post('/admin/empresas', SecurityUtils.validateToken(AdminPlatformController.createEmpresa));
+router.put('/admin/empresas/:id', SecurityUtils.validateToken(AdminPlatformController.updateEmpresa));
 
 router.get(
   '/admin/madurez-direccion-proyectos',

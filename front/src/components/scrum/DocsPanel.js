@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import {
     Row, Col, Card, Button, Form, Table, Spinner, Alert, Modal, Tabs, Tab, ListGroup, InputGroup,
 } from 'react-bootstrap';
+import { connect } from 'react-redux';
 import { toast } from 'react-toastify';
 import moment from 'moment';
 import { pdf } from '@react-pdf/renderer';
@@ -13,15 +14,17 @@ import {
     DOCUMENT_TYPES, DOCUMENT_STATES, DOCUMENT_STATE_STYLES, labelFor,
 } from './scrumConstants';
 import { getAutorName } from './scrumHelpers';
+import { selectors as scrumSelectors } from '../../reducers/scrum';
 
 const LIBRARY_KEYS = ['dor', 'dod', 'retro', 'decision', 'evidencia'];
 
-export default function DocsPanel({
+function DocsPanel({
     projectId,
     sprints = [],
     epics = [],
     stories = [],
     puedeGestionar,
+    esPredictivo = false,
 }) {
     const [documents, setDocuments] = useState([]);
     const [solicitudes, setSolicitudes] = useState([]);
@@ -312,8 +315,8 @@ export default function DocsPanel({
                         <Card.Body>
                             <Tabs activeKey={viewTab} onSelect={(k) => setViewTab(k || 'todos')} className="mb-3 small">
                                 <Tab eventKey="todos" title="Todos" />
-                                <Tab eventKey="sprint" title="Por sprint" />
-                                <Tab eventKey="epica" title="Por épica" />
+                                {!esPredictivo && <Tab eventKey="sprint" title="Por sprint" />}
+                                {!esPredictivo && <Tab eventKey="epica" title="Por épica" />}
                                 <Tab eventKey="retro" title="Retrospectivas" />
                                 <Tab eventKey="decision" title="Decisiones" />
                                 <Tab eventKey="evidencia" title="Evidencias" />
@@ -341,32 +344,36 @@ export default function DocsPanel({
                                         ))}
                                     </Form.Control>
                                 </Col>
-                                <Col md={3}>
-                                    <Form.Control
-                                        as="select"
-                                        size="sm"
-                                        value={filterSprint}
-                                        onChange={(e) => setFilterSprint(e.target.value)}
-                                    >
-                                        <option value="">Todos los sprints</option>
-                                        {sprints.map((s) => (
-                                            <option key={s.id} value={s.id}>{s.codigo} — {s.nombre}</option>
-                                        ))}
-                                    </Form.Control>
-                                </Col>
-                                <Col md={3}>
-                                    <Form.Control
-                                        as="select"
-                                        size="sm"
-                                        value={filterEpic}
-                                        onChange={(e) => setFilterEpic(e.target.value)}
-                                    >
-                                        <option value="">Todas las épicas</option>
-                                        {epics.map((e) => (
-                                            <option key={e.id} value={e.id}>{e.codigo} — {e.nombre}</option>
-                                        ))}
-                                    </Form.Control>
-                                </Col>
+                                {!esPredictivo && (
+                                    <Col md={3}>
+                                        <Form.Control
+                                            as="select"
+                                            size="sm"
+                                            value={filterSprint}
+                                            onChange={(e) => setFilterSprint(e.target.value)}
+                                        >
+                                            <option value="">Todos los sprints</option>
+                                            {sprints.map((s) => (
+                                                <option key={s.id} value={s.id}>{s.codigo} — {s.nombre}</option>
+                                            ))}
+                                        </Form.Control>
+                                    </Col>
+                                )}
+                                {!esPredictivo && (
+                                    <Col md={3}>
+                                        <Form.Control
+                                            as="select"
+                                            size="sm"
+                                            value={filterEpic}
+                                            onChange={(e) => setFilterEpic(e.target.value)}
+                                        >
+                                            <option value="">Todas las épicas</option>
+                                            {epics.map((e) => (
+                                                <option key={e.id} value={e.id}>{e.codigo} — {e.nombre}</option>
+                                            ))}
+                                        </Form.Control>
+                                    </Col>
+                                )}
                             </Row>
 
                             <Table responsive size="sm" className="mb-0">
@@ -486,6 +493,7 @@ export default function DocsPanel({
                 stories={stories}
                 solicitudes={solicitudes}
                 riesgos={riesgos}
+                esPredictivo={esPredictivo}
                 onSave={handleSave}
                 onUploadAttachment={editingDoc?.id ? handleUploadAttachment : null}
                 onRemoveAttachment={editingDoc?.id ? handleRemoveAttachment : null}
@@ -572,3 +580,11 @@ export default function DocsPanel({
         </div>
     );
 }
+
+const mapStateToProps = (state) => ({
+    sprints: scrumSelectors.getSprints(state),
+    epics: scrumSelectors.getEpics(state),
+    stories: scrumSelectors.getStories(state),
+});
+
+export default connect(mapStateToProps)(DocsPanel);

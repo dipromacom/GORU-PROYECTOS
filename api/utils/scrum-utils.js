@@ -302,16 +302,16 @@ async function createStory(proyectoId, data, userId) {
         riesgos_asociados: data.riesgos_asociados || null,
         riesgo: data.riesgo || null,
         prioridad: data.prioridad || null,
-        valor_negocio: data.valor_negocio ?? null,
-        urgencia: data.urgencia ?? null,
-        reduccion_riesgo: data.reduccion_riesgo ?? null,
-        dependencia_estrategica: data.dependencia_estrategica ?? null,
-        impacto_cliente: data.impacto_cliente ?? null,
-        complejidad: data.complejidad ?? null,
-        esfuerzo: data.esfuerzo ?? null,
-        costo_demora: data.costo_demora ?? null,
+        valor_negocio: data.valor_negocio || null,
+        urgencia: data.urgencia || null,
+        reduccion_riesgo: data.reduccion_riesgo || null,
+        dependencia_estrategica: data.dependencia_estrategica || null,
+        impacto_cliente: data.impacto_cliente || null,
+        complejidad: data.complejidad || null,
+        esfuerzo: data.esfuerzo || null,
+        costo_demora: data.costo_demora || null,
         moscow: data.moscow || null,
-        story_points: data.story_points ?? null,
+        story_points: data.story_points || null,
         estado: data.estado || 'idea',
         asignado_a: data.asignado_a || null,
         aprobado_po: Boolean(data.aprobado_po),
@@ -845,7 +845,7 @@ async function clearSprintStories(sprintId, proyectoId, userId) {
 
 function computeBurndownAlerts(sprint, stories) {
     const alerts = [];
-    if (!sprint?.fecha_inicio || !sprint?.fecha_fin) return alerts;
+    if (!sprint || !sprint.fecha_inicio || !sprint.fecha_fin) return alerts;
 
     const start = new Date(sprint.fecha_inicio);
     const end = new Date(sprint.fecha_fin);
@@ -955,15 +955,24 @@ async function getScrumMetrics(proyectoId) {
     const pendingPoints = totalPoints - completedPoints;
     const progressPct = totalPoints > 0 ? Math.round((completedPoints / totalPoints) * 100) : 0;
 
-    const epicsCompleted = epics.filter((e) => e.estado === 'completada'
-        || (e.stats?.porcentajeAvance === 100 && e.stats?.totalHistorias > 0)).length;
-    const epicsInProgress = epics.filter((e) => ['en_ejecucion', 'aprobada'].includes(e.estado)
-        && e.stats?.porcentajeAvance > 0 && e.stats?.porcentajeAvance < 100).length;
+    const epicsCompleted = epics.filter((e) =>
+        e.estado === 'completada' ||
+        (e.stats && e.stats.porcentajeAvance === 100 && e.stats && e.stats.totalHistorias > 0)
+    ).length;
+
+    const epicsInProgress = epics.filter((e) =>
+        ['en_ejecucion', 'aprobada'].includes(e.estado) &&
+        e.stats && e.stats.porcentajeAvance > 0 &&
+        e.stats && e.stats.porcentajeAvance < 100
+    ).length;
     const epicsPending = Math.max(0, epics.length - epicsCompleted - epicsInProgress);
 
+    const lastSprint = velocitySprints[velocitySprints.length - 1];
+
     const effectiveVelocity = avgVelocity
-        || (velocitySprints[velocitySprints.length - 1]?.completados || 0)
+        || (lastSprint && lastSprint.completados)
         || 0;
+
     const sprintsRemaining = effectiveVelocity > 0 ? Math.ceil(pendingPoints / effectiveVelocity) : null;
 
     const closedSprints = sprints.filter((s) => s.estado === 'cerrado' && s.fecha_inicio && s.fecha_fin);
@@ -1160,8 +1169,8 @@ async function updateDocument(docId, proyectoId, data, userId) {
     }
 
     await doc.update({
-        tipo: data.tipo ?? doc.tipo,
-        titulo: data.titulo ?? doc.titulo,
+        tipo: data.tipo || doc.tipo,
+        titulo: data.titulo || doc.titulo,
         descripcion: data.descripcion !== undefined ? data.descripcion : doc.descripcion,
         contenido: data.contenido !== undefined ? data.contenido : doc.contenido,
         sprint_id: data.sprint_id !== undefined ? data.sprint_id : doc.sprint_id,
@@ -1173,7 +1182,7 @@ async function updateDocument(docId, proyectoId, data, userId) {
             ? data.solicitud_cambio_id
             : doc.solicitud_cambio_id,
         riesgo_ref: data.riesgo_ref !== undefined ? data.riesgo_ref : doc.riesgo_ref,
-        estado: data.estado ?? doc.estado,
+        estado: data.estado || doc.estado,
         version: newVersion,
         historial,
     });

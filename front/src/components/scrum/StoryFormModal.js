@@ -9,11 +9,9 @@ import {
     MOSCOW_OPTIONS,
     FIBONACCI_POINTS,
     SCORE_FIELDS,
-    PRIORIZATION_METHODS,
-    labelFor,
     buildUserStoryText,
 } from './scrumConstants';
-import { getUsuarioLabel, normalizeUsuariosProyecto, calculatePuntuacionFinal, getValorEsfuerzoRatio } from './scrumHelpers';
+import { getUsuarioLabel, normalizeUsuariosProyecto, calculatePuntuacionFinal } from './scrumHelpers';
 
 export default function StoryFormModal({
     show,
@@ -25,7 +23,6 @@ export default function StoryFormModal({
     onSave,
     saving,
     readOnly,
-    config,
 }) {
     const [form, setForm] = useState(emptyStory());
     const [pointsWarning, setPointsWarning] = useState('');
@@ -95,25 +92,6 @@ export default function StoryFormModal({
         };
         onSave(payload);
     };
-
-    const metodoProyecto = config?.metodo_priorizacion || 'moscow';
-
-    const getQuadrant = () => {
-        const val = Number(form.valor_negocio) || 0;
-        const eff = Number(form.story_points) || 0;
-        if (!val || !eff) return null;
-        if (val >= 3 && eff < 5) return 'hacer';
-        if (val >= 3 && eff >= 5) return 'planificar';
-        if (val < 3 && eff >= 5) return 'evitar';
-        return 'relleno';
-    };
-
-    const QUADRANTS = [
-        { key: 'hacer', label: 'Hacer primero', className: 'bg-success bg-opacity-10' },
-        { key: 'planificar', label: 'Planificar', className: 'bg-warning bg-opacity-10' },
-        { key: 'relleno', label: 'Relleno', className: 'bg-secondary bg-opacity-10' },
-        { key: 'evitar', label: 'Evitar o posponer', className: 'bg-danger bg-opacity-10' },
-    ];
 
     const plantilla = buildUserStoryText(form.rol_usuario, form.necesidad, form.beneficio);
 
@@ -345,13 +323,31 @@ export default function StoryFormModal({
                         </Tab>
 
                         <Tab eventKey="priorizacion" title="Priorización">
-                            <div className="mb-3">
-                                <Badge bg="secondary">
-                                    Método: {labelFor(PRIORIZATION_METHODS, metodoProyecto)}
-                                </Badge>
-                            </div>
+                            <Form.Group className="mb-3">
+                                <Form.Label>Método de priorización</Form.Label>
+                                <div>
+                                    <Form.Check
+                                        inline
+                                        type="radio"
+                                        label="MoSCoW"
+                                        name="metodo_priorizacion"
+                                        disabled={readOnly}
+                                        checked={form.metodo_priorizacion === 'moscow'}
+                                        onChange={() => set('metodo_priorizacion', 'moscow')}
+                                    />
+                                    <Form.Check
+                                        inline
+                                        type="radio"
+                                        label="Puntuación (1-5)"
+                                        name="metodo_priorizacion"
+                                        disabled={readOnly}
+                                        checked={form.metodo_priorizacion === 'puntuacion'}
+                                        onChange={() => set('metodo_priorizacion', 'puntuacion')}
+                                    />
+                                </div>
+                            </Form.Group>
 
-                            {metodoProyecto === 'moscow' && (
+                            {form.metodo_priorizacion === 'moscow' ? (
                                 <Row className="mb-3">
                                     <Col md={4}>
                                         <Form.Group>
@@ -370,9 +366,7 @@ export default function StoryFormModal({
                                         </Form.Group>
                                     </Col>
                                 </Row>
-                            )}
-
-                            {metodoProyecto === 'formula' && (
+                            ) : (
                                 <>
                                     <Row className="mb-3">
                                         {SCORE_FIELDS.map(({ key, label }) => (
@@ -397,75 +391,6 @@ export default function StoryFormModal({
                                             (suma criterios positivos − complejidad − esfuerzo)
                                         </span>
                                     </Alert>
-                                </>
-                            )}
-
-                            {metodoProyecto === 'valor_esfuerzo' && (
-                                <>
-                                    <Row className="mb-3">
-                                        <Col md={3}>
-                                            <Form.Group>
-                                                <Form.Label>Valor de negocio (1-5)</Form.Label>
-                                                <Form.Control
-                                                    type="number"
-                                                    min={1}
-                                                    max={5}
-                                                    disabled={readOnly}
-                                                    value={form.valor_negocio ?? ''}
-                                                    onChange={(e) => setScore('valor_negocio', e.target.value)}
-                                                />
-                                            </Form.Group>
-                                        </Col>
-                                        <Col md={3}>
-                                            <Form.Group>
-                                                <Form.Label>Story points</Form.Label>
-                                                <Form.Control
-                                                    as="select"
-                                                    disabled={readOnly}
-                                                    value={form.story_points}
-                                                    onChange={(e) => handlePointsChange(e.target.value)}
-                                                >
-                                                    <option value="">Sin estimar</option>
-                                                    {FIBONACCI_POINTS.map((p) => (
-                                                        <option key={p} value={p}>{p}</option>
-                                                    ))}
-                                                </Form.Control>
-                                            </Form.Group>
-                                        </Col>
-                                        <Col md={3} className="d-flex align-items-end pb-2">
-                                            <span className="small text-muted">
-                                                Ratio V/E: <strong>{getValorEsfuerzoRatio(form)?.toFixed(2) ?? '—'}</strong>
-                                            </span>
-                                        </Col>
-                                    </Row>
-                                    <Row>
-                                        <Col md={6}>
-                                            <div className="border rounded p-3">
-                                                <div className="d-flex text-muted mb-2" style={{ fontSize: 11 }}>
-                                                    <span className="me-auto">↑ Valor (Y)</span>
-                                                    <span>Bajo esfuerzo ←</span>
-                                                    <span className="ms-2">→ Alto esfuerzo (X)</span>
-                                                </div>
-                                                <div className="row g-1">
-                                                    {QUADRANTS.map((q) => {
-                                                        const active = getQuadrant() === q.key;
-                                                        return (
-                                                            <div className="col-6" key={q.key}>
-                                                                <div className={`rounded p-2 h-100 border ${q.className} ${active ? 'border-dark border-2' : ''}`} style={{ minHeight: 70 }}>
-                                                                    <div className="small fw-semibold">{q.label}</div>
-                                                                    {active && (
-                                                                        <span style={{ fontSize: 11 }} className="text-muted">
-                                                                            ← Esta historia
-                                                                        </span>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-                                                        );
-                                                    })}
-                                                </div>
-                                            </div>
-                                        </Col>
-                                    </Row>
                                 </>
                             )}
                         </Tab>

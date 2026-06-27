@@ -40,6 +40,7 @@ export default function SprintPanel({
     const [saving, setSaving] = useState(false);
     const [showCloseModal, setShowCloseModal] = useState(false);
     const [closeComment, setCloseComment] = useState('');
+    const [showActivateModal, setShowActivateModal] = useState(false);
     const [readyFilter, setReadyFilter] = useState('');
     const [activeSprintTab, setActiveSprintTab] = useState('planificacion');
 
@@ -154,6 +155,7 @@ export default function SprintPanel({
     };
 
     const handleActivate = async () => {
+        setShowActivateModal(false);
         try {
             await Api.activateScrumSprint(projectId, selectedId);
             toast.success('Sprint activado');
@@ -483,7 +485,7 @@ export default function SprintPanel({
                                         <Card.Header className="bg-white fw-semibold small">Acciones</Card.Header>
                                         <Card.Body className="d-flex flex-column gap-2">
                                             {puedeGestionar && isPlanificable && (
-                                                <Button variant="success" onClick={handleActivate}>
+                                                <Button variant="success" onClick={() => setShowActivateModal(true)}>
                                                     <i className="bi bi-play-fill me-1" /> Activar sprint
                                                 </Button>
                                             )}
@@ -508,10 +510,12 @@ export default function SprintPanel({
                                 <ScrumBan
                                     projectId={projectId}
                                     sprintStories={planning?.sprintStories || []}
-                                    onMove={(storyId, newCol) => {
+                                    onMove={(storyId, newCol, closeDate) => {
                                         const newEstado = newCol === 'done' ? 'done' : 'en_sprint';
                                         const updated = (planning?.sprintStories || []).map((s) =>
-                                            s.id === storyId ? { ...s, kanban_column: newCol, estado: newEstado } : s,
+                                            s.id === storyId
+                                                ? { ...s, kanban_column: newCol, estado: newEstado, estimado_at: closeDate || s.estimado_at }
+                                                : s,
                                         );
                                         setPlanning({ ...planning, sprintStories: updated });
                                     }}
@@ -647,6 +651,22 @@ export default function SprintPanel({
                 saving={saving}
                 readOnly={!puedeGestionar}
             />
+
+            <Modal show={showActivateModal} onHide={() => setShowActivateModal(false)} centered>
+                <Modal.Header closeButton><Modal.Title>Activar sprint</Modal.Title></Modal.Header>
+                <Modal.Body>
+                    <p>¿Estás seguro de activar <strong>{sprint?.nombre}</strong>?</p>
+                    <Alert variant="warning" className="small mb-0">
+                        <i className="bi bi-exclamation-triangle me-1" />
+                        Al activar el primer sprint, <strong>el proyecto completo pasará al estado "Ejecución"</strong>.
+                        Las historias asignadas al sprint cambiarán a "En sprint".
+                    </Alert>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => setShowActivateModal(false)}>Cancelar</Button>
+                    <Button variant="success" onClick={handleActivate}>Activar sprint</Button>
+                </Modal.Footer>
+            </Modal>
 
             <Modal show={showCloseModal} onHide={() => setShowCloseModal(false)} centered>
                 <Modal.Header closeButton><Modal.Title>Cerrar sprint</Modal.Title></Modal.Header>

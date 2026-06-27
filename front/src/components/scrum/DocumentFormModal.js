@@ -13,6 +13,7 @@ export default function DocumentFormModal({
     stories = [],
     solicitudes = [],
     riesgos = [],
+    esPredictivo = false,
     onSave,
     onUploadAttachment,
     onRemoveAttachment,
@@ -134,53 +135,59 @@ export default function DocumentFormModal({
                                     onChange={(e) => setField('relacion_tipo', e.target.value)}
                                     disabled={readOnly}
                                 >
-                                    {DOCUMENT_RELATION_TYPES.map((r) => (
+                                    {DOCUMENT_RELATION_TYPES.filter((r) => !esPredictivo || r.value === 'proyecto').map((r) => (
                                         <option key={r.value} value={r.value}>{r.label}</option>
                                     ))}
                                 </Form.Control>
                             </Form.Group>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Sprint</Form.Label>
-                                <Form.Control
-                                    as="select"
-                                    value={form.sprint_id || ''}
-                                    onChange={(e) => setField('sprint_id', e.target.value)}
-                                    disabled={readOnly}
-                                >
-                                    <option value="">— Ninguno —</option>
-                                    {sprints.map((s) => (
-                                        <option key={s.id} value={s.id}>{s.codigo} — {s.nombre}</option>
-                                    ))}
-                                </Form.Control>
-                            </Form.Group>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Épica</Form.Label>
-                                <Form.Control
-                                    as="select"
-                                    value={form.epic_id || ''}
-                                    onChange={(e) => setField('epic_id', e.target.value)}
-                                    disabled={readOnly}
-                                >
-                                    <option value="">— Ninguna —</option>
-                                    {epics.map((e) => (
-                                        <option key={e.id} value={e.id}>{e.codigo} — {e.nombre}</option>
-                                    ))}
-                                </Form.Control>
-                            </Form.Group>
-                            <Form.Group className="mb-3">
-                                <Form.Label>Historia</Form.Label>
-                                <Form.Control
-                                    as="select"
-                                    value={form.story_id || ''}
-                                    onChange={(e) => setField('story_id', e.target.value)}
-                                    disabled={readOnly}
-                                >
-                                    <option value="">— Ninguna —</option>
-                                    {stories.map((s) => (
-                                        <option key={s.id} value={s.id}>{s.codigo} — {s.titulo}</option>
-                                    ))}
-                                </Form.Control>
-                            </Form.Group>
+                            {!esPredictivo && (
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Sprint</Form.Label>
+                                    <Form.Control
+                                        as="select"
+                                        value={form.sprint_id || ''}
+                                        onChange={(e) => setField('sprint_id', e.target.value)}
+                                        disabled={readOnly}
+                                    >
+                                        <option value="">— Ninguno —</option>
+                                        {sprints.map((s) => (
+                                            <option key={s.id} value={s.id}>{s.codigo} — {s.nombre}</option>
+                                        ))}
+                                    </Form.Control>
+                                </Form.Group>
+                            )}
+                            {!esPredictivo && (
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Épica</Form.Label>
+                                    <Form.Control
+                                        as="select"
+                                        value={form.epic_id || ''}
+                                        onChange={(e) => setField('epic_id', e.target.value)}
+                                        disabled={readOnly}
+                                    >
+                                        <option value="">— Ninguna —</option>
+                                        {epics.map((e) => (
+                                            <option key={e.id} value={e.id}>{e.codigo} — {e.nombre}</option>
+                                        ))}
+                                    </Form.Control>
+                                </Form.Group>
+                            )}
+                            {!esPredictivo && (
+                                <Form.Group className="mb-3">
+                                    <Form.Label>Historia</Form.Label>
+                                    <Form.Control
+                                        as="select"
+                                        value={form.story_id || ''}
+                                        onChange={(e) => setField('story_id', e.target.value)}
+                                        disabled={readOnly}
+                                    >
+                                        <option value="">— Ninguna —</option>
+                                        {stories.map((s) => (
+                                            <option key={s.id} value={s.id}>{s.codigo} — {s.titulo}</option>
+                                        ))}
+                                    </Form.Control>
+                                </Form.Group>
+                            )}
                             <Form.Group className="mb-3">
                                 <Form.Label>Solicitud de cambio</Form.Label>
                                 <Form.Control

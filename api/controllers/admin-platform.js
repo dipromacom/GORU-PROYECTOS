@@ -77,8 +77,47 @@ const patchUsuarioEmpresa = async (req, res) => {
 const createEmpresa = async (req, res) => {
     try {
         if (!(await assertSuperAdmin(req, res))) return;
+        const { nombre } = req.body || {};
+        if (!nombre || !nombre.trim()) {
+            return res.status(400).json({ success: false, message: 'El nombre de la empresa es obligatorio.' });
+        }
+        const exists = await EmpresaUtils.existsEmpresaNombreCaseInsensitive(nombre);
+        if (exists) {
+            return res.status(400).json({ success: false, message: 'Ya existe una empresa con ese nombre.' });
+        }
         const empresa = await EmpresaUtils.createEmpresa(req.body);
         return res.status(201).json({ success: true, data: empresa });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
+const updateEmpresa = async (req, res) => {
+    try {
+        if (!(await assertSuperAdmin(req, res))) return;
+        const { id } = req.params;
+        const { nombre } = req.body || {};
+        const eid = parseInt(id, 10);
+        if (Number.isNaN(eid)) {
+            return res.status(400).json({ success: false, message: 'ID de empresa inválido.' });
+        }
+
+        if (nombre !== undefined) {
+            if (!nombre || !nombre.trim()) {
+                return res.status(400).json({ success: false, message: 'El nombre de la empresa es obligatorio.' });
+            }
+            const exists = await EmpresaUtils.existsEmpresaNombreCaseInsensitive(nombre, eid);
+            if (exists) {
+                return res.status(400).json({ success: false, message: 'Ya existe una empresa con ese nombre.' });
+            }
+        }
+
+        const updated = await EmpresaUtils.updateEmpresa(eid, req.body || {});
+        if (!updated) {
+            return res.status(404).json({ success: false, message: 'Empresa no encontrada.' });
+        }
+
+        return res.status(200).json({ success: true, data: updated });
     } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
@@ -156,11 +195,40 @@ const putSesionTimeoutConfig = async (req, res) => {
     }
 };
 
+const deleteUsuario = async (req, res) => {
+    try {
+        if (!(await assertSuperAdmin(req, res))) return;
+        const { id } = req.params;
+        const uid = parseInt(id, 10);
+        if (Number.isNaN(uid)) {
+            return res.status(400).json({ success: false, message: 'ID de usuario inválido.' });
+        }
+
+        const usuario = await Usuario.findByPk(uid);
+        if (!usuario) {
+            return res.status(404).json({ success: false, message: 'Usuario no encontrado.' });
+        }
+
+        await usuario.update({
+            eliminado: true,
+            suspendido: true,
+            fecha_eliminacion: new Date(),
+            fecha_suspension: new Date(),
+        });
+
+        return res.status(200).json({ success: true, message: 'Usuario suspendido y marcado como eliminado. Sus datos históricos en proyectos se conservan.' });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     listUsuarios,
     patchUsuarioTipoLicencia,
     patchUsuarioEmpresa,
+    deleteUsuario,
     createEmpresa,
+    updateEmpresa,
     getColaboradoresProyectoConfig,
     putColaboradoresProyectoConfig,
     getSesionTimeoutConfig,

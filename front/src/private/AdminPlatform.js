@@ -20,6 +20,7 @@ import {
     patchAdminUsuarioEmpresa,
     deleteAdminUsuario,
     postAdminEmpresa,
+    putAdminEmpresa,
     getAllTipoLicenciaCatalogo,
     getAllEmpresasCatalogo,
     getAdminColaboradoresProyectoConfig,
@@ -47,6 +48,12 @@ function AdminPlatform({ user }) {
     const [empIdent, setEmpIdent] = useState('');
     const [empTipoId, setEmpTipoId] = useState('RUC');
     const [creatingEmp, setCreatingEmp] = useState(false);
+    const [editEmpTarget, setEditEmpTarget] = useState(null);
+    const [editEmpNombre, setEditEmpNombre] = useState('');
+    const [editEmpIdent, setEditEmpIdent] = useState('');
+    const [editEmpTipoId, setEditEmpTipoId] = useState('RUC');
+    const [editEmpActivo, setEditEmpActivo] = useState(true);
+    const [savingEmpEdit, setSavingEmpEdit] = useState(false);
 
     const [colabCfg, setColabCfg] = useState(null);
     const [colabDraft, setColabDraft] = useState({
@@ -369,12 +376,17 @@ function AdminPlatform({ user }) {
             toast.warn('Nombre e identificación son obligatorios.');
             return;
         }
+        const nombreNormalizado = empNombre.trim().toLowerCase();
+        if (empresas.some((em) => (em.nombre || '').trim().toLowerCase() === nombreNormalizado)) {
+            toast.warn('Ya existe una empresa con ese nombre.');
+            return;
+        }
         setCreatingEmp(true);
         try {
             await postAdminEmpresa({
                 nombre: empNombre.trim(),
                 identificacion: empIdent.trim(),
-                tipoIdentificacion: empTipoId || 'RUC',
+                tipoIdentificacion: empTipoId.trim() || 'RUC',
             });
             toast.success('Empresa creada.');
             setEmpNombre('');
@@ -384,6 +396,54 @@ function AdminPlatform({ user }) {
             toast.error(er.response && er.response.data && er.response.data.message ? er.response.data.message : er.message);
         } finally {
             setCreatingEmp(false);
+        }
+    };
+
+    const closeEditEmpresaModal = () => {
+        setEditEmpTarget(null);
+        setEditEmpNombre('');
+        setEditEmpIdent('');
+        setEditEmpTipoId('RUC');
+        setEditEmpActivo(true);
+        setSavingEmpEdit(false);
+    };
+
+    const handleEditarEmpresa = (empresa) => {
+        setEditEmpTarget(empresa);
+        setEditEmpNombre(empresa.nombre || '');
+        setEditEmpIdent(empresa.identificacion || '');
+        setEditEmpTipoId(empresa.tipo_identificacion || 'RUC');
+        setEditEmpActivo(empresa.activo !== false);
+    };
+
+    const handleGuardarEmpresaEdit = async (e) => {
+        e.preventDefault();
+        if (!editEmpTarget) return;
+        if (!editEmpNombre.trim() || !editEmpIdent.trim()) {
+            toast.warn('Nombre e identificación son obligatorios.');
+            return;
+        }
+        const nombreNormalizado = editEmpNombre.trim().toLowerCase();
+        if (empresas.some((em) => em.id !== editEmpTarget.id && (em.nombre || '').trim().toLowerCase() === nombreNormalizado)) {
+            toast.warn('Ya existe una empresa con ese nombre.');
+            return;
+        }
+
+        setSavingEmpEdit(true);
+        try {
+            await putAdminEmpresa(editEmpTarget.id, {
+                nombre: editEmpNombre.trim(),
+                identificacion: editEmpIdent.trim(),
+                tipoIdentificacion: editEmpTipoId.trim() || 'RUC',
+                activo: editEmpActivo,
+            });
+            toast.success('Empresa actualizada.');
+            closeEditEmpresaModal();
+            await loadCatalogos();
+        } catch (er) {
+            toast.error(er.response && er.response.data && er.response.data.message ? er.response.data.message : er.message);
+        } finally {
+            setSavingEmpEdit(false);
         }
     };
 
@@ -582,6 +642,55 @@ function AdminPlatform({ user }) {
 
                             <Card className="mb-4 shadow-sm border-0">
                                 <Card.Body className="px-3 px-md-4 py-4">
+                                    <Card.Title className="blue h5 mb-3">Empresas registradas</Card.Title>
+                                    <p className="text-muted small mb-3">
+                                        Visualice y edite los datos principales de las empresas disponibles en la plataforma.
+                                    </p>
+                                    <div className="table-responsive">
+                                        <Table striped bordered hover size="sm" className="align-middle admin-table">
+                                            <thead>
+                                                <tr>
+                                                    <th>ID</th>
+                                                    <th>Nombre</th>
+                                                    <th>Identificación</th>
+                                                    <th>Tipo ID</th>
+                                                    <th>Estado</th>
+                                                    <th> </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {empresas.length === 0 ? (
+                                                    <tr>
+                                                        <td colSpan={6} className="text-center text-muted">
+                                                            No hay empresas registradas.
+                                                        </td>
+                                                    </tr>
+                                                ) : empresas.map((em) => (
+                                                    <tr key={em.id}>
+                                                        <td>{em.id}</td>
+                                                        <td>{em.nombre}</td>
+                                                        <td>{em.identificacion || '—'}</td>
+                                                        <td>{em.tipo_identificacion || '—'}</td>
+                                                        <td>{em.activo === false ? 'Inactiva' : 'Activa'}</td>
+                                                        <td className="text-nowrap">
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline-primary"
+                                                                onClick={() => handleEditarEmpresa(em)}
+                                                            >
+                                                                Editar
+                                                            </Button>
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </Table>
+                                    </div>
+                                </Card.Body>
+                            </Card>
+
+                            <Card className="mb-4 shadow-sm border-0">
+                                <Card.Body className="px-3 px-md-4 py-4">
                                     <Card.Title className="blue h5 mb-4">Usuarios</Card.Title>
                                     <Row className="g-2 align-items-end admin-search-row mb-4">
                                         <Col xs={12} md={6} lg={5}>
@@ -700,18 +809,18 @@ function AdminPlatform({ user }) {
                             </Card>
                         </Tab.Pane>
 
-                        <Modal show={!!deleteTarget} onHide={() => { setDeleteTarget(null); setDeleteConfirmText(''); }} centered>
+                        <Modal show={!!deleteTarget} onHide={() => { setDeleteTarget(null); setDeleteConfirmText(''); setDeleting(false); }} centered>
                             <Modal.Header closeButton>
                                 <Modal.Title>Eliminar usuario permanentemente</Modal.Title>
                             </Modal.Header>
                             <Modal.Body>
                                 <p className="text-danger fw-semibold">
                                     <i className="bi bi-exclamation-triangle me-2" />
-                                    Esta acción no se puede deshacer.
+                                    El usuario quedará suspendido y no podrá acceder al sistema.
                                 </p>
                                 <p>
-                                    Se eliminará el usuario <strong>{deleteTarget?.username}</strong> y todos sus datos asociados
-                                    (proyectos, evaluaciones, criterios, etc.).
+                                    Se marcará como eliminado lógico al usuario <strong>{deleteTarget?.username}</strong>.
+                                    Sus datos históricos en proyectos, evaluaciones y asignaciones se conservan.
                                 </p>
                                 <Form.Group>
                                     <Form.Label>
@@ -736,6 +845,53 @@ function AdminPlatform({ user }) {
                                     {deleting ? 'Eliminando…' : 'Eliminar usuario'}
                                 </Button>
                             </Modal.Footer>
+                        </Modal>
+
+                        <Modal show={!!editEmpTarget} onHide={closeEditEmpresaModal} centered>
+                            <Form onSubmit={handleGuardarEmpresaEdit}>
+                                <Modal.Header closeButton>
+                                    <Modal.Title>Editar empresa</Modal.Title>
+                                </Modal.Header>
+                                <Modal.Body>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Nombre</Form.Label>
+                                        <Form.Control
+                                            value={editEmpNombre}
+                                            onChange={(e) => setEditEmpNombre(e.target.value)}
+                                            autoComplete="organization"
+                                        />
+                                    </Form.Group>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Identificación</Form.Label>
+                                        <Form.Control
+                                            value={editEmpIdent}
+                                            onChange={(e) => setEditEmpIdent(e.target.value)}
+                                        />
+                                    </Form.Group>
+                                    <Form.Group className="mb-3">
+                                        <Form.Label>Tipo ID</Form.Label>
+                                        <Form.Control
+                                            value={editEmpTipoId}
+                                            onChange={(e) => setEditEmpTipoId(e.target.value)}
+                                            placeholder="RUC"
+                                        />
+                                    </Form.Group>
+                                    <Form.Check
+                                        type="checkbox"
+                                        label="Empresa activa"
+                                        checked={editEmpActivo}
+                                        onChange={(e) => setEditEmpActivo(e.target.checked)}
+                                    />
+                                </Modal.Body>
+                                <Modal.Footer>
+                                    <Button variant="secondary" onClick={closeEditEmpresaModal} disabled={savingEmpEdit}>
+                                        Cancelar
+                                    </Button>
+                                    <Button type="submit" variant="primary" disabled={savingEmpEdit}>
+                                        {savingEmpEdit ? 'Guardando…' : 'Guardar cambios'}
+                                    </Button>
+                                </Modal.Footer>
+                            </Form>
                         </Modal>
 
                         <Tab.Pane eventKey="madurez">

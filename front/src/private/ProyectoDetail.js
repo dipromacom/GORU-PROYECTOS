@@ -51,6 +51,7 @@ import GanttChart from "../components/GanttChart/GanttChart";
 //pizarra
 import Whiteboard from "../components/pizarra/Whiteboard";
 import ScrumModule from "../components/scrum/ScrumModule";
+import DocsPanel from "../components/scrum/DocsPanel";
 //Importar el Modal de Configuración
 import RoleSettingsModal from "../components/proyectoDetails/RoleSettingsModal";
 //sesion action
@@ -349,6 +350,9 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         tipoProyecto?.toString() === TIPO_PROYECTO_AGIL
         || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO
     )
+    const esProyectoPredictivo = esProyecto && tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO
+    const pestanasNoAptasParaAgil = ['alcance', 'hitos', 'costos', 'calidad', 'riesgos', 'gantt'];
+    const mostrarPestanasNoAptasParaAgil = !esProyectoEquipoAgil;
     const [leccionesAprendidas, setLeccionesAprendidas] = useState("")
     const [beneficios, setBeneficios] = useState("");
 
@@ -838,6 +842,12 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
     }
 
+    useEffect(() => {
+        if (esProyectoEquipoAgil && pestanasNoAptasParaAgil.includes(activeKey)) {
+            setActiveKey('general');
+        }
+    }, [esProyectoEquipoAgil, activeKey]);
+
     const handleFilterChange = (e) => {
         const value = e.target.value;
         setTaskFilter(value);
@@ -848,7 +858,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         }
     };
 
-    const isTodoOrKanban = () => (activeKey === 'to-do' || activeKey === 'project-management' || activeKey === 'Analisis-ambiental' || activeKey === 'gantt' || activeKey === 'pizarra' || activeKey === 'scrum')
+    const isTodoOrKanban = () => (activeKey === 'to-do' || activeKey === 'project-management' || activeKey === 'Analisis-ambiental' || activeKey === 'gantt' || activeKey === 'pizarra' || activeKey === 'scrum' || activeKey === 'documentacion')
 
 
     function validateForm() {
@@ -1147,7 +1157,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             {(!esActividad && !esPrograma) && puede(PermProy.ANALISIS_AMBIENTAL_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="Analisis-ambiental">Analisis Ambiental</Nav.Link></Nav.Item>
                                             )}
-                                            {mostrarPestanasEstandar && (
+                                            {mostrarPestanasEstandar && mostrarPestanasNoAptasParaAgil && (
                                                 <>
                                                     {puede(PermProy.ALCANCE_VER) && (
                                                         <Nav.Item><Nav.Link eventKey="alcance">Alcance</Nav.Link></Nav.Item>
@@ -1160,13 +1170,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                     )}
                                                 </>
                                             )}
-                                            {(!esActividad && !esPrograma) && puede(PermProy.CALIDAD_VER) && (
+                                            {(!esActividad && !esPrograma) && mostrarPestanasNoAptasParaAgil && puede(PermProy.CALIDAD_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="calidad">Calidad</Nav.Link></Nav.Item>
                                             )}
-                                            {mostrarPestanasEstandar && puede(PermProy.RIESGOS_VER) && (
+                                            {mostrarPestanasEstandar && mostrarPestanasNoAptasParaAgil && puede(PermProy.RIESGOS_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="riesgos">Riesgos</Nav.Link></Nav.Item>
                                             )}
-                                            {puede(PermProy.GANTT_VER) && (
+                                            {mostrarPestanasNoAptasParaAgil && puede(PermProy.GANTT_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="gantt">{esPrograma ? "Roadmap" : "Gantt"}</Nav.Link></Nav.Item>
                                             )}
                                             {puede(PermProy.TODO_VER) && (
@@ -1179,11 +1189,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 <Nav.Item><Nav.Link eventKey="proyectos-programa">Proyectos</Nav.Link></Nav.Item>
                                             )}
 
-                                            {(!esActividad && !esPrograma) && puede(PermProy.PIZARRA_VER) && (
-                                                <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
-                                            )}
                                             {esProyectoScrum && puede(PermProy.SCRUM_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="scrum">Scrum</Nav.Link></Nav.Item>
+                                            )}
+                                            {puede(PermProy.SCRUM_VER) && (
+                                                <Nav.Item><Nav.Link eventKey="documentacion">Documentación</Nav.Link></Nav.Item>
+                                            )}
+                                            {(!esActividad && !esPrograma) && puede(PermProy.PIZARRA_VER) && (
+                                                <Nav.Item><Nav.Link eventKey="pizarra">Pizarra</Nav.Link></Nav.Item>
                                             )}
                                         </>
                                     )}
@@ -2499,6 +2512,15 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         <ScrumModule
                                             projectId={numericId}
                                             puedeGestionar={puede(PermProy.SCRUM_GEST)}
+                                        />
+                                    </Tab.Pane>
+                                )}
+                                {puede(PermProy.SCRUM_VER) && (
+                                    <Tab.Pane eventKey="documentacion">
+                                        <DocsPanel
+                                            projectId={numericId}
+                                            puedeGestionar={puede(PermProy.SCRUM_GEST)}
+                                            esPredictivo={esProyectoPredictivo}
                                         />
                                     </Tab.Pane>
                                 )}

@@ -664,7 +664,6 @@ export default function BacklogPanel({
                 onSave={handleSaveStory}
                 saving={saving}
                 readOnly={!puedeGestionar}
-                config={config}
             />
 
             <Modal show={!!confirmDelete} onHide={() => setConfirmDelete(null)} centered>

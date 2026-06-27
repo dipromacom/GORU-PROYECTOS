@@ -40,6 +40,14 @@ const getEmpresaById = async (req, res) => {
 const createEmpresa = async (req, res) => {
   try {
     const data = req.body;
+    const { nombre } = data || {};
+    if (!nombre || !nombre.trim()) {
+      return res.status(400).json({ success: false, message: 'El nombre de la empresa es obligatorio.' });
+    }
+    const exists = await EmpresaUtils.existsEmpresaNombreCaseInsensitive(nombre);
+    if (exists) {
+      return res.status(400).json({ success: false, message: 'Ya existe una empresa con ese nombre.' });
+    }
     const empresa = await EmpresaUtils.createEmpresa(data);
     return res.status(201).json({ success: true, data: empresa });
   } catch (error) {

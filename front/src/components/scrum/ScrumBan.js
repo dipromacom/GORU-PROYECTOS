@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Card, Row, Col, Badge, Alert } from 'react-bootstrap';
+import { Card, Row, Col, Badge, Alert, Modal, Form, Button } from 'react-bootstrap';
 import { DragDropContext, Droppable, Draggable } from 'react-beautiful-dnd';
 import { PriorityPill } from './ScrumPill';
 import { getEpicLabel } from './scrumHelpers';
@@ -12,8 +12,17 @@ const COLUMNS = [
     { key: 'done', label: 'Terminado', variant: 'success' },
 ];
 
+function formatDate(iso) {
+    if (!iso) return null;
+    const d = new Date(iso);
+    return d.toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit', year: 'numeric' });
+}
+
 export default function ScrumBan({ projectId, sprintStories, onMove }) {
     const [saving, setSaving] = useState(false);
+    const [closeTarget, setCloseTarget] = useState(null);
+    const [closeDate, setCloseDate] = useState(new Date().toISOString().split('T')[0]);
+    const [showCloseModal, setShowCloseModal] = useState(false);
 
     const storiesByColumn = (colKey) =>
         (sprintStories || []).filter((s) => (s.kanban_column || 'todo') === colKey);
@@ -25,17 +34,40 @@ export default function ScrumBan({ projectId, sprintStories, onMove }) {
         const story = (sprintStories || []).find((s) => String(s.id) === draggableId);
         if (!story || story.kanban_column === newCol) return;
 
-        const storyId = parseInt(draggableId, 10);
-        if (onMove) onMove(storyId, newCol);
+        if (newCol === 'done') {
+            setCloseTarget(story);
+            setCloseDate(new Date().toISOString().split('T')[0]);
+            setShowCloseModal(true);
+            return;
+        }
+
+        applyMove(story, newCol);
+    };
+
+    const applyMove = async (story, newCol, customDate) => {
+        const storyId = parseInt(story.id, 10);
+        const payload = { kanban_column: newCol };
+        if (newCol === 'done' && customDate) {
+            payload.estimado_at = customDate;
+        }
+
+        if (onMove) onMove(storyId, newCol, customDate);
         setSaving(true);
         try {
-            await Api.updateScrumStory(projectId, storyId, { kanban_column: newCol });
+            await Api.updateScrumStory(projectId, storyId, payload);
         } catch (e) {
             if (onMove) onMove(storyId, story.kanban_column);
             toast.error('Error al mover la historia');
         } finally {
             setSaving(false);
         }
+    };
+
+    const confirmClose = () => {
+        if (!closeTarget) return;
+        applyMove(closeTarget, 'done', closeDate);
+        setShowCloseModal(false);
+        setCloseTarget(null);
     };
 
     if (!sprintStories?.length) {
@@ -47,70 +79,104 @@ export default function ScrumBan({ projectId, sprintStories, onMove }) {
     }
 
     return (
-        <DragDropContext onDragEnd={handleDragEnd}>
-            <Row className="g-3">
-                {COLUMNS.map((col) => {
-                    const items = storiesByColumn(col.key);
-                    return (
-                        <Col md={4} key={col.key}>
-                            <Card className="border-0 shadow-sm h-100">
-                                <Card.Header className={`bg-${col.variant} bg-opacity-10 fw-semibold small d-flex justify-content-between`}>
-                                    <span>{col.label}</span>
-                                    <Badge bg={col.variant}>{items.length}</Badge>
-                                </Card.Header>
-                                <Droppable droppableId={col.key}>
-                                    {(provided) => (
-                                        <div
-                                            ref={provided.innerRef}
-                                            {...provided.droppableProps}
-                                            style={{ minHeight: 200 }}
-                                            className="p-2"
-                                        >
-                                            {items.map((story, index) => (
-                                                <Draggable
-                                                    key={story.id}
-                                                    draggableId={String(story.id)}
-                                                    index={index}
-                                                >
-                                                    {(dragProvided) => (
-                                                        <div
-                                                            ref={dragProvided.innerRef}
-                                                            {...dragProvided.draggableProps}
-                                                            {...dragProvided.dragHandleProps}
-                                                            className="mb-2"
-                                                        >
-                                                            <Card className="shadow-sm">
-                                                                <Card.Body className="p-2">
-                                                                    <div className="d-flex justify-content-between align-items-start mb-1">
-                                                                        <code className="small">{story.codigo}</code>
-                                                                        <PriorityPill prioridad={story.prioridad} />
-                                                                    </div>
-                                                                    <div className="small fw-semibold mb-1">{story.titulo}</div>
-                                                                    <div className="d-flex justify-content-between text-muted" style={{ fontSize: 11 }}>
-                                                                        <span>{getEpicLabel(story)}</span>
-                                                                        <span>SP: {story.story_points ?? '—'}</span>
-                                                                    </div>
-                                                                    {story.asignado_a && (
-                                                                        <div className="text-muted mt-1" style={{ fontSize: 11 }}>
-                                                                            <i className="bi bi-person me-1" />
-                                                                            {story.Asignado?.username || '—'}
+        <>
+            <DragDropContext onDragEnd={handleDragEnd}>
+                <Row className="g-3">
+                    {COLUMNS.map((col) => {
+                        const items = storiesByColumn(col.key);
+                        return (
+                            <Col md={4} key={col.key}>
+                                <Card className="border-0 shadow-sm h-100">
+                                    <Card.Header className={`bg-${col.variant} bg-opacity-10 fw-semibold small d-flex justify-content-between`}>
+                                        <span>{col.label}</span>
+                                        <Badge bg={col.variant}>{items.length}</Badge>
+                                    </Card.Header>
+                                    <Droppable droppableId={col.key}>
+                                        {(provided) => (
+                                            <div
+                                                ref={provided.innerRef}
+                                                {...provided.droppableProps}
+                                                style={{ minHeight: 200 }}
+                                                className="p-2"
+                                            >
+                                                {items.map((story, index) => (
+                                                    <Draggable
+                                                        key={story.id}
+                                                        draggableId={String(story.id)}
+                                                        index={index}
+                                                    >
+                                                        {(dragProvided) => (
+                                                            <div
+                                                                ref={dragProvided.innerRef}
+                                                                {...dragProvided.draggableProps}
+                                                                {...dragProvided.dragHandleProps}
+                                                                className="mb-2"
+                                                            >
+                                                                <Card className="shadow-sm">
+                                                                    <Card.Body className="p-2">
+                                                                        <div className="d-flex justify-content-between align-items-start mb-1">
+                                                                            <code className="small">{story.codigo}</code>
+                                                                            <PriorityPill prioridad={story.prioridad} />
                                                                         </div>
-                                                                    )}
-                                                                </Card.Body>
-                                                            </Card>
-                                                        </div>
-                                                    )}
-                                                </Draggable>
-                                            ))}
-                                            {provided.placeholder}
-                                        </div>
-                                    )}
-                                </Droppable>
-                            </Card>
-                        </Col>
-                    );
-                })}
-            </Row>
-        </DragDropContext>
+                                                                        <div className="small fw-semibold mb-1">{story.titulo}</div>
+                                                                        <div className="d-flex justify-content-between text-muted" style={{ fontSize: 11 }}>
+                                                                            <span>{getEpicLabel(story)}</span>
+                                                                            <span>SP: {story.story_points ?? '—'}</span>
+                                                                        </div>
+                                                                        {story.asignado_a && (
+                                                                            <div className="text-muted mt-1" style={{ fontSize: 11 }}>
+                                                                                <i className="bi bi-person me-1" />
+                                                                                {story.Asignado?.username || '—'}
+                                                                            </div>
+                                                                        )}
+                                                                        {story.estimado_at && (
+                                                                            <div className="mt-1">
+                                                                                <span className="badge bg-success" style={{ fontSize: 10 }}>
+                                                                                    Finalizado: {formatDate(story.estimado_at)}
+                                                                                </span>
+                                                                            </div>
+                                                                        )}
+                                                                    </Card.Body>
+                                                                </Card>
+                                                            </div>
+                                                        )}
+                                                    </Draggable>
+                                                ))}
+                                                {provided.placeholder}
+                                            </div>
+                                        )}
+                                    </Droppable>
+                                </Card>
+                            </Col>
+                        );
+                    })}
+                </Row>
+            </DragDropContext>
+
+            <Modal show={showCloseModal} onHide={() => { setShowCloseModal(false); setCloseTarget(null); }} centered>
+                <Modal.Header closeButton>
+                    <Modal.Title>Cerrar historia</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p>¿Cerrar la historia <strong>{closeTarget?.codigo} — {closeTarget?.titulo}</strong>?</p>
+                    <Form.Group>
+                        <Form.Label>Fecha de finalización:</Form.Label>
+                        <Form.Control
+                            type="date"
+                            value={closeDate}
+                            onChange={(e) => setCloseDate(e.target.value)}
+                        />
+                    </Form.Group>
+                </Modal.Body>
+                <Modal.Footer>
+                    <Button variant="secondary" onClick={() => { setShowCloseModal(false); setCloseTarget(null); }}>
+                        Cancelar
+                    </Button>
+                    <Button variant="success" onClick={confirmClose}>
+                        Confirmar cierre
+                    </Button>
+                </Modal.Footer>
+            </Modal>
+        </>
     );
 }

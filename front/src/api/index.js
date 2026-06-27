@@ -287,6 +287,7 @@ export const patchAdminUsuarioEmpresa = (usuarioId, empresaId) =>
 export const deleteAdminUsuario = (usuarioId) =>
   apiWithToken.delete(`/admin/usuarios/${usuarioId}`);
 export const postAdminEmpresa = (payload) => apiWithToken.post('/admin/empresas', payload);
+export const putAdminEmpresa = (empresaId, payload) => apiWithToken.put(`/admin/empresas/${empresaId}`, payload);
 export const getAdminColaboradoresProyectoConfig = () => apiWithToken.get('/admin/colaboradores-proyecto-config');
 export const putAdminColaboradoresProyectoConfig = (payload) =>
   apiWithToken.put('/admin/colaboradores-proyecto-config', payload);

@@ -6,14 +6,11 @@ import { actions as rolProyectoActions, selectors as rolProyectoSelectors } from
 import BacklogPanel from './BacklogPanel';
 import SprintPanel from './SprintPanel';
 import MetricsPanel from './MetricsPanel';
-import DocsPanel from './DocsPanel';
-
 const SECTIONS = [
     { key: 'resumen', label: 'Resumen', icon: 'bi-speedometer2' },
     { key: 'backlog', label: 'Backlog', icon: 'bi-list-task' },
     { key: 'sprint', label: 'Sprint', icon: 'bi-calendar-check' },
     { key: 'metricas', label: 'Métricas', icon: 'bi-graph-down' },
-    { key: 'docs', label: 'Documentación', icon: 'bi-journal-text' },
 ];
 
 function ScrumModule({
@@ -156,16 +153,6 @@ function ScrumModule({
                 );
             case 'metricas':
                 return <MetricsPanel projectId={projectId} />;
-            case 'docs':
-                return (
-                    <DocsPanel
-                        projectId={projectId}
-                        sprints={sprints}
-                        epics={epics}
-                        stories={stories}
-                        puedeGestionar={puedeGestionar}
-                    />
-                );
             default:
                 return null;
         }
