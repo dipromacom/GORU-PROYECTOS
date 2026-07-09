@@ -10,13 +10,14 @@ import EpicPanel from './EpicPanel';
 import EpicFormModal from './EpicFormModal';
 import StoryFormModal from './StoryFormModal';
 import BacklogSidebar from './BacklogSidebar';
-import ScrumPill, { PriorityPill, EstadoPill } from './ScrumPill';
+import ScrumPill, { PriorityPill, EstadoPill, TipoPill } from './ScrumPill';
 import {
     STORY_TYPES, STORY_STATES, PRIORITIES, PRIORIZATION_METHODS, WARNING_PILL_STYLE, labelFor,
 } from './scrumConstants';
 import {
     filterStories, getAssigneeName, getAssigneeInitials, getEpicLabel, getSprintLabel,
-    getUsuarioLabel, normalizeUsuariosProyecto, storiesToCsv, openBacklogPrintPdf,
+    getUsuarioLabel, getValorEsfuerzoRatio, getQuadrantLabel,
+    normalizeUsuariosProyecto, storiesToCsv, openBacklogPrintPdf,
 } from './scrumHelpers';
 import * as Api from '../../api';
 import { actions as scrumActions } from '../../reducers/scrum';
@@ -52,6 +53,7 @@ function StoryTableCells({ story, onOpen, puedeGestionar, onDuplicate, onArchive
     return (
         <>
             <td><code className="small">{story.codigo}</code></td>
+            <td><TipoPill tipo={story.tipo} /></td>
             <td>
                 <Button variant="link" className="p-0 text-start text-decoration-none" onClick={() => onOpen(story)}>
                     {story.titulo}
@@ -115,6 +117,8 @@ export default function BacklogPanel({
     });
     const [showEpicModal, setShowEpicModal] = useState(false);
     const [showStoryModal, setShowStoryModal] = useState(false);
+    const [showMethodModal, setShowMethodModal] = useState(false);
+    const [selectingMethod, setSelectingMethod] = useState(false);
     const [editingEpic, setEditingEpic] = useState(null);
     const [editingStory, setEditingStory] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -250,13 +254,39 @@ export default function BacklogPanel({
     };
 
     const handleRecalculate = async () => {
-        const metodo = config?.metodo_priorizacion || 'moscow';
+        const metodo = config?.metodo_priorizacion || 'puntuacion';
         try {
             await Api.recalculateScrumPriorities(projectId, metodo);
             toast.success('Prioridades recalculadas según ' + labelFor(PRIORIZATION_METHODS, metodo));
             refresh();
         } catch (e) {
             toast.error(e.response?.data?.message || 'Error al recalcular');
+        }
+    };
+
+    const handleSelectMethod = async (metodo) => {
+        setSelectingMethod(true);
+        try {
+            await Api.updateScrumConfig(projectId, { metodo_priorizacion: metodo });
+            await Api.recalculateScrumPriorities(projectId, metodo);
+            toast.success(`Método seleccionado: ${labelFor(PRIORIZATION_METHODS, metodo)}`);
+            setShowMethodModal(false);
+            refresh();
+            setEditingStory(null);
+            setShowStoryModal(true);
+        } catch (e) {
+            toast.error(e.response?.data?.message || 'Error al seleccionar método');
+        } finally {
+            setSelectingMethod(false);
+        }
+    };
+
+    const handleNewStory = () => {
+        if (!config || config.metodo_priorizacion === 'manual') {
+            setShowMethodModal(true);
+        } else {
+            setEditingStory(null);
+            setShowStoryModal(true);
         }
     };
 
@@ -295,6 +325,7 @@ export default function BacklogPanel({
             <tr>
                 {canDrag && <th style={{ width: 28 }} />}
                 <th>Código</th>
+                <th>Tipo</th>
                 <th>Historia</th>
                 <th>Épica</th>
                 <th>Prioridad</th>
@@ -361,7 +392,7 @@ export default function BacklogPanel({
         );
     };
 
-    const metodoLabel = labelFor(PRIORIZATION_METHODS, config?.metodo_priorizacion || 'moscow');
+    const metodoLabel = labelFor(PRIORIZATION_METHODS, config?.metodo_priorizacion || 'puntuacion');
 
     const renderPriorizacion = () => (
         <div>
@@ -385,26 +416,36 @@ export default function BacklogPanel({
                         <thead className="table-light">
                             <tr>
                                 <th>#</th><th>Código</th><th>Título</th><th>Valor</th>
-                                <th>Esfuerzo (SP)</th><th>Score</th><th>MoSCoW</th>
+                                <th>Esfuerzo (SP)</th>
+                                {config?.metodo_priorizacion === 'puntuacion' && <th>Puntuación</th>}
+                                {config?.metodo_priorizacion === 'moscow' && <th>MoSCoW</th>}
+                                {config?.metodo_priorizacion === 'valor_esfuerzo' && <th>Ratio V/E</th>}
+                                {config?.metodo_priorizacion === 'valor_esfuerzo' && <th>Cuadrante</th>}
                             </tr>
                         </thead>
                         <tbody>
-                            {filtered.map((s, i) => (
-                                <tr key={s.id}>
-                                    <td>{i + 1}</td>
-                                    <td>{s.codigo}</td>
-                                    <td>{s.titulo}</td>
-                                    <td>{s.valor_negocio ?? '—'}</td>
-                                    <td>{s.story_points ?? '—'}</td>
-                                    <td><strong>{s.prioridad_score ?? '—'}</strong></td>
-                                    <td>{s.moscow || '—'}</td>
-                                </tr>
-                            ))}
+                            {filtered.map((s, i) => {
+                                const ratio = getValorEsfuerzoRatio(s);
+                                const cuadrante = config?.metodo_priorizacion === 'valor_esfuerzo' ? getQuadrantLabel(s) : null;
+                                return (
+                                    <tr key={s.id}>
+                                        <td>{i + 1}</td>
+                                        <td>{s.codigo}</td>
+                                        <td>{s.titulo}</td>
+                                        <td>{s.valor_negocio ?? '—'}</td>
+                                        <td>{s.story_points ?? '—'}</td>
+                                        {config?.metodo_priorizacion === 'puntuacion' && <td><strong>{s.prioridad_score ?? '—'}</strong></td>}
+                                        {config?.metodo_priorizacion === 'moscow' && <td>{s.moscow || '—'}</td>}
+                                        {config?.metodo_priorizacion === 'valor_esfuerzo' && <td>{ratio != null ? ratio.toFixed(2) : '—'}</td>}
+                                        {config?.metodo_priorizacion === 'valor_esfuerzo' && <td className="small">{cuadrante || '—'}</td>}
+                                    </tr>
+                                );
+                            })}
                         </tbody>
                     </Table>
                 </Col>
                 <Col lg={4}>
-                    <BacklogSidebar stories={filtered} />
+                    <BacklogSidebar stories={filtered} metodo={config?.metodo_priorizacion || 'puntuacion'} />
                 </Col>
             </Row>
         </div>
@@ -420,7 +461,7 @@ export default function BacklogPanel({
                 <div className="d-flex flex-wrap gap-2">
                     {puedeGestionar && (
                         <>
-                            <Button variant="primary" onClick={() => { setEditingStory(null); setShowStoryModal(true); }}>
+                            <Button variant="primary" onClick={handleNewStory}>
                                 <i className="bi bi-plus-lg me-1" /> Nueva historia
                             </Button>
                             <Button variant="outline-primary" onClick={() => { setEditingEpic(null); setShowEpicModal(true); }}>
@@ -605,7 +646,10 @@ export default function BacklogPanel({
                                                                         <Card.Body>
                                                                             <div className="d-flex justify-content-between align-items-center mb-2 gap-2">
                                                                                 <code>{story.codigo}</code>
-                                                                                <PriorityPill prioridad={story.prioridad} />
+                                                                                <div className="d-flex gap-1">
+                                                                                    <TipoPill tipo={story.tipo} />
+                                                                                    <PriorityPill prioridad={story.prioridad} />
+                                                                                </div>
                                                                             </div>
                                                                             <Card.Title className="h6">{story.titulo}</Card.Title>
                                                                             <div className="small text-muted mb-2">
@@ -636,7 +680,7 @@ export default function BacklogPanel({
                             </Col>
                             {viewMode === 'table' && !showArchived && (
                                 <Col lg={4} className="d-none d-lg-block">
-                                    <BacklogSidebar stories={filtered} />
+                                    <BacklogSidebar stories={filtered} metodo={config?.metodo_priorizacion || 'puntuacion'} />
                                 </Col>
                             )}
                         </Row>
@@ -654,6 +698,43 @@ export default function BacklogPanel({
                 readOnly={!puedeGestionar}
             />
 
+            <Modal show={showMethodModal} backdrop="static" keyboard={false} centered size="lg">
+                <Modal.Header>
+                    <Modal.Title>Seleccionar método de priorización</Modal.Title>
+                </Modal.Header>
+                <Modal.Body>
+                    <p className="text-muted small mb-3">
+                        Para crear una historia primero debés seleccionar el método de priorización del proyecto.
+                        <strong> Esta elección es definitiva</strong> y no podrá cambiarse después.
+                    </p>
+                    <div className="row g-3">
+                        {PRIORIZATION_METHODS.map((m) => (
+                            <div className="col-md-4" key={m.value}>
+                                <Card
+                                    className={`border-0 shadow-sm h-100 text-center ${selectingMethod ? 'pe-none opacity-50' : ''}`}
+                                    role="button"
+                                    onClick={() => !selectingMethod && handleSelectMethod(m.value)}
+                                >
+                                    <Card.Body className="d-flex flex-column align-items-center py-4">
+                                        <div className="fs-1 mb-2 text-primary">
+                                            {m.value === 'puntuacion' ? <i className="bi bi-123" /> : null}
+                                            {m.value === 'moscow' ? <i className="bi bi-bar-chart" /> : null}
+                                            {m.value === 'valor_esfuerzo' ? <i className="bi bi-grid-3x3" /> : null}
+                                        </div>
+                                        <h6 className="mb-1">{m.label}</h6>
+                                        <small className="text-muted">
+                                            {m.value === 'puntuacion' ? 'Valor + urgencia + riesgo − complejidad − esfuerzo' : null}
+                                            {m.value === 'moscow' ? 'Must / Should / Could / Won\'t' : null}
+                                            {m.value === 'valor_esfuerzo' ? 'Matriz 2×2 valor vs esfuerzo' : null}
+                                        </small>
+                                    </Card.Body>
+                                </Card>
+                            </div>
+                        ))}
+                    </div>
+                </Modal.Body>
+            </Modal>
+
             <StoryFormModal
                 show={showStoryModal}
                 onHide={() => setShowStoryModal(false)}
@@ -661,6 +742,7 @@ export default function BacklogPanel({
                 epics={epics}
                 sprints={sprints}
                 usuarios={usuarios}
+                metodoPriorizacion={config?.metodo_priorizacion || 'puntuacion'}
                 onSave={handleSaveStory}
                 saving={saving}
                 readOnly={!puedeGestionar}

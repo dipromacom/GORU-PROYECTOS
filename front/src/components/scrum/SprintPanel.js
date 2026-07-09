@@ -7,7 +7,7 @@ import SprintFormModal from './SprintFormModal';
 import ScrumBan from './ScrumBan';
 import BurndownChart from './BurndownChart';
 import { SPRINT_STATES, PRIORITIES, labelFor } from './scrumConstants';
-import { EstadoPill } from './ScrumPill';
+import { EstadoPill, TipoPill } from './ScrumPill';
 import {
     getEpicLabel, getPriorityVariant, getSprintUserName, formatSprintDates,
     normalizeUsuariosProyecto,
@@ -187,6 +187,7 @@ export default function SprintPanel({
     const renderStoryRow = (story, action) => (
         <tr key={story.id}>
             <td><code className="small">{story.codigo}</code></td>
+            <td><TipoPill tipo={story.tipo} /></td>
             <td className="small">{story.titulo}</td>
             <td>
                 {story.prioridad ? (
@@ -357,7 +358,7 @@ export default function SprintPanel({
                                                 <Table responsive hover size="sm" className="mb-0">
                                                     <thead className="table-light">
                                                         <tr>
-                                                            <th>Código</th><th>Historia</th><th>Prioridad</th>
+                                                            <th>Código</th><th>Tipo</th><th>Historia</th><th>Prioridad</th>
                                                             <th>SP</th><th>Épica</th><th></th>
                                                         </tr>
                                                     </thead>
@@ -370,7 +371,7 @@ export default function SprintPanel({
                                                             ),
                                                         ))}
                                                         {filteredReady.length === 0 && (
-                                                            <tr><td colSpan={6} className="text-center text-muted small py-3">No hay historias Ready disponibles</td></tr>
+                                                            <tr><td colSpan={7} className="text-center text-muted small py-3">No hay historias Ready disponibles</td></tr>
                                                         )}
                                                     </tbody>
                                                 </Table>
@@ -391,7 +392,7 @@ export default function SprintPanel({
                                                 <Table responsive hover size="sm" className="mb-0">
                                                     <thead className="table-light">
                                                         <tr>
-                                                            <th>Código</th><th>Historia</th><th>Prioridad</th>
+                                                            <th>Código</th><th>Tipo</th><th>Historia</th><th>Prioridad</th>
                                                             <th>SP</th><th>Épica</th><th></th>
                                                         </tr>
                                                     </thead>
@@ -404,7 +405,7 @@ export default function SprintPanel({
                                                             ),
                                                         ))}
                                                         {!(planning?.sprintStories?.length) && (
-                                                            <tr><td colSpan={6} className="text-center text-muted small py-3">Agregá historias desde la columna izquierda</td></tr>
+                                                            <tr><td colSpan={7} className="text-center text-muted small py-3">Agregá historias desde la columna izquierda</td></tr>
                                                         )}
                                                     </tbody>
                                                 </Table>
@@ -423,12 +424,13 @@ export default function SprintPanel({
                                     <Card.Body className="p-0">
                                         <Table responsive size="sm" className="mb-0">
                                             <thead className="table-light">
-                                                <tr><th>Código</th><th>Historia</th><th>SP</th><th>Estado</th><th>Épica</th></tr>
+                                                <tr><th>Código</th><th>Tipo</th><th>Historia</th><th>SP</th><th>Estado</th><th>Épica</th></tr>
                                             </thead>
                                             <tbody>
                                                 {planning.sprintStories.map((s) => (
                                                     <tr key={s.id}>
                                                         <td><code>{s.codigo}</code></td>
+                                                        <td><TipoPill tipo={s.tipo} /></td>
                                                         <td>{s.titulo}</td>
                                                         <td>{s.story_points ?? '—'}</td>
                                                         <td><EstadoPill estado={s.estado} /></td>
@@ -514,7 +516,7 @@ export default function SprintPanel({
                                         const newEstado = newCol === 'done' ? 'done' : 'en_sprint';
                                         const updated = (planning?.sprintStories || []).map((s) =>
                                             s.id === storyId
-                                                ? { ...s, kanban_column: newCol, estado: newEstado, estimado_at: closeDate || s.estimado_at }
+                                                ? { ...s, kanban_column: newCol, estado: newEstado, estimado_at: closeDate === null ? null : (closeDate || s.estimado_at) }
                                                 : s,
                                         );
                                         setPlanning({ ...planning, sprintStories: updated });
@@ -591,7 +593,7 @@ export default function SprintPanel({
                                         <Card.Body className="p-0">
                                             <Table responsive size="sm" className="mb-0">
                                                 <thead className="table-light">
-                                                    <tr><th>Código</th><th>Historia</th><th>SP</th><th>Prioridad</th><th>Épica</th><th>Sprint</th></tr>
+                                                    <tr><th>Código</th><th>Tipo</th><th>Historia</th><th>SP</th><th>Prioridad</th><th>Épica</th><th>Sprint</th></tr>
                                                 </thead>
                                                 <tbody>
                                                     {planning.sprintStories
@@ -599,6 +601,7 @@ export default function SprintPanel({
                                                         .map((s) => (
                                                             <tr key={s.id}>
                                                                 <td><code>{s.codigo}</code></td>
+                                                                <td><TipoPill tipo={s.tipo} /></td>
                                                                 <td>{s.titulo}</td>
                                                                 <td className="fw-semibold">{s.story_points ?? '—'}</td>
                                                                 <td><Badge bg="info">{s.prioridad || '—'}</Badge></td>
@@ -618,12 +621,13 @@ export default function SprintPanel({
                                         <Card.Body className="p-0">
                                             <Table responsive size="sm" className="mb-0">
                                                 <thead className="table-light">
-                                                    <tr><th>Código</th><th>Historia</th><th>SP</th><th>Estado Kanban</th><th>Prioridad</th><th>Épica</th></tr>
+                                                    <tr><th>Código</th><th>Tipo</th><th>Historia</th><th>SP</th><th>Estado Kanban</th><th>Prioridad</th><th>Épica</th></tr>
                                                 </thead>
                                                 <tbody>
                                                     {planning.sprintStories.map((s) => (
                                                         <tr key={s.id}>
                                                             <td><code>{s.codigo}</code></td>
+                                                            <td><TipoPill tipo={s.tipo} /></td>
                                                             <td>{s.titulo}</td>
                                                             <td>{s.story_points ?? '—'}</td>
                                                             <td><Badge bg={s.kanban_column === 'done' ? 'success' : s.kanban_column === 'doing' ? 'primary' : 'secondary'}>{s.kanban_column || 'todo'}</Badge></td>

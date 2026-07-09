@@ -20,6 +20,7 @@ export default function StoryFormModal({
     epics,
     sprints,
     usuarios,
+    metodoPriorizacion = 'puntuacion',
     onSave,
     saving,
     readOnly,
@@ -323,50 +324,7 @@ export default function StoryFormModal({
                         </Tab>
 
                         <Tab eventKey="priorizacion" title="Priorización">
-                            <Form.Group className="mb-3">
-                                <Form.Label>Método de priorización</Form.Label>
-                                <div>
-                                    <Form.Check
-                                        inline
-                                        type="radio"
-                                        label="MoSCoW"
-                                        name="metodo_priorizacion"
-                                        disabled={readOnly}
-                                        checked={form.metodo_priorizacion === 'moscow'}
-                                        onChange={() => set('metodo_priorizacion', 'moscow')}
-                                    />
-                                    <Form.Check
-                                        inline
-                                        type="radio"
-                                        label="Puntuación (1-5)"
-                                        name="metodo_priorizacion"
-                                        disabled={readOnly}
-                                        checked={form.metodo_priorizacion === 'puntuacion'}
-                                        onChange={() => set('metodo_priorizacion', 'puntuacion')}
-                                    />
-                                </div>
-                            </Form.Group>
-
-                            {form.metodo_priorizacion === 'moscow' ? (
-                                <Row className="mb-3">
-                                    <Col md={4}>
-                                        <Form.Group>
-                                            <Form.Label>MoSCoW</Form.Label>
-                                            <Form.Control
-                                                as="select"
-                                                disabled={readOnly}
-                                                value={form.moscow}
-                                                onChange={(e) => set('moscow', e.target.value)}
-                                            >
-                                                <option value="">—</option>
-                                                {MOSCOW_OPTIONS.map((o) => (
-                                                    <option key={o.value} value={o.value}>{o.label}</option>
-                                                ))}
-                                            </Form.Control>
-                                        </Form.Group>
-                                    </Col>
-                                </Row>
-                            ) : (
+                            {metodoPriorizacion === 'puntuacion' && (
                                 <>
                                     <Row className="mb-3">
                                         {SCORE_FIELDS.map(({ key, label }) => (
@@ -385,13 +343,39 @@ export default function StoryFormModal({
                                     </Row>
                                     <Alert variant="info" className="py-2 small">
                                         <strong>Valor final calculado:</strong>{' '}
-                                        {calculatePuntuacionFinal(form)}
+                                        <span className="fs-5 fw-bold">{calculatePuntuacionFinal(form)}</span>
                                         {' '}
                                         <span className="text-muted">
-                                            (suma criterios positivos − complejidad − esfuerzo)
+                                            (valor de negocio + urgencia + reducción de riesgo + dependencia estratégica + impacto cliente + costo de demora − complejidad − esfuerzo)
                                         </span>
                                     </Alert>
                                 </>
+                            )}
+                            {metodoPriorizacion === 'moscow' && (
+                                <Row className="mb-3">
+                                    <Col md={4}>
+                                        <Form.Group>
+                                            <Form.Label>MoSCoW</Form.Label>
+                                            <Form.Control
+                                                as="select"
+                                                disabled={readOnly}
+                                                value={form.moscow}
+                                                onChange={(e) => set('moscow', e.target.value)}
+                                            >
+                                                <option value="">—</option>
+                                                {MOSCOW_OPTIONS.map((o) => (
+                                                    <option key={o.value} value={o.value}>{o.label}</option>
+                                                ))}
+                                            </Form.Control>
+                                        </Form.Group>
+                                    </Col>
+                                </Row>
+                            )}
+                            {metodoPriorizacion === 'valor_esfuerzo' && (
+                                <Alert variant="info" className="small mb-0">
+                                    <i className="bi bi-info-circle me-1" />
+                                    La priorización por <strong>Matriz Valor vs Esfuerzo</strong> se calcula automáticamente según el <strong>Valor de negocio</strong> y los <strong>Story points</strong> definidos en la pestaña <strong>General</strong> y <strong>Estimación</strong>.
+                                </Alert>
                             )}
                         </Tab>
 

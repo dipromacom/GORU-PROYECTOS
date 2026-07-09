@@ -89,6 +89,18 @@ export const getValorEsfuerzoRatio = (story) => {
     return val / eff;
 };
 
+export const getQuadrantLabel = (story) => {
+    const val = Number(story.valor_negocio) || 0;
+    const eff = Number(story.story_points) || 0;
+    if (!val || !eff) return null;
+    const highVal = val >= 3;
+    const highEff = eff >= 5;
+    if (highVal && !highEff) return 'Hacer primero';
+    if (highVal && highEff) return 'Planificar';
+    if (!highVal && highEff) return 'Evitar o posponer';
+    return 'Relleno';
+};
+
 export const calculatePrioridadScore = (s) => {
     const valor = Number(s.valor_negocio) || 0;
     const urgencia = Number(s.urgencia) || 0;
@@ -170,6 +182,7 @@ export const openBacklogPrintPdf = (stories, projectName) => {
     const rows = stories.map((s) => `
         <tr>
             <td>${s.codigo || ''}</td>
+            <td>${labelFor(STORY_TYPES, s.tipo)}</td>
             <td>${s.titulo || ''}</td>
             <td>${getEpicLabel(s)}</td>
             <td>${s.prioridad || ''}</td>
@@ -185,7 +198,7 @@ export const openBacklogPrintPdf = (stories, projectName) => {
         <style>body{font-family:Arial,sans-serif;padding:24px}table{width:100%;border-collapse:collapse;font-size:12px}
         th,td{border:1px solid #ccc;padding:6px;text-align:left}th{background:#f0f0f0}</style></head>
         <body><h2>Backlog — ${projectName}</h2><p>Generado: ${new Date().toLocaleString('es-ES')}</p>
-        <table><thead><tr><th>Código</th><th>Historia</th><th>Épica</th><th>Prioridad</th><th>Valor</th><th>SP</th><th>Estado</th><th>Sprint</th><th>Responsable</th></tr></thead>
+        <table><thead><tr><th>Código</th><th>Tipo</th><th>Historia</th><th>Épica</th><th>Prioridad</th><th>Valor</th><th>SP</th><th>Estado</th><th>Sprint</th><th>Responsable</th></tr></thead>
         <tbody>${rows}</tbody></table></body></html>`;
 
     const w = window.open('', '_blank');

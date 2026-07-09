@@ -353,6 +353,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const esProyectoPredictivo = esProyecto && tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO
     const pestanasNoAptasParaAgil = ['alcance', 'hitos', 'costos', 'calidad', 'riesgos', 'gantt'];
     const mostrarPestanasNoAptasParaAgil = !esProyectoEquipoAgil;
+    const mostrarKanban = !esProyectoPredictivo;
     const [leccionesAprendidas, setLeccionesAprendidas] = useState("")
     const [beneficios, setBeneficios] = useState("");
 
@@ -846,7 +847,10 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         if (esProyectoEquipoAgil && pestanasNoAptasParaAgil.includes(activeKey)) {
             setActiveKey('general');
         }
-    }, [esProyectoEquipoAgil, activeKey]);
+        if (esProyectoPredictivo && activeKey === 'project-management') {
+            setActiveKey('general');
+        }
+    }, [esProyectoEquipoAgil, esProyectoPredictivo, activeKey]);
 
     const handleFilterChange = (e) => {
         const value = e.target.value;
@@ -1182,7 +1186,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             {puede(PermProy.TODO_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="to-do" >To Do</Nav.Link></Nav.Item>
                                             )}
-                                            {puede(PermProy.KANBAN_VER) && (
+                                            {mostrarKanban && puede(PermProy.KANBAN_VER) && (
                                                 <Nav.Item><Nav.Link eventKey="project-management">Kanban</Nav.Link></Nav.Item>
                                             )}
                                             {esPrograma && puede(PermProy.PROGRAMA_PROYECTOS_VER) && (

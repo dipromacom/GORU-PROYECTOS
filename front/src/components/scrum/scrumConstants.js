@@ -6,6 +6,14 @@ export const STORY_TYPES = [
     { value: 'spike', label: 'Spike / Investigación' },
 ];
 
+export const STORY_TYPE_PILL_STYLES = {
+    historia: { background: '#e0f2fe', color: '#075985', border: '#bae6fd' },
+    tarea: { background: '#f3e8ff', color: '#6b21a8', border: '#e9d5ff' },
+    bug: { background: '#fee2e2', color: '#991b1b', border: '#fecaca' },
+    mejora: { background: '#d1fae5', color: '#065f46', border: '#a7f3d0' },
+    spike: { background: '#fef3c7', color: '#92400e', border: '#fde68a' },
+};
+
 export const STORY_STATES = [
     { value: 'idea', label: 'Idea', variant: 'secondary' },
     { value: 'backlog', label: 'Backlog', variant: 'info' },
@@ -72,12 +80,16 @@ export const MOSCOW_OPTIONS = [
 ];
 
 export const PRIORIZATION_METHODS = [
-    { value: 'manual', label: 'Manual (drag & drop)' },
-    { value: 'formula', label: 'Valor + Urgencia + Riesgo + Impacto − Complejidad' },
-    { value: 'valor_esfuerzo', label: 'Valor vs Esfuerzo' },
-    { value: 'wsjf', label: 'WSJF simplificado' },
+    { value: 'puntuacion', label: 'Puntuación (valor − complejidad − esfuerzo)' },
     { value: 'moscow', label: 'MoSCoW' },
+    { value: 'valor_esfuerzo', label: 'Matriz Valor vs Esfuerzo' },
 ];
+
+export const PRIORIZATION_METHOD_LABELS = {
+    puntuacion: 'Puntuación',
+    moscow: 'MoSCoW',
+    valor_esfuerzo: 'Valor vs Esfuerzo',
+};
 
 export const FIBONACCI_POINTS = [1, 2, 3, 5, 8, 13, 21];
 
@@ -183,6 +195,8 @@ export const DOCUMENT_TYPES = [
     { value: 'funcional', label: 'Documento funcional' },
     { value: 'tecnico', label: 'Documento técnico' },
     { value: 'lecciones', label: 'Lecciones aprendidas' },
+    { value: 'minutas', label: 'Minutas' },
+    { value: 'otros', label: 'Otros' },
 ];
 
 export const DOCUMENT_STATES = [
@@ -216,6 +230,7 @@ export const emptyDocument = () => ({
 
 export const DOCUMENT_RELATION_TYPES = [
     { value: 'proyecto', label: 'Proyecto' },
+    { value: 'alcance', label: 'Alcance' },
     { value: 'sprint', label: 'Sprint' },
     { value: 'epic', label: 'Épica' },
     { value: 'story', label: 'Historia' },

@@ -3,6 +3,7 @@ import { Nav, Card, Spinner, Alert } from 'react-bootstrap';
 import { connect } from 'react-redux';
 import { actions as scrumActions, selectors as scrumSelectors } from '../../reducers/scrum';
 import { actions as rolProyectoActions, selectors as rolProyectoSelectors } from '../../reducers/rolProyecto';
+import { PRIORIZATION_METHODS } from './scrumConstants';
 import BacklogPanel from './BacklogPanel';
 import SprintPanel from './SprintPanel';
 import MetricsPanel from './MetricsPanel';
@@ -158,6 +159,10 @@ function ScrumModule({
         }
     };
 
+    const methodLabel = config && config.metodo_priorizacion !== 'manual'
+        ? PRIORIZATION_METHODS.find((m) => m.value === config.metodo_priorizacion)?.label || config.metodo_priorizacion
+        : null;
+
     return (
         <div className="scrum-module py-3">
             <div className="d-flex align-items-center justify-content-between mb-4">
@@ -165,9 +170,17 @@ function ScrumModule({
                     <h4 className="blue mb-1">Scrum</h4>
                     <p className="text-muted mb-0 small">
                         Gestión ágil del proyecto — {epics.length} épica(s), {stories.length} historia(s)
+                        {methodLabel && <span className="ms-3 badge bg-info">{methodLabel}</span>}
                     </p>
                 </div>
             </div>
+
+            {config && config.metodo_priorizacion === 'manual' && !puedeGestionar && (
+                <Alert variant="warning" className="py-2 small mb-3">
+                    <i className="bi bi-exclamation-triangle me-1" />
+                    El método de priorización aún no ha sido configurado. Contactá al administrador del proyecto para seleccionarlo.
+                </Alert>
+            )}
 
             <Nav variant="pills" className="mb-4 flex-wrap custom-tabs-style">
                 {SECTIONS.map(({ key, label, icon }) => (

@@ -1,6 +1,6 @@
 import React from 'react';
 import {
-    PRIORITIES, STORY_STATES, PRIORITY_PILL_STYLES, STATE_PILL_STYLES, labelFor,
+    PRIORITIES, STORY_STATES, STORY_TYPES, PRIORITY_PILL_STYLES, STATE_PILL_STYLES, STORY_TYPE_PILL_STYLES, labelFor,
 } from './scrumConstants';
 
 const DEFAULT_STYLE = { background: '#f1f5f9', color: '#475569', border: '#e2e8f0' };
@@ -47,6 +47,17 @@ export function EstadoPill({ estado, className }) {
         <ScrumPill
             label={st?.label || estado}
             style={STATE_PILL_STYLES[estado]}
+            className={className}
+        />
+    );
+}
+
+export function TipoPill({ tipo, className }) {
+    if (!tipo) return <span className="text-muted">—</span>;
+    return (
+        <ScrumPill
+            label={labelFor(STORY_TYPES, tipo)}
+            style={STORY_TYPE_PILL_STYLES[tipo]}
             className={className}
         />
     );

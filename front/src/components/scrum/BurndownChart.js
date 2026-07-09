@@ -34,7 +34,7 @@ export default function BurndownChart({ sprint, stories }) {
         const doneByDay = (stories || []).filter((s) => {
             if (!s.story_points) return false;
             if (s.kanban_column !== 'done') return false;
-            const movedAt = s.estimado_at || s.updatedAt;
+            const movedAt = s.updatedAt;
             if (!movedAt) return false;
             return new Date(movedAt) <= d;
         });

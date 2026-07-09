@@ -60,11 +60,20 @@ async function assertProyectoScrumHabilitado(res, proyectoId) {
     return proyecto;
 }
 
+const LEGACY_METHOD_MAP = {
+    formula: 'puntuacion',
+    wsjf: 'puntuacion',
+    manual: 'manual',
+};
+
 async function getOrCreateConfig(proyectoId) {
     const pid = parseInt(proyectoId, 10);
     let config = await ScrumConfig.findOne({ where: { proyecto_id: pid } });
     if (!config) {
         config = await ScrumConfig.create({ proyecto_id: pid, metodo_priorizacion: 'manual' });
+    } else if (!ALLOWED_METHODS.includes(config.metodo_priorizacion)) {
+        const mapped = LEGACY_METHOD_MAP[config.metodo_priorizacion] || 'puntuacion';
+        await config.update({ metodo_priorizacion: mapped });
     }
     return config;
 }
@@ -91,23 +100,23 @@ function calcularPrioridadScore(story, metodo) {
     const vn = Number(story.valor_negocio) || 0;
     const urg = Number(story.urgencia) || 0;
     const rr = Number(story.reduccion_riesgo) || 0;
+    const de = Number(story.dependencia_estrategica) || 0;
     const ic = Number(story.impacto_cliente) || 0;
     const comp = Number(story.complejidad) || 0;
-    const pts = Number(story.story_points) || Number(story.esfuerzo) || 1;
+    const esf = Number(story.esfuerzo) || 0;
     const cd = Number(story.costo_demora) || 0;
+    const pts = Number(story.story_points) || 1;
 
     switch (metodo) {
         case 'valor_esfuerzo':
             return pts > 0 ? +(vn / pts).toFixed(2) : vn;
-        case 'wsjf':
-            return pts > 0 ? +((vn + urg + rr + cd) / pts).toFixed(2) : (vn + urg + rr + cd);
         case 'moscow': {
             const w = MOSCOW_WEIGHT[(story.moscow || '').toLowerCase()] || 0;
             return w;
         }
-        case 'formula':
+        case 'puntuacion':
         default:
-            return vn + urg + rr + ic - comp;
+            return vn + urg + rr + de + ic + cd - comp - esf;
     }
 }
 
@@ -401,6 +410,9 @@ async function updateStory(storyId, proyectoId, data, userId) {
     updates.prioridad_score = calcularPrioridadScore({ ...story.toJSON(), ...updates }, config.metodo_priorizacion);
 
     await story.update(updates);
+    if (story.sprint_id) {
+        await recalcSprintPoints(story.sprint_id);
+    }
     return ScrumStory.findByPk(storyId, { include: storyIncludes() });
 }
 
@@ -468,10 +480,17 @@ async function reorderStories(proyectoId, orderedIds) {
     return true;
 }
 
+const ALLOWED_METHODS = ['puntuacion', 'moscow', 'valor_esfuerzo'];
+
 async function recalculatePriorities(proyectoId, metodoOverride) {
     const config = await getOrCreateConfig(proyectoId);
     const metodo = metodoOverride || config.metodo_priorizacion;
     if (metodoOverride) {
+        if (config.metodo_priorizacion !== 'manual' && config.metodo_priorizacion !== metodoOverride) {
+            const err = new Error(`El método de priorización ya está definido como "${config.metodo_priorizacion}" y no puede cambiarse.`);
+            err.statusCode = 400;
+            throw err;
+        }
         await config.update({ metodo_priorizacion: metodoOverride });
     }
 
@@ -492,6 +511,18 @@ async function recalculatePriorities(proyectoId, metodoOverride) {
 
 async function updateConfig(proyectoId, data) {
     const config = await getOrCreateConfig(proyectoId);
+    if (data.metodo_priorizacion) {
+        if (config.metodo_priorizacion !== 'manual' && config.metodo_priorizacion !== data.metodo_priorizacion) {
+            const err = new Error(`El método de priorización ya está definido como "${config.metodo_priorizacion}" y no puede cambiarse.`);
+            err.statusCode = 400;
+            throw err;
+        }
+        if (!ALLOWED_METHODS.includes(data.metodo_priorizacion)) {
+            const err = new Error(`Método de priorización no válido. Permitidos: ${ALLOWED_METHODS.join(', ')}`);
+            err.statusCode = 400;
+            throw err;
+        }
+    }
     await config.update(data);
     return config;
 }
@@ -520,11 +551,11 @@ async function attachSprintTeam(sprintData) {
 async function recalcSprintPoints(sprintId) {
     const stories = await ScrumStory.findAll({
         where: { sprint_id: sprintId, archivado: false },
-        attributes: ['story_points', 'estado'],
+        attributes: ['story_points', 'estado', 'kanban_column'],
     });
     const comprometidos = stories.reduce((a, s) => a + (Number(s.story_points) || 0), 0);
     const completados = stories
-        .filter((s) => s.estado === 'done')
+        .filter((s) => s.estado === 'done' || s.kanban_column === 'done')
         .reduce((a, s) => a + (Number(s.story_points) || 0), 0);
     await ScrumSprint.update(
         { puntos_comprometidos: comprometidos, puntos_completados: completados },
@@ -537,11 +568,11 @@ async function enrichSprint(sprintRow) {
     const s = sprintRow.toJSON ? sprintRow.toJSON() : sprintRow;
     const stories = await ScrumStory.findAll({
         where: { sprint_id: s.id, archivado: false },
-        attributes: ['id', 'story_points', 'estado'],
+        attributes: ['id', 'story_points', 'estado', 'kanban_column'],
     });
     const puntosComprometidos = stories.reduce((a, st) => a + (Number(st.story_points) || 0), 0);
     const puntosCompletados = stories
-        .filter((st) => st.estado === 'done')
+        .filter((st) => st.estado === 'done' || st.kanban_column === 'done')
         .reduce((a, st) => a + (Number(st.story_points) || 0), 0);
     const capacidad = Number(s.capacidad_puntos) || 0;
     return {
@@ -817,12 +848,15 @@ async function closeSprint(sprintId, proyectoId, userId, data = {}) {
         where: {
             sprint_id: sprintId,
             archivado: false,
-            estado: { [Op.ne]: 'done' },
+            [Op.and]: [
+                { estado: { [Op.ne]: 'done' } },
+                { kanban_column: { [Op.ne]: 'done' } },
+            ],
         },
     });
     await Promise.all(incomplete.map((s) => s.update({
         sprint_id: null,
-        estado: 'ready',
+        estado: 'backlog',
         kanban_column: 'todo',
         historial: pushHistorial(s.historial, {
             usuario_id: userId,
@@ -865,7 +899,7 @@ function computeBurndownAlerts(sprint, stories) {
         const ideal = totalPoints - (totalPoints / Math.max(totalDays - 1, 1)) * i;
         const doneByDay = (stories || []).filter((s) => {
             if (s.kanban_column !== 'done' && s.estado !== 'done') return false;
-            const movedAt = s.estimado_at || s.updatedAt;
+            const movedAt = s.updatedAt;
             return movedAt && new Date(movedAt) <= d;
         });
         const donePoints = doneByDay.reduce((a, s) => a + (Number(s.story_points) || 0), 0);

@@ -11,12 +11,10 @@ import DocumentFormModal from './DocumentFormModal';
 import ScrumDocumentPdf from './ScrumDocumentPdf';
 import ScrumPill from './ScrumPill';
 import {
-    DOCUMENT_TYPES, DOCUMENT_STATES, DOCUMENT_STATE_STYLES, labelFor,
+    DOCUMENT_TYPES, DOCUMENT_STATES, DOCUMENT_RELATION_TYPES, DOCUMENT_STATE_STYLES, labelFor,
 } from './scrumConstants';
 import { getAutorName } from './scrumHelpers';
 import { selectors as scrumSelectors } from '../../reducers/scrum';
-
-const LIBRARY_KEYS = ['dor', 'dod', 'retro', 'decision', 'evidencia'];
 
 function DocsPanel({
     projectId,
@@ -36,6 +34,7 @@ function DocsPanel({
     const [filterTipo, setFilterTipo] = useState('');
     const [filterSprint, setFilterSprint] = useState('');
     const [filterEpic, setFilterEpic] = useState('');
+    const [filterAlcance, setFilterAlcance] = useState('');
     const [showForm, setShowForm] = useState(false);
     const [editingDoc, setEditingDoc] = useState(null);
     const [saving, setSaving] = useState(false);
@@ -74,16 +73,7 @@ function DocsPanel({
 
     const stats = useMemo(() => ({
         total: documents.length,
-        retrospectivas: documents.filter((d) => d.tipo === 'retro').length,
-        decisiones: documents.filter((d) => d.tipo === 'decision').length,
-        evidencias: documents.filter((d) => d.tipo === 'evidencia').length,
     }), [documents]);
-
-    const libraryCounts = useMemo(() => {
-        const counts = {};
-        LIBRARY_KEYS.forEach((k) => { counts[k] = documents.filter((d) => d.tipo === k).length; });
-        return counts;
-    }, [documents]);
 
     const filtered = useMemo(() => {
         let list = documents;
@@ -92,6 +82,8 @@ function DocsPanel({
         if (viewTab === 'retro') list = list.filter((d) => d.tipo === 'retro');
         if (viewTab === 'decision') list = list.filter((d) => d.tipo === 'decision');
         if (viewTab === 'evidencia') list = list.filter((d) => d.tipo === 'evidencia');
+
+        if (filterAlcance) list = list.filter((d) => d.relacion_tipo === filterAlcance);
 
         const q = search.trim().toLowerCase();
         if (!q) return list;
@@ -106,6 +98,7 @@ function DocsPanel({
         [documents]);
 
     const getRelacionLabel = (doc) => {
+        if (doc.relacion_tipo === 'alcance') return 'Alcance';
         if (doc.Sprint) return `Sprint ${doc.Sprint.codigo || doc.Sprint.nombre}`;
         if (doc.Epic) return `Épica ${doc.Epic.codigo}`;
         if (doc.Story) return `Historia ${doc.Story.codigo}`;
@@ -275,30 +268,6 @@ function DocsPanel({
                         </Card.Body>
                     </Card>
                 </Col>
-                <Col md={3}>
-                    <Card className="border-0 shadow-sm text-center h-100">
-                        <Card.Body>
-                            <div className="text-muted small">Retrospectivas</div>
-                            <div className="fs-3 fw-bold">{stats.retrospectivas}</div>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="border-0 shadow-sm text-center h-100">
-                        <Card.Body>
-                            <div className="text-muted small">Decisiones</div>
-                            <div className="fs-3 fw-bold">{stats.decisiones}</div>
-                        </Card.Body>
-                    </Card>
-                </Col>
-                <Col md={3}>
-                    <Card className="border-0 shadow-sm text-center h-100">
-                        <Card.Body>
-                            <div className="text-muted small">Evidencias</div>
-                            <div className="fs-3 fw-bold text-success">{stats.evidencias}</div>
-                        </Card.Body>
-                    </Card>
-                </Col>
             </Row>
 
             <Row className="g-3">
@@ -323,7 +292,7 @@ function DocsPanel({
                             </Tabs>
 
                             <Row className="g-2 mb-3">
-                                <Col md={3}>
+                                <Col md={esPredictivo ? 4 : 2}>
                                     <Form.Control
                                         size="sm"
                                         placeholder="Buscar..."
@@ -331,7 +300,7 @@ function DocsPanel({
                                         onChange={(e) => setSearch(e.target.value)}
                                     />
                                 </Col>
-                                <Col md={3}>
+                                <Col md={esPredictivo ? 4 : 2}>
                                     <Form.Control
                                         as="select"
                                         size="sm"
@@ -344,8 +313,21 @@ function DocsPanel({
                                         ))}
                                     </Form.Control>
                                 </Col>
+                                <Col md={esPredictivo ? 4 : 2}>
+                                    <Form.Control
+                                        as="select"
+                                        size="sm"
+                                        value={filterAlcance}
+                                        onChange={(e) => setFilterAlcance(e.target.value)}
+                                    >
+                                        <option value="">Todo alcance</option>
+                                        {DOCUMENT_RELATION_TYPES.map((r) => (
+                                            <option key={r.value} value={r.value}>{r.label}</option>
+                                        ))}
+                                    </Form.Control>
+                                </Col>
                                 {!esPredictivo && (
-                                    <Col md={3}>
+                                    <Col md={2}>
                                         <Form.Control
                                             as="select"
                                             size="sm"
@@ -360,7 +342,7 @@ function DocsPanel({
                                     </Col>
                                 )}
                                 {!esPredictivo && (
-                                    <Col md={3}>
+                                    <Col md={2}>
                                         <Form.Control
                                             as="select"
                                             size="sm"
@@ -372,6 +354,11 @@ function DocsPanel({
                                                 <option key={e.id} value={e.id}>{e.codigo} — {e.nombre}</option>
                                             ))}
                                         </Form.Control>
+                                    </Col>
+                                )}
+                                {!esPredictivo && (
+                                    <Col md={2}>
+                                        <div className="text-end text-muted small py-1">{filtered.length} docs</div>
                                     </Col>
                                 )}
                             </Row>
@@ -439,28 +426,6 @@ function DocsPanel({
 
                 <Col lg={3}>
                     <Card className="border-0 shadow-sm mb-3">
-                        <Card.Header className="bg-white fw-semibold small">Biblioteca rápida</Card.Header>
-                        <Card.Body className="small p-0">
-                            <ul className="list-group list-group-flush">
-                                {LIBRARY_KEYS.map((key) => {
-                                    const tipo = DOCUMENT_TYPES.find((t) => t.value === key);
-                                    return (
-                                        <li
-                                            key={key}
-                                            className="list-group-item d-flex justify-content-between align-items-center py-2"
-                                            role="button"
-                                            onClick={() => { setFilterTipo(key); setViewTab('todos'); }}
-                                        >
-                                            {tipo?.label || key}
-                                            <span className="badge bg-light text-dark">{libraryCounts[key] || 0}</span>
-                                        </li>
-                                    );
-                                })}
-                            </ul>
-                        </Card.Body>
-                    </Card>
-
-                    <Card className="border-0 shadow-sm">
                         <Card.Header className="bg-white fw-semibold small">Últimas actualizaciones</Card.Header>
                         <Card.Body className="small">
                             {recentUpdates.length === 0 ? (
