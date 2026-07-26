@@ -77,6 +77,7 @@ import { actions as changeActions, selectors as changeSelectors } from "../reduc
 import ChangeControlModal from "../components/controlCambio/ChangeControlModal";
 import ChangeControlPdf from "../components/controlCambio/ChangeControlPdf";
 import ProgramaProyectos from "../components/programaProyectos/ProgramaProyectos";
+import ResumenProgramaAgregado from "../components/proyectoDetails/ResumenProgramaAgregado";
 
 import { actions as programaActions, selectors as programaSelectors } from "../reducers/programa";
 import {
@@ -90,7 +91,7 @@ import { proyectoPuede, P as PermProy } from "../libs/proyectoPermiso";
 import GoruQueHacemosHoyPanel from "../components/goruAssistant/GoruQueHacemosHoyPanel";
 
 
-function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, membershipNavMode, userProjectPermisos, isLoadingUserRol }) {
+function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, membershipNavMode, userProjectPermisos, isLoadingUserRol, resumenAgregadoPrograma }) {
     const routeParams = useParams();
     const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
@@ -133,6 +134,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     useEffect(() => {
         return () => {
             dispatch(surveyActions.clearSurveyState());
+            dispatch(programaActions.clearResumenAgregado());
         };
     }, [numericId, dispatch]);
 
@@ -374,6 +376,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     const [selectedEncuesta, setSelectedEncuesta] = useState(null);
     const [modoEdicion, setModoEdicion] = useState(false);
     const [activeTabSummary, setActiveTabSummary] = useState("ejecucion");
+    const [activeSubTabEjecucion, setActiveSubTabEjecucion] = useState("ejecucion-general");
 
     const [showInformeModal, setShowInformeModal] = useState(false);
     const [informeEditar, setInformeEditar] = useState(null);
@@ -480,6 +483,13 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             dispatch(programaActions.getProgramasLista());
         }
     }, [numericId, dispatch, esPrograma]);
+
+    // Cargar resumen agregado cuando se ve un programa en ejecución
+    useEffect(() => {
+        if (esPrograma && (ejecutado || cerrado) && projectId) {
+            dispatch(programaActions.getResumenAgregado(projectId));
+        }
+    }, [projectId, esPrograma, ejecutado, cerrado, dispatch]);
 
     const handleOpenInformeModal = () => {
         setInformeEditar(null);
@@ -901,8 +911,18 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
         setTaskFilter("false");
     }
 
-    const doneTask = (taskId, closeDate) => {
-        dispatch(projectActions.doneTask(taskId, closeDate));
+    const doneTask = (taskId, closeDate, observacion) => {
+        dispatch(projectActions.doneTask(taskId, closeDate, observacion));
+    };
+
+    const handleRefresh = () => {
+        dispatch(projectActions.getProjectDetailRequest(routeParams.id));
+        if (activeKey === 'to-do') {
+            dispatch(projectActions.getTasksById({ idProject: routeParams.id, done: taskFilter }));
+        }
+        if (activeKey === 'project-management') {
+            dispatch(kanbanActions.fetch({ projectId: routeParams.id }));
+        }
     };
 
     const getPlazoPeriodoTitle = () => {
@@ -957,6 +977,18 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
     }, []);
 
     const resumenDesempenoChart = useMemo(() => {
+        if (esActividad) {
+            const result = {
+                todo: resumenDesempeno.todo,
+            };
+            if (mostrarKanban) {
+                result.eficiencia = resumenDesempeno.eficiencia;
+            }
+            if (tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO) {
+                result.cronograma = resumenDesempeno.cronograma;
+            }
+            return result;
+        }
         if (esProyectoEquipoAgil) {
             return {
                 eficiencia: resumenDesempeno.eficiencia,
@@ -968,7 +1000,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             return rest;
         }
         return resumenDesempeno;
-    }, [esProyectoEquipoAgil, esProyecto, resumenDesempeno]);
+    }, [esActividad, esProyectoEquipoAgil, esProyecto, resumenDesempeno, mostrarKanban, tipoProyecto]);
 
     useEffect(() => {
         if (esProyectoEquipoAgil && activeTabSummary === 'ejecucion') {
@@ -1126,6 +1158,11 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             </div>
                                         </>
                                     )}
+                                    <div className="vertical-separator mx-3" style={{ borderLeft: '1px solid #ccc', height: '20px' }}></div>
+                                    <div className="green d-flex align-items-center" style={{ cursor: 'pointer' }} onClick={handleRefresh} title="Refrescar datos del proyecto">
+                                        <i className="bi bi-arrow-clockwise mr-2" />
+                                        <span>Refrescar</span>
+                                    </div>
                                 </div>
                             </div>
 
@@ -1300,7 +1337,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                             <GoruQueHacemosHoyPanel {...goruHoyPanelProps} />
                                             <Tab.Container activeKey={activeTabSummary} onSelect={(k) => setActiveTabSummary(k)}>
                                                 <Nav variant="tabs" className="justify-content-start mb-4 custom-tabs-style">
-                                                    {!esActividad && (ejecutado || cerrado) && !esProyectoEquipoAgil && (
+                                                    {((!esActividad && !esProyectoEquipoAgil) || (esActividad && (tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO))) && (ejecutado || cerrado) && (
                                                         <>
                                                             <Nav.Item>
                                                                 <Nav.Link eventKey="ejecucion" className="px-4 py-2">
@@ -1309,7 +1346,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                             </Nav.Item>
                                                         </>
                                                     )}
-                                                    {!esActividad && (ejecutado || cerrado) && (
+                                                    {(ejecutado || cerrado) && (
                                                         <Nav.Item>
                                                             <Nav.Link eventKey="desempeno" className="px-4 py-2">
                                                                 <i className="bi bi-speedometer2 mr-2"></i>Resumen de Desempeño
@@ -1350,41 +1387,97 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 </Nav>
 
                                                 <Tab.Content>
-                                                    {!esActividad && (ejecutado || cerrado) && !esProyectoEquipoAgil && (
+                                                    {((!esActividad && !esProyectoEquipoAgil) || (esActividad && (tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO))) && (ejecutado || cerrado) && (
                                                         <>
                                                             <Tab.Pane eventKey="ejecucion">
-                                                                {/* PESTAÑA 1: RESUMEN DE EJECUCIÓN */}
-                                                                <Row className="mb-4" style={{ rowGap: "50px", alignItems: "end" }}>
-                                                                    {!esActividad && (
-                                                                        <>
-                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                                <SummaryChart type="Avance de Alcance" value={resumenEjecucion.alcance} />
-                                                                            </Col>
-                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                                <SummaryChart type="Avance de Hitos" value={resumenEjecucion.hitos} />
-                                                                            </Col>
-                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                                <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
-                                                                            </Col>
-                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                                <SummaryChart type={esPrograma ? "Avance de Beneficios" : "Avance de Calidad"}
-                                                                                    value={esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad} />
-                                                                            </Col>
-                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                                <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
-                                                                            </Col>
-                                                                        </>
-                                                                    )}
-                                                                    {(tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO) && (
-                                                                        <Col md={4} className="d-flex justify-content-center pb-4">
-                                                                            <SummaryChart type="Avance de Gantt" value={resumenEjecucion.gantt} />
-                                                                        </Col>
-                                                                    )}
-                                                                </Row>
+                                                                {esPrograma ? (
+                                                                    // Para programas: sub-tabs "General" y "Proyectos"
+                                                                    <Tab.Container defaultActiveKey="ejecucion-general" activeKey={activeSubTabEjecucion} onSelect={setActiveSubTabEjecucion}>
+                                                                        <Nav variant="tabs" className="mb-4">
+                                                                            <Nav.Item>
+                                                                                <Nav.Link eventKey="ejecucion-general">
+                                                                                    <i className="bi bi-graph-up-arrow me-2"></i>General
+                                                                                </Nav.Link>
+                                                                            </Nav.Item>
+                                                                            <Nav.Item>
+                                                                                <Nav.Link eventKey="ejecucion-proyectos">
+                                                                                    <i className="bi bi-diagram-3 me-2"></i>Proyectos
+                                                                                </Nav.Link>
+                                                                            </Nav.Item>
+                                                                        </Nav>
+
+                                                                        <Tab.Content>
+                                                                            <Tab.Pane eventKey="ejecucion-general">
+                                                                                {/* PESTAÑA 1: RESUMEN DE EJECUCIÓN - General */}
+                                                                                <Row className="mb-4" style={{ rowGap: "50px", alignItems: "end" }}>
+                                                                                    {!esActividad && (
+                                                                                        <>
+                                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                                <SummaryChart type="Avance de Alcance" value={resumenEjecucion.alcance} />
+                                                                                            </Col>
+                                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                                <SummaryChart type="Avance de Hitos" value={resumenEjecucion.hitos} />
+                                                                                            </Col>
+                                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                                <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
+                                                                                            </Col>
+                                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                                <SummaryChart type={esPrograma ? "Avance de Beneficios" : "Avance de Calidad"}
+                                                                                                    value={esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad} />
+                                                                                            </Col>
+                                                                                            <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                                <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
+                                                                                            </Col>
+                                                                                        </>
+                                                                                    )}
+                                                                                </Row>
+                                                                            </Tab.Pane>
+
+                                                                            <Tab.Pane eventKey="ejecucion-proyectos">
+                                                                                {/* Sub-pestaña Proyectos - Resumen Agregado */}
+                                                                                <ResumenProgramaAgregado
+                                                                                    resumen={resumenAgregadoPrograma}
+                                                                                />
+                                                                            </Tab.Pane>
+                                                                        </Tab.Content>
+                                                                    </Tab.Container>
+                                                                ) : (
+                                                                    // Para proyectos normales: contenido original
+                                                                    <>
+                                                                        {/* PESTAÑA 1: RESUMEN DE EJECUCIÓN */}
+                                                                        <Row className="mb-4" style={{ rowGap: "50px", alignItems: "end" }}>
+                                                                            {!esActividad && (
+                                                                                <>
+                                                                                    <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                        <SummaryChart type="Avance de Alcance" value={resumenEjecucion.alcance} />
+                                                                                    </Col>
+                                                                                    <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                        <SummaryChart type="Avance de Hitos" value={resumenEjecucion.hitos} />
+                                                                                    </Col>
+                                                                                    <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                        <SummaryChart type="cost" value={resumenEjecucion.costoDesviacion} />
+                                                                                    </Col>
+                                                                                    <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                        <SummaryChart type={esPrograma ? "Avance de Beneficios" : "Avance de Calidad"}
+                                                                                            value={esPrograma ? resumenEjecucion.beneficios : resumenEjecucion.calidad} />
+                                                                                    </Col>
+                                                                                    <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                        <SummaryChart type="risk" value={resumenEjecucion.riesgoPromedio} />
+                                                                                    </Col>
+                                                                                </>
+                                                                            )}
+                                                                            {(tipoProyecto?.toString() === TIPO_PROYECTO_PREDICTIVO || tipoProyecto?.toString() === TIPO_PROYECTO_HIBRIDO) && (
+                                                                                <Col md={4} className="d-flex justify-content-center pb-4">
+                                                                                    <SummaryChart type="Avance de Gantt" value={resumenEjecucion.gantt} />
+                                                                                </Col>
+                                                                            )}
+                                                                        </Row>
+                                                                    </>
+                                                                )}
                                                             </Tab.Pane>
                                                         </>
                                                     )}
-                                                    {!esActividad && (ejecutado || cerrado) && (
+                                                    {(ejecutado || cerrado) && (
                                                         <>
                                                             {/* PESTAÑA 2: RESUMEN DE DESEMPEÑO */}
                                                             <Tab.Pane eventKey="desempeno">
@@ -2234,7 +2327,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         projectId={numericId}
                                         puedeEnviarCorreoInteresados={puede(PermProy.INTERESADOS_GEST)}
                                         toDo={todo}
-                                        markAsDoneCallback={id => doneTask(id)}
+                                        markAsDoneCallback={(id, closeDate, observacion) => doneTask(id, closeDate, observacion)}
                                         cerrado={cerrado}
                                         esPrograma={esPrograma}
                                     />
@@ -2259,7 +2352,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                 <option value="null">Todas</option>
                                             </select>
                                         </div>
-                                        <TodoList setTaskFilter={setTaskFilter} toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate) => doneTask(id, closeDate)} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue}></TodoList>
+                                        <TodoList setTaskFilter={setTaskFilter} toDo={todo} persona={persona} addTaskCallback={task => addTaskHandler(task)} interesado={interesado} markAsDoneCallback={(id, closeDate, observacion) => doneTask(id, closeDate, observacion)} cerrado={cerrado} ejecutado={ejecutado} onPerformanceChange={setDesempenoValue}></TodoList>
                                     </div>
                                 </Tab.Pane>
                                 <Tab.Pane eventKey="project-management">
@@ -2609,6 +2702,7 @@ const mapStateToProps = state => ({
     // --- CONTROL DE CAMBIOS ---
     listaSolicitudes: changeSelectors.getSolicitudes(state),
     programasLista: programaSelectors.getProgramasLista(state),
+    resumenAgregadoPrograma: programaSelectors.getResumenAgregado(state),
 
     userProjectPermisos: rolProyectoSelectors.getUserProjectPermisos(state),
     isLoadingUserRol: rolProyectoSelectors.getIsLoadingUserRol(state),

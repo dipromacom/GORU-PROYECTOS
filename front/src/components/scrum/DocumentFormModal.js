@@ -4,6 +4,8 @@ import {
     DOCUMENT_TYPES, DOCUMENT_STATES, DOCUMENT_RELATION_TYPES, emptyDocument, labelFor,
 } from './scrumConstants';
 
+const AGILE_DOC_TYPES = ['dor', 'dod', 'planning', 'daily', 'review', 'retro'];
+
 export default function DocumentFormModal({
     show,
     onHide,
@@ -87,7 +89,7 @@ export default function DocumentFormModal({
                                         onChange={(e) => setField('tipo', e.target.value)}
                                         disabled={readOnly}
                                     >
-                                        {DOCUMENT_TYPES.map((t) => (
+                                        {(esPredictivo ? DOCUMENT_TYPES.filter((t) => !AGILE_DOC_TYPES.includes(t.value)) : DOCUMENT_TYPES).map((t) => (
                                             <option key={t.value} value={t.value}>{t.label}</option>
                                         ))}
                                     </Form.Control>

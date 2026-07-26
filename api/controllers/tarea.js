@@ -76,16 +76,16 @@ const createTareaBatch = async (req, res) => {
     }
 }
 
-const markTaskAsDone = async (req,res) =>{
-    try{
-        const {id} = req.params
-        const { closeDate } = req.body;
-        const tareaUpdated = await TareaUtils.tareaDone(id, closeDate);
-        const {proyecto_id} = tareaUpdated
+const markTaskAsDone = async (req, res) => {
+    try {
+        const { id } = req.params
+        const { closeDate, observacion } = req.body;
+        const tareaUpdated = await TareaUtils.tareaDone(id, closeDate, observacion);
+        const { proyecto_id } = tareaUpdated
         const isDone = false
-        const tareas = await TareaUtils.getTareas(undefined, undefined, { proyectoId: proyecto_id, isDone, dueDate: new Date()})
-        return res.status(201).json({success:true, data: tareas})
-    }catch(error){
+        const tareas = await TareaUtils.getTareas(undefined, undefined, { proyectoId: proyecto_id, isDone, dueDate: new Date() })
+        return res.status(201).json({ success: true, data: tareas })
+    } catch (error) {
         return res.status(500).json({ success: false, message: error.message });
     }
 }

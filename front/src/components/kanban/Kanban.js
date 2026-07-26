@@ -13,11 +13,13 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
   const routeParams = useParams();
 
   const [showDeleteModal, setShowDeleteModal] = useState(false);
-  const [showCloseModal, setShowCloseModal] = useState(false); // Nuevo modal cierre
+  const [showCloseModal, setShowCloseModal] = useState(false);
   const [taskToDelete, setTaskToDelete] = useState(null);
-  const [taskToClose, setTaskToClose] = useState(null); // Tarea a cerrar
+  const [taskToClose, setTaskToClose] = useState(null);
   const [closingDate, setClosingDate] = useState(new Date().toISOString().split('T')[0]);
-  
+  const [observacionCierre, setObservacionCierre] = useState("");
+  const [dateFilter, setDateFilter] = useState("all");
+
   const moveTask = ({ source, destination, draggableId }) => {
     dispatch(actions.moveTask({ source, destination, draggableId }))
     dispatch(actions.syncKanban({ projectId: routeParams.id }))
@@ -90,6 +92,7 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
   // --- Funciones de Cierre ---
   const requestCloseTask = (task) => {
     setTaskToClose(task);
+    setObservacionCierre("");
     setShowCloseModal(true);
   };
 
@@ -97,13 +100,15 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
     if (taskToClose) {
       dispatch(actions.editTask({
         ...taskToClose,
-        closed_at: closingDate
+        closed_at: closingDate,
+        observacion: observacionCierre || null
       }));
 
       dispatch(actions.syncKanban({ projectId: routeParams.id }));
     }
     setShowCloseModal(false);
     setTaskToClose(null);
+    setObservacionCierre("");
   };
 
   const requestDeleteTask = ({ id }) => {
@@ -112,12 +117,12 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
   };
 
   const confirmDeleteTask = () => {
-      if (taskToDelete) {
-          dispatch(actions.deleteTask({ id: taskToDelete }));
-          dispatch(actions.syncKanban({ projectId: routeParams.id }));
-        }
-      setShowDeleteModal(false);
-      setTaskToDelete(null);
+    if (taskToDelete) {
+      dispatch(actions.deleteTask({ id: taskToDelete }));
+      dispatch(actions.syncKanban({ projectId: routeParams.id }));
+    }
+    setShowDeleteModal(false);
+    setTaskToDelete(null);
   };
 
   const handleDragEnd = (result) => {
@@ -137,6 +142,46 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
   useEffect(() => {
     dispatch(actions.fetch({ projectId: routeParams.id }));
   }, [dispatch, routeParams.id]);
+
+  // --- Filtrado por fecha ---
+  const filterTasksByDate = (tasks) => {
+    if (dateFilter === "all") return tasks;
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    return tasks.filter(t => {
+      if (!t) return false;
+      if (dateFilter === "overdue") {
+        return !t.closed_at && t.deadline && new Date(t.deadline.split('T')[0] + 'T00:00:00') < today;
+      }
+      if (dateFilter === "today") {
+        if (!t.deadline) return false;
+        const dl = new Date(t.deadline.split('T')[0] + 'T00:00:00');
+        return dl.getTime() === today.getTime();
+      }
+      if (dateFilter === "week") {
+        if (!t.deadline) return false;
+        const dl = new Date(t.deadline.split('T')[0] + 'T00:00:00');
+        const nextWeek = new Date(today); nextWeek.setDate(today.getDate() + 7);
+        return dl >= today && dl <= nextWeek;
+      }
+      if (dateFilter === "open") {
+        return !t.closed_at;
+      }
+      if (dateFilter === "month") {
+        if (!t.deadline) return false;
+        const dl = new Date(t.deadline.split('T')[0] + 'T00:00:00');
+        const startOfMonth = new Date(today.getFullYear(), today.getMonth(), 1);
+        const endOfMonth = new Date(today.getFullYear(), today.getMonth() + 1, 0);
+        return dl >= startOfMonth && dl <= endOfMonth;
+      }
+      return true;
+    });
+  };
+
+  const filteredTasksByStatus = tasksByStatus.map(status => ({
+    ...status,
+    tasks: filterTasksByDate(status.tasks)
+  }));
 
   return (
     <Container fluid className="h-100 d-flex flex-column kanban">
@@ -163,12 +208,29 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
           <small className="text-muted d-block mt-1">
             Fórmula: Tareas movidas a "Cerrado" a tiempo / Tareas con fecha vencida a hoy
           </small>
-         
+
         </div>
       )}
+      {/* --- Barra de Filtros --- */}
+      <div className="px-3 pt-3 pb-1 d-flex align-items-center gap-3 flex-wrap">
+        <small className="fw-bold text-muted text-uppercase">Filtrar tareas:</small>
+        <select
+          className="form-select form-select-sm"
+          style={{ maxWidth: '220px' }}
+          value={dateFilter}
+          onChange={(e) => setDateFilter(e.target.value)}
+        >
+          <option value="all">Todas las tareas</option>
+          <option value="open">Solo abiertas</option>
+          <option value="overdue">Vencidas (en rojo)</option>
+          <option value="today">Vence hoy</option>
+          <option value="week">Vencen esta semana</option>
+          <option value="month">Vencen este mes</option>
+        </select>
+      </div>
       <Row className="flex-fill mt-3 overflow-auto">
         <DragDropContext onDragEnd={handleDragEnd}>
-          {tasksByStatus.map((status) => {
+          {filteredTasksByStatus.map((status) => {
             const column = status;
             return (
               <Col key={column.id} clasNamesName="p-2">
@@ -200,22 +262,22 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
 
       {/* Modal de confirmación */}
       <Modal show={showDeleteModal} onHide={() => setShowDeleteModal(false)} centered>
-          <Modal.Header closeButton>
-              <Modal.Title>Confirmar eliminación</Modal.Title>
-            </Modal.Header>
-          <Modal.Body>
-              ¿Está seguro que desea borrar esta tarea?
-            </Modal.Body>
-          <Modal.Footer>
-              <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
-                  Cancelar
-                </Button>
-              <Button variant="danger" onClick={confirmDeleteTask}>
-                  Borrar
-                </Button>
-            </Modal.Footer>
-        </Modal>
-      {/* --- Modal de Cierre de Tarea --- */}    
+        <Modal.Header closeButton>
+          <Modal.Title>Confirmar eliminación</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          ¿Está seguro que desea borrar esta tarea?
+        </Modal.Body>
+        <Modal.Footer>
+          <Button variant="secondary" onClick={() => setShowDeleteModal(false)}>
+            Cancelar
+          </Button>
+          <Button variant="danger" onClick={confirmDeleteTask}>
+            Borrar
+          </Button>
+        </Modal.Footer>
+      </Modal>
+      {/* --- Modal de Cierre de Tarea --- */}
       <Modal show={showCloseModal} onHide={() => setShowCloseModal(false)} centered>
         <Modal.Header closeButton>
           <Modal.Title>Cerrar Tarea</Modal.Title>
@@ -228,6 +290,16 @@ const Kanban = ({ dispatch, tasksByStatus, interesados, cerrado, ejecutado, onPe
               type="date"
               value={closingDate}
               onChange={(e) => setClosingDate(e.target.value)}
+            />
+          </Form.Group>
+          <Form.Group className="mt-3">
+            <Form.Label>Observación al cerrar (opcional)</Form.Label>
+            <Form.Control
+              as="textarea"
+              rows={3}
+              placeholder="Ingrese una observación sobre el cierre de la tarea..."
+              value={observacionCierre}
+              onChange={(e) => setObservacionCierre(e.target.value)}
             />
           </Form.Group>
         </Modal.Body>

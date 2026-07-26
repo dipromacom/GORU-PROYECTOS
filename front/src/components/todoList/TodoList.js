@@ -10,9 +10,9 @@ import moment from "moment";
 const TodoList = ({ toDo = [], persona, usuario, setToDos, enableCheck = true, setTaskFilter, addTaskCallback, markAsDoneCallback, interesado, ejecutado, cerrado, onPerformanceChange = () => { } }) => {
     const [labels, setLabels] = useState([])
 
-    const markAsDone = (id, closeDate) => {
+    const markAsDone = (id, closeDate, observacion) => {
         if (typeof markAsDoneCallback === 'function') {
-            markAsDoneCallback(id, closeDate);
+            markAsDoneCallback(id, closeDate, observacion);
         } else if (typeof setToDos === 'function') {
             setToDos(prev => (prev || []).map(todo => {
                 if (!todo) return todo;
@@ -118,7 +118,7 @@ const TodoList = ({ toDo = [], persona, usuario, setToDos, enableCheck = true, s
                                 <TodoItem
                                     enableCheck={enableCheck}
                                     {...item}
-                                    onComplete={(id, closeDate) => markAsDone(id, closeDate)}
+                                    onComplete={(id, closeDate, observacion) => markAsDone(id, closeDate, observacion)}
                                     onDelete={id => deleteItemHandler(id)}
                                     forceVisible // 🔹 nueva prop para evitar estilos raros
                                     cerrado={cerrado}

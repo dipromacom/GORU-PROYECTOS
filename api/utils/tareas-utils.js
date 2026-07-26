@@ -91,14 +91,15 @@ async function createTarea({ id, title, description, prioridad, label, dueDate, 
     }
 }
 
-async function tareaDone(id, closeDate) {
+async function tareaDone(id, closeDate, observacion) {
     try {
         const [updated] = await Tarea.update(
             {
                 done: true,
-                closeDate: closeDate ? new Date(closeDate) : new Date() 
+                closeDate: closeDate ? new Date(closeDate) : new Date(),
+                observacion: observacion || null
             },
-            { where: { id }, returning: true } 
+            { where: { id }, returning: true }
         );
 
         if (!updated) {

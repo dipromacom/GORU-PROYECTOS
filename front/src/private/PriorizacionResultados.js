@@ -49,7 +49,7 @@ function PriorizacionResultados({ dispatch, isLoading, usuario, evaluacionList, 
     ], []
   );
 
-  function handleIniciarProyecto(event,projectId){
+  function handleIniciarProyecto(event, projectId) {
     event.preventDefault()
 
     const confirmacion = window.confirm(
@@ -57,7 +57,7 @@ function PriorizacionResultados({ dispatch, isLoading, usuario, evaluacionList, 
     );
 
     if (confirmacion) {
-      dispatch(projectActions.startProject(projectId, true, false));
+      dispatch(projectActions.startProject(projectId, 'P', false));
       setProyectosIniciados(prev => ({
         ...prev,
         [projectId]: 'D'
@@ -79,11 +79,11 @@ function PriorizacionResultados({ dispatch, isLoading, usuario, evaluacionList, 
           departamento: departamento.nombre,
           prioridad: evaluacion.peso_total + '%',
           accion: estadoActual === 'C' || estadoActual === null
-            ? <a href="" data-bs-toggle="tooltip" data-bs-title="Iniciar Proyecto" className="btn btn-lg play" 
-                onClick={e => {
-                  handleIniciarProyecto(e, evaluacion.Proyecto.id)
-                }} /> 
-            : < span className = "text-success fw-bold" > En Desarrollo</span > 
+            ? <a href="" data-bs-toggle="tooltip" data-bs-title="Iniciar Proyecto" className="btn btn-lg play"
+              onClick={e => {
+                handleIniciarProyecto(e, evaluacion.Proyecto.id)
+              }} />
+            : < span className="text-success fw-bold" > En Desarrollo</span >
         }
       })
     }, [evaluacionList, proyectosIniciados]);
@@ -96,7 +96,7 @@ function PriorizacionResultados({ dispatch, isLoading, usuario, evaluacionList, 
           dispatch(batchActions.getClosedBatches(usuario.id));
           dispatch(evaluacionActions.getEvaluacionResult(usuario.id, tipoEvaluacionId));
         }
-      } catch(e) {
+      } catch (e) {
         onError(e);
       }
     }
@@ -139,95 +139,95 @@ function PriorizacionResultados({ dispatch, isLoading, usuario, evaluacionList, 
 
   return (
     <div className="page-container">
-    <hr className="separator" />
-    <div className="priorization-result-form">
-      <h1 className="orange">Priorización de Proyectos - Resultados</h1>
+      <hr className="separator" />
+      <div className="priorization-result-form">
+        <h1 className="orange">Priorización de Proyectos - Resultados</h1>
 
-    <br />
-    <Form onSubmit={handleSubmit}>
-      {
-        (!isLoadingBatch && closedBatches.length) ?
-        <Form.Group controlId="batch">
-        <Form.Label>Batch</Form.Label>
-        <Form.Control 
-          as="select"
-          className="form-select"
-          value={selectedBatch}
-          onChange={ e => handleSelectBatch(e.target.value) }
-        >
+        <br />
+        <Form onSubmit={handleSubmit}>
           {
-            closedBatches && closedBatches.map((batch) => {
-              return (
-                <option
-                  key={batch.id}
-                  value={batch.id}
+            (!isLoadingBatch && closedBatches.length) ?
+              <Form.Group controlId="batch">
+                <Form.Label>Batch</Form.Label>
+                <Form.Control
+                  as="select"
+                  className="form-select"
+                  value={selectedBatch}
+                  onChange={e => handleSelectBatch(e.target.value)}
                 >
-                  {batch.nombre}
-                </option>
-              )
-            })
+                  {
+                    closedBatches && closedBatches.map((batch) => {
+                      return (
+                        <option
+                          key={batch.id}
+                          value={batch.id}
+                        >
+                          {batch.nombre}
+                        </option>
+                      )
+                    })
+                  }
+                </Form.Control>
+              </Form.Group>
+              : <></>
           }
-        </Form.Control>
-        </Form.Group>
-        : <></>
-      }
 
-      {
-        (!isLoading && data.length > 0)
-          ? <SortTable 
-              columns={columns}
-              data={data}
-            /> 
-          : <span>
-              <p>No hay resultados que mostrar</p>
-            </span>
-      }
+          {
+            (!isLoading && data.length > 0)
+              ? <SortTable
+                columns={columns}
+                data={data}
+              />
+              : <span>
+                <p>No hay resultados que mostrar</p>
+              </span>
+          }
 
-      <br />
+          <br />
 
-      <div className="button-group">
-      {
-        (!isLoadingBatch && hasActiveBatch != null && hasActiveBatch === false) 
-        &&
-        <LoaderButton
-        type="submit"
-        className="btn-success btn-save"
-        >
-        Crear Batch
-        </LoaderButton>
-      }
+          <div className="button-group">
+            {
+              (!isLoadingBatch && hasActiveBatch != null && hasActiveBatch === false)
+              &&
+              <LoaderButton
+                type="submit"
+                className="btn-success btn-save"
+              >
+                Crear Batch
+              </LoaderButton>
+            }
 
-      {
-        (!isLoading && data.length > 0) &&
-        <LoaderButton
-        onClick={handleImprimir}
-        className="btn-primary btn-save"
-        >
-        Imprimir
-        </LoaderButton>
-      }
-      
+            {
+              (!isLoading && data.length > 0) &&
+              <LoaderButton
+                onClick={handleImprimir}
+                className="btn-primary btn-save"
+              >
+                Imprimir
+              </LoaderButton>
+            }
+
+          </div>
+
+          <br />
+          <div>
+            {
+              (!isLoadingBatch && hasActiveBatch != null && hasActiveBatch === true)
+              &&
+              <>
+                <p>{`El batch que se encuentra activo es: ${activeBatch != null ? activeBatch.nombre : ''}`}</p>
+                <LoaderButton
+                  className="btn-success btn-save"
+                  onClick={handleContinuar}
+                >
+                  Continuar Batch
+                </LoaderButton>
+              </>
+            }
+          </div>
+
+        </Form>
       </div>
-
-      <br />
-      <div>
-      {
-        (!isLoadingBatch && hasActiveBatch != null && hasActiveBatch === true) 
-        &&
-        <>
-        <p>{`El batch que se encuentra activo es: ${activeBatch != null ? activeBatch.nombre : '' }`}</p>
-        <LoaderButton
-        className="btn-success btn-save"
-        onClick={handleContinuar}
-        >
-        Continuar Batch
-        </LoaderButton>
-        </>
-      }
-      </div>
-
-    </Form>
-    </div>
     </div>
   );
 }

@@ -32,6 +32,10 @@ module.exports = (db, Sequelize) => {
         closeDate: {
             type: Sequelize.DATE,
         },
+        observacion: {
+            type: Sequelize.TEXT,
+            allowNull: true,
+        },
         proyecto_id: {
             type: Sequelize.INTEGER,
             references: {
@@ -45,7 +49,7 @@ module.exports = (db, Sequelize) => {
         },
         id_interesado: {
             type: Sequelize.INTEGER,
-            references:{
+            references: {
                 model: Interesados,
                 key: 'id',
             }

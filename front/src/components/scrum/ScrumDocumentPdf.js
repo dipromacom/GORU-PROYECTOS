@@ -1,8 +1,9 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
     page: { padding: 40, fontSize: 10, fontFamily: 'Helvetica' },
+    logo: { width: 160, marginBottom: 20, alignSelf: 'center' },
     title: { fontSize: 16, fontWeight: 'bold', color: '#1e40af', marginBottom: 4 },
     meta: { fontSize: 9, color: '#64748b', marginBottom: 16 },
     sectionTitle: {
@@ -31,6 +32,7 @@ export default function ScrumDocumentPdf({ doc, tipoLabel, estadoLabel, autor, r
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                <Image src="/img/goru-logo.jpg" style={styles.logo} />
                 <Text style={styles.title}>{doc?.titulo || 'Documento Scrum'}</Text>
                 <Text style={styles.meta}>
                     {tipoLabel} · v{doc?.version || '1.0'} · {estadoLabel} · {autor}

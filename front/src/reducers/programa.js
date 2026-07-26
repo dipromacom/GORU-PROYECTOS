@@ -28,6 +28,12 @@ export const types = {
     GET_PROGRAMAS_LISTA_REQUEST: 'programa/GET_PROGRAMAS_LISTA_REQUEST',
     GET_PROGRAMAS_LISTA_SUCCESS: 'programa/GET_PROGRAMAS_LISTA_SUCCESS',
     GET_PROGRAMAS_LISTA_ERROR: 'programa/GET_PROGRAMAS_LISTA_ERROR',
+
+    // Resumen agregado del programa (estadísticas de todos los proyectos hijos)
+    GET_RESUMEN_AGREGADO_REQUEST: 'programa/GET_RESUMEN_AGREGADO_REQUEST',
+    GET_RESUMEN_AGREGADO_SUCCESS: 'programa/GET_RESUMEN_AGREGADO_SUCCESS',
+    GET_RESUMEN_AGREGADO_ERROR: 'programa/GET_RESUMEN_AGREGADO_ERROR',
+    CLEAR_RESUMEN_AGREGADO: 'programa/CLEAR_RESUMEN_AGREGADO',
 };
 
 export const actions = {
@@ -55,6 +61,13 @@ export const actions = {
     getProgramasLista: () => ({
         type: types.GET_PROGRAMAS_LISTA_REQUEST,
     }),
+    getResumenAgregado: (programaId) => ({
+        type: types.GET_RESUMEN_AGREGADO_REQUEST,
+        programaId,
+    }),
+    clearResumenAgregado: () => ({
+        type: types.CLEAR_RESUMEN_AGREGADO,
+    }),
 };
 
 const defaultState = {
@@ -62,6 +75,7 @@ const defaultState = {
     proyectosPrograma: [],    // Los que ya están en el programa
     proyectosDisponibles: [], // Los que el usuario puede añadir
     programasLista: [],
+    resumenAgregado: null,    // Resumen agregado de ejecución de todos los proyectos hijos
     error: null,
 };
 
@@ -71,6 +85,7 @@ export const selectors = {
     getProyectosDisponibles: ({ programa }) => programa.proyectosDisponibles,
     getError: ({ programa }) => programa.error,
     getProgramasLista: ({ programa }) => programa.programasLista,
+    getResumenAgregado: ({ programa }) => programa.resumenAgregado,
 };
 
 const programaReducer = (state = defaultState, action = {}) => {
@@ -126,13 +141,24 @@ const programaReducer = (state = defaultState, action = {}) => {
         // --- CLEAR ---
         case types.CLEAR_PROGRAMA_STATE:
             return defaultState;
-         
+
         case types.GET_PROGRAMAS_LISTA_REQUEST:
             return { ...state, isLoading: true };
         case types.GET_PROGRAMAS_LISTA_SUCCESS:
             return { ...state, isLoading: false, programasLista: action.programasLista };
         case types.GET_PROGRAMAS_LISTA_ERROR:
-            return { ...state, isLoading: false, programasLista: [] };    
+            return { ...state, isLoading: false, programasLista: [] };
+
+        // --- RESUMEN AGREGADO ---
+        case types.GET_RESUMEN_AGREGADO_REQUEST:
+            return { ...state, isLoading: true, error: null };
+        case types.GET_RESUMEN_AGREGADO_SUCCESS:
+            return { ...state, isLoading: false, resumenAgregado: action.resumenAgregado };
+        case types.GET_RESUMEN_AGREGADO_ERROR:
+            return { ...state, isLoading: false, error: action.error, resumenAgregado: null };
+        case types.CLEAR_RESUMEN_AGREGADO:
+            return { ...state, resumenAgregado: null };
+
         default:
             return state;
     }

@@ -16,10 +16,15 @@ const styles = StyleSheet.create({
     fontFamily: 'Helvetica',
     fontSize: 11,
     paddingTop: 30,
-    paddingLeft:60,
-    paddingRight:60,
+    paddingLeft: 60,
+    paddingRight: 60,
     lineHeight: 1.5,
     //flexDirection: 'column',
+  },
+  logo: {
+    width: 160,
+    marginBottom: 20,
+    alignSelf: 'center',
   },
 
   pageBackground: {
@@ -29,37 +34,37 @@ const styles = StyleSheet.create({
     left: '40%',
     width: '50%',
     zindex: '-1'
-},
+  },
 
   // REPORT TITLE
-  titleContainer:{
+  titleContainer: {
     flexDirection: 'column',
     marginTop: 20,
   },
-  reportTitle:{
+  reportTitle: {
     color: blueColor,
     fontSize: 22,
     textAlign: 'center',
   },
 
   // REPORT SUBTITLE
-  subTitleContainer:{
+  subTitleContainer: {
     flexDirection: 'column',
     marginTop: 6,
   },
-  reportSubTitle:{
+  reportSubTitle: {
     color: blueColor,
     fontSize: 16,
     textAlign: 'center',
   },
 
   // REPORT DESCRIPTION
-  descriptionContainer:{
+  descriptionContainer: {
     flexDirection: 'row',
     marginTop: 16,
   },
 
-  description:{
+  description: {
     color: blueColor,
     fontSize: 12,
     textAlign: 'left',
@@ -72,31 +77,31 @@ const styles = StyleSheet.create({
     marginTop: 18,
     borderWidth: 1,
     borderColor: greenColor,
-},
+  },
   container: {
-      flexDirection: 'row',
-      borderBottomColor: greenColor,
-      backgroundColor: greenColor,
-      color: '#fff',
-      borderBottomWidth: 1,
-      alignItems: 'center',
-      height: 24,
-      textAlign: 'center',
-      fontStyle: 'bold',
-      flexGrow: 1,
+    flexDirection: 'row',
+    borderBottomColor: greenColor,
+    backgroundColor: greenColor,
+    color: '#fff',
+    borderBottomWidth: 1,
+    alignItems: 'center',
+    height: 24,
+    textAlign: 'center',
+    fontStyle: 'bold',
+    flexGrow: 1,
   },
   numero: {
-      width: '20%',
-      borderRightColor: blueColor,
-      borderRightWidth: 1,
+    width: '20%',
+    borderRightColor: blueColor,
+    borderRightWidth: 1,
   },
   proyecto: {
-      width: '65%',
-      borderRightColor: blueColor,
-      borderRightWidth: 1,
+    width: '65%',
+    borderRightColor: blueColor,
+    borderRightWidth: 1,
   },
   puntaje: {
-      width: '15%',
+    width: '15%',
   },
 
   // TABLE ITEM
@@ -107,28 +112,28 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     height: 24,
     fontStyle: 'bold',
-},
+  },
   numeroItem: {
-      width: '20%',
-      textAlign: 'left',
-      borderRightColor: blueColor,
-      borderRightWidth: 1,
-      paddingLeft: 8,
+    width: '20%',
+    textAlign: 'left',
+    borderRightColor: blueColor,
+    borderRightWidth: 1,
+    paddingLeft: 8,
   },
   proyectoItem: {
-      width: '65%',
-      borderRightColor: blueColor,
-      borderRightWidth: 1,
-      textAlign: 'left',
-      paddingLeft: 8,
+    width: '65%',
+    borderRightColor: blueColor,
+    borderRightWidth: 1,
+    textAlign: 'left',
+    paddingLeft: 8,
   },
   puntajeItem: {
-      width: '15%',
-      textAlign: 'right',
-      paddingRight: 8,
+    width: '15%',
+    textAlign: 'right',
+    paddingRight: 8,
   },
 
-  });
+});
 
 
 function PrintBatch({ dispatch, details, evaluacionList, usuario }) {
@@ -137,7 +142,8 @@ function PrintBatch({ dispatch, details, evaluacionList, usuario }) {
   const MyDocument = (prop) => (
     <Document title={`Priorización de Proyectos - Batch ${id}`}>
       <Page size="A4" style={styles.page}>
-      <Image src="./Goru-a4.png" style={styles.pageBackground}/>
+        <Image src="/img/goru-logo.jpg" style={styles.logo} />
+        {/*<Image src="./Goru-a4.png" style={styles.pageBackground}/>*/}
 
         <View style={styles.titleContainer}>
           <Text style={styles.reportTitle}>Priorización de Proyectos</Text>
@@ -160,12 +166,12 @@ function PrintBatch({ dispatch, details, evaluacionList, usuario }) {
         </View>
 
         {
-          evaluacionList.map( item => {
+          evaluacionList.map(item => {
             console.log(item.Proyecto.numero)
             return (<View style={styles.row} key={item.id}>
-                <Text style={styles.numeroItem}>{item.Proyecto?.numero.substring(0, 5) || ""}</Text>
-                <Text style={styles.proyectoItem}>{item.Proyecto.nombre}</Text>
-                <Text style={styles.puntajeItem}>{item.peso_total}</Text>
+              <Text style={styles.numeroItem}>{item.Proyecto?.numero.substring(0, 5) || ""}</Text>
+              <Text style={styles.proyectoItem}>{item.Proyecto.nombre}</Text>
+              <Text style={styles.puntajeItem}>{item.peso_total}</Text>
             </View>);
           }
 
@@ -194,13 +200,13 @@ function PrintBatch({ dispatch, details, evaluacionList, usuario }) {
 
         <br />
         {
-          (evaluacionList!= undefined && evaluacionList.length) && 
+          (evaluacionList != undefined && evaluacionList.length) &&
           <PDFViewer width="1000" height="600" >
             <MyDocument />
           </PDFViewer>
         }
-       
-        
+
+
       </div>
     </div>
   );

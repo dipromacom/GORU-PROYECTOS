@@ -65,25 +65,25 @@ const setKanban = async ({ status, tasks, projectId }) => {
     }
 }
 
-const getKanban = async ({projectId})=>{
-    try{
+const getKanban = async ({ projectId }) => {
+    try {
         const status = await KanbanStatus.findAll({
-            where:{
+            where: {
                 project_id: projectId
             },
             attributes: ['id', 'title'],
             include: [{
                 as: 'tasks',
                 model: KanbanTask,
-                attributes: ['id', 'content', 'priority', 'interesadoId', 'deadline', 'closed_at']
+                attributes: ['id', 'content', 'priority', 'interesadoId', 'deadline', 'closed_at', 'observacion']
             }],
             order: [
-                ['index', 'ASC'],                   
-                [{ model: KanbanTask, as: 'tasks' }, 'index', 'ASC'] 
+                ['index', 'ASC'],
+                [{ model: KanbanTask, as: 'tasks' }, 'index', 'ASC']
             ]
         })
         return status
-    }catch(e){
+    } catch (e) {
         logger.error({
             message: e.message,
             source: file,

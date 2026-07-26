@@ -1,0 +1,112 @@
+/* ResumenProgramaAgregado.css */
+
+.rpa-container {
+    padding: 8px 0;
+}
+
+/* Accordion (react-bootstrap v1.x Card-based) */
+.rpa-accordion .card {
+    border: none;
+    border-radius: 0;
+    margin-bottom: 4px;
+    box-shadow: 0 1px 3px rgba(0, 0, 0, 0.06);
+}
+
+.rpa-accordion .card-header {
+    font-weight: 600;
+    font-size: 0.95rem;
+    padding: 14px 20px;
+    color: #1a3c5e;
+    background: #f8f9fa;
+    border-bottom: 1px solid #e9ecef;
+    cursor: pointer;
+    user-select: none;
+    transition: background 0.2s ease;
+}
+
+.rpa-accordion .card-header:hover {
+    background: #eef2f7;
+}
+
+.rpa-accordion .card-header[aria-expanded="true"] {
+    background: #e8f0fe;
+    color: #1a3c5e;
+}
+
+.rpa-accordion .card-header:focus {
+    outline: none;
+}
+
+.rpa-accordion .card-body {
+    padding: 0;
+}
+
+.rpa-accordion .card-header i {
+    color: #1a3c5e;
+}
+
+/* Tables */
+.rpa-table {
+    margin-bottom: 0;
+    font-size: 0.85rem;
+}
+
+.rpa-table th {
+    font-weight: 600;
+    font-size: 0.75rem;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    color: #6c757d;
+    background: #f8f9fa;
+    border-bottom: 2px solid #e9ecef;
+    white-space: nowrap;
+}
+
+.rpa-table td {
+    vertical-align: middle;
+    white-space: nowrap;
+    padding: 10px 12px;
+}
+
+.rpa-table tbody tr:hover {
+    background: #f8f9fa;
+}
+
+.rpa-table .badge {
+    font-size: 0.7rem;
+    padding: 0.35em 0.55em;
+}
+
+/* Empty State */
+.rpa-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 60px 20px;
+    color: #6c757d;
+    text-align: center;
+}
+
+.rpa-empty i {
+    font-size: 3rem;
+    margin-bottom: 16px;
+    opacity: 0.5;
+}
+
+.rpa-empty p {
+    margin: 0;
+    font-size: 1rem;
+}
+
+/* Responsive */
+@media (max-width: 768px) {
+    .rpa-table {
+        font-size: 0.8rem;
+    }
+
+    .rpa-table th,
+    .rpa-table td {
+        padding: 8px 6px;
+    }
+}

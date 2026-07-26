@@ -229,9 +229,9 @@ function* handleInsertTask({ payload }) {
     }
 }
 
-function* handleDoneTask({ idTask, closeDate }) {
+function* handleDoneTask({ idTask, closeDate, observacion }) {
     try {
-        const response = yield call(Api.doneTask, idTask, closeDate);
+        const response = yield call(Api.doneTask, idTask, closeDate, observacion);
         const { success, data } = response.data;
         const { tareas } = data;
         if (success) {

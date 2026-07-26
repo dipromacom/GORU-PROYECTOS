@@ -162,10 +162,11 @@ export const actions = {
         type: types.INSERT_TODO_TASK_REQUEST,
         payload
     }),
-    doneTask: (idTask, closeDate) => ({
+    doneTask: (idTask, closeDate, observacion) => ({
         type: types.DONE_TASK_REQUEST,
         idTask,
-        closeDate
+        closeDate,
+        observacion
     }),
     createInteresadoRequest: (payload) => ({
         type: types.CREATE_INTERESADO_REQUEST,

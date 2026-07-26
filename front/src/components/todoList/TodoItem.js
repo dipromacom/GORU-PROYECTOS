@@ -7,24 +7,27 @@ import moment from 'moment';
 const TodoItem = ({
     id, title, description, prioridad, interesado, label, done,
     onComplete, dueDate, duedate, onDelete, enableCheck, interesadoId,
-    close, cerrado, setTaskFilter // 🔹 nuevo prop que viene desde la API
+    close, cerrado, setTaskFilter
     , closeDate: taskCloseDate
+    , observacion: taskObservacion
 }) => {
     const [doneItem, setDoneItem] = useState(done);
     const [hover, setHover] = useState(false);
     const [showModal, setShowModal] = useState(false);
     const [closeDate, setCloseDate] = useState("");
+    const [observacion, setObservacion] = useState("");
 
     const handleOpenModal = () => setShowModal(true);
     const handleCloseModal = () => {
         setCloseDate("");
+        setObservacion("");
         setShowModal(false);
     };
 
     const disableActions = cerrado || doneItem;
 
     const handleConfirmClose = () => {
-        
+
         const fechaInicio = moment(dueDate || duedate).format("YYYY-MM-DD");
 
         if (closeDate < fechaInicio) {
@@ -35,12 +38,14 @@ const TodoItem = ({
         const closedTask = {
             id,
             close: true,
-            closeDate
+            closeDate,
+            observacion
         };
         console.log("✅ Tarea cerrada:", closedTask);
 
         setDoneItem(true);
-        onComplete(id, closeDate);
+        onComplete(id, closeDate, observacion);
+        setObservacion("");
         setShowModal(false);
     };
 
@@ -131,12 +136,17 @@ const TodoItem = ({
                                 <strong>Responsable:</strong> sin responsable designado
                             </div>
                         )}
-                        {/* 🎯 MODIFICACIÓN AQUÍ: Mostrar fecha de cierre si está cerrada */}
-                        {taskCloseDate &&  (
+                        {taskCloseDate && (
                             <div className='flex-fill mt-2'>
                                 <div>
                                     <strong>Fecha de Cierre:</strong> {moment(taskCloseDate).format('DD/MM/YYYY')}
                                 </div>
+                                {taskObservacion && (
+                                    <div className="mt-1 text-muted" style={{ fontSize: '0.85rem' }}>
+                                        <i className="bi bi-chat-quote mr-1"></i>
+                                        {taskObservacion}
+                                    </div>
+                                )}
                             </div>
                         )}
                     </div>
@@ -156,6 +166,16 @@ const TodoItem = ({
                             value={closeDate}
                             min={dueDate || duedate ? moment(dueDate || duedate).format("YYYY-MM-DD") : undefined}
                             onChange={(e) => setCloseDate(e.target.value)}
+                        />
+                    </Form.Group>
+                    <Form.Group className="mt-3">
+                        <Form.Label>Observación al cerrar (opcional)</Form.Label>
+                        <Form.Control
+                            as="textarea"
+                            rows={3}
+                            placeholder="Ingrese una observación sobre el cierre de la tarea..."
+                            value={observacion}
+                            onChange={(e) => setObservacion(e.target.value)}
                         />
                     </Form.Group>
                 </Modal.Body>

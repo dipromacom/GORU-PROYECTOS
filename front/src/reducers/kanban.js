@@ -40,9 +40,9 @@ export const actions = {
         statusId: idField, statusTitle: title
     }),
 
-    createTask: ({ content, priority, statusId, interesadoId, deadline, closed_at }) => ({
+    createTask: ({ content, priority, statusId, interesadoId, deadline, closed_at, observacion }) => ({
         type: types.CREATE_TASK,
-        taskContent: content, priority, statusId, interesadoId, deadline, closed_at
+        taskContent: content, priority, statusId, interesadoId, deadline, closed_at, observacion
     }),
 
     moveTask: ({ destination, source, draggableId }) => ({
@@ -50,9 +50,9 @@ export const actions = {
         destination, source, draggableId
     }),
 
-    editTask: ({ id, content, priority, interesadoId, deadline, closed_at }) => ({
+    editTask: ({ id, content, priority, interesadoId, deadline, closed_at, observacion }) => ({
         type: types.EDIT_TASK,
-        taskId: id, taskContent: content, priority, interesadoId, deadline, closed_at
+        taskId: id, taskContent: content, priority, interesadoId, deadline, closed_at, observacion
     }),
 
     deleteTask: ({ id }) => ({
@@ -172,7 +172,8 @@ const kanbanReducer = (state = defaultState, action = {}) => {
                             priority: "none",
                             interesadoId: action.interesadoId || null,
                             deadline: action.deadline || null,
-                            closed_at: action.closed_at || null, 
+                            closed_at: action.closed_at || null,
+                            observacion: action.observacion || null,
                         },
                     },
                     allIds: [...state.tasks.allIds, uuid_task],
@@ -209,6 +210,9 @@ const kanbanReducer = (state = defaultState, action = {}) => {
                             closed_at: action.closed_at !== undefined
                                 ? action.closed_at
                                 : state.tasks.byId[taskId].closed_at,
+                            observacion: action.observacion !== undefined
+                                ? action.observacion
+                                : state.tasks.byId[taskId].observacion,
                         }
                     }
                 }
@@ -255,7 +259,7 @@ const kanbanReducer = (state = defaultState, action = {}) => {
                     ...tasks
                 }
             }
-        
+
         case types.FETCH_KANBAN_DASHBOARD_REQUEST:
             return {
                 ...state,
@@ -279,7 +283,7 @@ const kanbanReducer = (state = defaultState, action = {}) => {
                 isLoading: false,
                 error: action.error
             };
-            
+
         case types.CLEAN:
             return defaultState
         default:

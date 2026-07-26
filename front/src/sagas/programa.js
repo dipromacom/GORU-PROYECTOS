@@ -10,6 +10,7 @@ const sagas = [
     takeLatest(types.ASIGNAR_PROYECTO_REQUEST, handleAsignarProyecto),
     takeLatest(types.DESASIGNAR_PROYECTO_REQUEST, handleDesasignarProyecto),
     takeLatest(types.GET_PROGRAMAS_LISTA_REQUEST, handleGetProgramasLista),
+    takeLatest(types.GET_RESUMEN_AGREGADO_REQUEST, handleGetResumenAgregado),
 ];
 
 function* handleGetProyectosPrograma({ programaId }) {
@@ -83,6 +84,21 @@ function* handleGetProgramasLista() {
         }
     } catch (e) {
         yield put({ type: types.GET_PROGRAMAS_LISTA_ERROR });
+        onError(e);
+    }
+}
+
+function* handleGetResumenAgregado({ programaId }) {
+    try {
+        const response = yield call(Api.getResumenAgregadoPrograma, programaId);
+        const { success, data } = response.data;
+        if (success) {
+            yield put({ type: types.GET_RESUMEN_AGREGADO_SUCCESS, resumenAgregado: data });
+        } else {
+            yield put({ type: types.GET_RESUMEN_AGREGADO_ERROR, error: 'Error al cargar resumen agregado' });
+        }
+    } catch (e) {
+        yield put({ type: types.GET_RESUMEN_AGREGADO_ERROR, error: e.message });
         onError(e);
     }
 }

@@ -24,7 +24,7 @@ const Task = ({
     const handleDeadlineChange = (e) => {
         if (!task?.id) return;
         editTask({
-            ...task, 
+            ...task,
             deadline: e.target.value
         });
     };
@@ -33,7 +33,7 @@ const Task = ({
 
     const editHandler = cerrado ? () => { } : (id, field) => editTask({ id, content: field });
     const createHandler = cerrado ? () => { } : (field) => createTask({ statusId, content: field });
-    
+
     const {
         field,
         isEditing,
@@ -124,10 +124,13 @@ const Task = ({
         );
     };
 
+    const isOverdue = !isClosed && task?.deadline && new Date(task.deadline.split('T')[0] + 'T00:00:00') < new Date().setHours(0, 0, 0, 0);
+
     const renderTaskContent = ({ dragHandleProps = {} }) => (
         <Card className="kanban-task mt-2 mb-2" {...dragHandleProps}
             onMouseEnter={() => setCardHovered(true)}
             onMouseLeave={() => setCardHovered(false)}
+            style={{ borderLeft: isOverdue ? '3px solid #dc3545' : undefined }}
         >
             <Card.Body>
                 {(!isEditing && !cerrado) && <div className="float-right">{renderMenu()}</div>}
@@ -140,7 +143,8 @@ const Task = ({
                     {task && (
                         <>
                             <div className="mt-2">
-                                <small className="text-muted d-block">Fecha de Entrega (Deadline):</small>
+                                <small className={isOverdue ? "text-danger fw-bold d-block" : "text-muted d-block"}
+                                >{isOverdue ? "⚠️ Vencido - Fecha Entrega:" : "Fecha de Entrega (Deadline):"}</small>
                                 <Form.Control
                                     type="date"
                                     size="sm"
@@ -148,28 +152,40 @@ const Task = ({
                                     value={task?.deadline ? task.deadline.split('T')[0] : ""}
                                     onChange={handleDeadlineChange}
                                     onClick={(e) => e.stopPropagation()}
-                                    style={{ fontSize: '0.75rem', padding: '2px 5px' }}
+                                    style={{
+                                        fontSize: '0.75rem',
+                                        padding: '2px 5px',
+                                        borderColor: isOverdue ? '#dc3545' : undefined,
+                                        color: isOverdue ? '#dc3545' : 'inherit'
+                                    }}
                                 />
                             </div>
                             {/* Info de cierre si existe */}
                             {isClosed && (
-                                <div className="mt-1">
-                                    <span className="badge badge-success">
-                                        Finalizado: {formatLocalDate(task.closed_at)}
-                                    </span>
-                                </div>
+                                <>
+                                    <div className="mt-1">
+                                        <span className="badge badge-success">
+                                            Finalizado: {formatLocalDate(task.closed_at)}
+                                        </span>
+                                    </div>
+                                    {task.observacion && (
+                                        <div className="mt-1 text-muted" style={{ fontSize: '0.75rem' }}>
+                                            <i className="bi bi-chat-quote mr-1"></i>
+                                            {task.observacion}
+                                        </div>
+                                    )}
+                                </>
                             )}
                             <br></br>
                             {/* InteresadoDropdown siempre visible */}
                             <InteresadoDropdown interesados={interesados} task={task} editTask={cerrado ? () => { } : editTask} cerrado={cerrado} />
                         </>
-                    )}    
+                    )}
                 </div>
             </Card.Body>
         </Card>
     );
 
-    const isOverdue = !isClosed && task?.deadline && new Date(task.deadline.split('T')[0] + 'T00:00:00') < new Date().setHours(0, 0, 0, 0);
 
     return (
         <Draggable draggableId={task?.id || `task-${index}`} index={index} isDragDisabled={!draggable || cerrado}>

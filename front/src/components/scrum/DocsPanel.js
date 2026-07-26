@@ -16,6 +16,8 @@ import {
 import { getAutorName } from './scrumHelpers';
 import { selectors as scrumSelectors } from '../../reducers/scrum';
 
+const AGILE_TYPES = ['dor', 'dod', 'planning', 'daily', 'review', 'retro'];
+
 function DocsPanel({
     projectId,
     sprints = [],
@@ -74,6 +76,12 @@ function DocsPanel({
     const stats = useMemo(() => ({
         total: documents.length,
     }), [documents]);
+
+    const availableDocTypes = useMemo(() =>
+        esPredictivo
+            ? DOCUMENT_TYPES.filter((t) => !AGILE_TYPES.includes(t.value))
+            : DOCUMENT_TYPES,
+        [esPredictivo]);
 
     const filtered = useMemo(() => {
         let list = documents;
@@ -286,9 +294,9 @@ function DocsPanel({
                                 <Tab eventKey="todos" title="Todos" />
                                 {!esPredictivo && <Tab eventKey="sprint" title="Por sprint" />}
                                 {!esPredictivo && <Tab eventKey="epica" title="Por épica" />}
-                                <Tab eventKey="retro" title="Retrospectivas" />
+                                {!esPredictivo && <Tab eventKey="retro" title="Retrospectivas" />}
+                                {!esPredictivo && <Tab eventKey="evidencia" title="Evidencias" />}
                                 <Tab eventKey="decision" title="Decisiones" />
-                                <Tab eventKey="evidencia" title="Evidencias" />
                             </Tabs>
 
                             <Row className="g-2 mb-3">
@@ -308,7 +316,7 @@ function DocsPanel({
                                         onChange={(e) => setFilterTipo(e.target.value)}
                                     >
                                         <option value="">Todos los tipos</option>
-                                        {DOCUMENT_TYPES.map((t) => (
+                                        {availableDocTypes.map((t) => (
                                             <option key={t.value} value={t.value}>{t.label}</option>
                                         ))}
                                     </Form.Control>
@@ -553,3 +561,4 @@ const mapStateToProps = (state) => ({
 });
 
 export default connect(mapStateToProps)(DocsPanel);
+

@@ -700,7 +700,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                             <strong>Avance real:</strong>{' '}
                             {projectSummary.avgProgress}%
                         </div>
-                        {(cerrado || ejecutado)  && (
+                        {(cerrado || ejecutado) && (
                             <>
                                 <div className="gantt-summary-item">
                                     <strong>Avance estimado:</strong>{' '}
@@ -852,10 +852,10 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                                                     }}>
                                                                         {metrics.avgPerformance.toFixed(2)}
                                                                     </span>
-                                                                    
+
                                                                 </div>
                                                             </>
-                                                        )}           
+                                                        )}
                                                     </>
                                                 );
                                             })()}
@@ -1136,7 +1136,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                             listCellWidth=""
                         />
                     ) : (
-                            <div className="gantt-empty">No hay {types} para mostrar</div>
+                        <div className="gantt-empty">No hay {types} para mostrar</div>
                     )}
                 </Col>
             </Row>
@@ -1181,10 +1181,17 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                             <Form.Control
                                 type="number"
                                 min={1}
-                                value={form.duration}
+                                value={form.duration === "" || form.duration === 0 ? "" : form.duration}
                                 onChange={(e) => {
-                                    const value = parseInt(e.target.value) || 1;
-                                    setForm({ ...form, duration: value });
+                                    const val = e.target.value;
+                                    if (val === "") {
+                                        setForm({ ...form, duration: "" });
+                                        return;
+                                    }
+                                    const value = parseInt(val);
+                                    if (!isNaN(value) && value >= 1) {
+                                        setForm({ ...form, duration: value });
+                                    }
                                 }}
                                 placeholder="Ingrese la duración en días"
                             />
@@ -1275,7 +1282,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                         ))
 
                                 ) : (
-                                        <option value="">No hay {types} disponibles</option>
+                                    <option value="">No hay {types} disponibles</option>
                                 )}
                                 {/* Opción para quitar dependencias */}
                                 <option value="">Ninguna dependencia</option>

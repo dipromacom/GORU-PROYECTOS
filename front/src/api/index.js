@@ -91,7 +91,7 @@ export const updateProyecto = (projectId, payload) => apiWithToken.put(`/proyect
 
 export const createTaskInBatch = (payload) => apiWithToken.post(`/tarea/batch`, payload)
 export const insertTask = (payload) => apiWithToken.post('/tarea', payload)
-export const doneTask = (idTask, closeDate) => apiWithToken.put(`/tarea/${idTask}/done`, { closeDate })
+export const doneTask = (idTask, closeDate, observacion) => apiWithToken.put(`/tarea/${idTask}/done`, { closeDate, observacion })
 
 //api interesados
 export const createInteresadosBatch = (payload) => apiWithToken.post('/interesados', payload);
@@ -497,6 +497,7 @@ export const getChatNoLeidos = () => apiWithToken.get('/chat/no-leidos');
 //--- PROGRAMA ---
 export const getProyectosDelPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/proyectos`);
 export const getProyectosDisponiblesParaPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/disponibles`);
+export const getResumenAgregadoPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/resumen-agregado`);
 export const asignarProyectoAPrograma = (programaId, proyectoId) => apiWithToken.post(`/proyecto/${programaId}/programa/asignar`, { proyectoId });
 export const desasignarProyectoDePrograma = (proyectoId) => apiWithToken.delete(`/proyecto/${proyectoId}/programa`);
 export const getProgramasLista = () => apiWithToken.get('/proyecto/programas/lista');

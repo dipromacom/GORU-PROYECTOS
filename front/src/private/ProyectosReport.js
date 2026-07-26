@@ -17,6 +17,11 @@ const styles = StyleSheet.create({
         lineHeight: 1.5,
         //flexDirection: 'column',
     },
+    logo: {
+        width: 160,
+        marginBottom: 20,
+        alignSelf: 'center',
+    },
 
     pageBackground: {
         position: 'absolute',
@@ -209,7 +214,8 @@ export const ProyectoListPDF = ({ proyectosList, dateFrom = '', dateTo = '' }) =
     <Document title={`Lista de Proyectos ${(dateFrom || null) && (dateTo || null) ? `comenzados desde ${moment(dateFrom).format('DD/MM/YYYY')} hasta ${moment(dateTo).format('DD/MM/YYYY')}` : ""
         }`}>
         <Page size="A4" style={styles.page}>
-            <Image src="./Goru-a4.png" style={styles.pageBackground} />
+            <Image src="/img/goru-logo.jpg" style={styles.logo} />
+            {/* <Image src="./Goru-a4.png" style={styles.pageBackground} /> */}
 
             <View style={styles.titleContainer}>
                 <Text style={styles.reportTitle}>Listado de Proyectos {
@@ -243,15 +249,15 @@ export const ProyectoListPDF = ({ proyectosList, dateFrom = '', dateTo = '' }) =
                         <Text style={styles.estadoItem}>{
                             item.estado === 'C'
                                 ? 'Creado'
-                                : item.estado === 'S' 
+                                : item.estado === 'S'
                                     ? 'Iniciado'
-                                : item.estado === 'P' 
-                                    ? 'Planificado'
-                                : item.estado === 'X'
-                                    ? 'Ejecutado'
-                                : item.estado === 'E'
-                                    ? 'Cerrado'
-                                    : 'No definido'
+                                    : item.estado === 'P'
+                                        ? 'Planificado'
+                                        : item.estado === 'X'
+                                            ? 'Ejecutado'
+                                            : item.estado === 'E'
+                                                ? 'Cerrado'
+                                                : 'No definido'
                         }</Text>
                     </View>
                 )
@@ -337,6 +343,7 @@ export const ProyectoPdf = ({ proyecto }) => {
     return (
         <Document title={nombre}>
             <Page size="A4" style={styles.page}>
+                <Image src="/img/goru-logo.jpg" style={styles.logo} />
                 {/*<Image src="/img/Goru-a4.png" style={styles.pageBackground} />*/}
                 <View style={styles.titleContainer}>
                     <Text style={styles.reportTitle}>{nombre}</Text>
@@ -367,9 +374,9 @@ export const ProyectoPdf = ({ proyecto }) => {
                     </Text> : <></>}
                     {/* 🔹 Salto de página */}
                     <View style={{ marginTop: 20 }} break />
-                    
+
                     <Text style={styles.mainTitle}>ACTA CONSITITUCIÓN</Text>
-                    
+
                     <Text style={styles.info}>
                         <Text style={styles.subtitle}>Pendiente de Asignación:</Text> {pendiente_asignacion ? 'Sí' : 'No'}
                     </Text>
@@ -439,31 +446,31 @@ export const ProyectoPdf = ({ proyecto }) => {
                     </Text> : <></>}
                     {
                         tiempo_fechas_criticas ?
-                        <View style={styles.info}>
-                            <Text style={styles.subtitle}>Fechas Criticas:</Text>
-                            {
+                            <View style={styles.info}>
+                                <Text style={styles.subtitle}>Fechas Criticas:</Text>
+                                {
                                     hitosParaPDF.map((fc, idx) => (
-                                    <View style={styles.fecha_critica_row}>
-                                        <Text style={styles.fecha_critica_col_desc} key={`col1_${idx}`}>{fc.description}</Text>
-                                        <Text style={styles.fecha_critica_col_date} key={`col2_${idx}`}>{moment(fc.date).format('DD/MM/YYYY')}</Text>
-                                    </View>
-                                ))
-                            }
-                        </View> : <></>
+                                        <View style={styles.fecha_critica_row}>
+                                            <Text style={styles.fecha_critica_col_desc} key={`col1_${idx}`}>{fc.description}</Text>
+                                            <Text style={styles.fecha_critica_col_date} key={`col2_${idx}`}>{moment(fc.date).format('DD/MM/YYYY')}</Text>
+                                        </View>
+                                    ))
+                                }
+                            </View> : <></>
                     }
                     {
                         costo_entregable ?
-                        <View style={styles.info}>
-                            <Text style={styles.subtitle}>Costo Por entregables</Text>
-                            {
-                                costo_entregable.map((fc, idx) => (
-                                    <View style={styles.fecha_critica_row}>
-                                        <Text style={styles.fecha_critica_col_desc} key={`col1_${idx}`}>{fc.entregable}</Text>
-                                        <Text style={styles.fecha_critica_col_date} key={`col2_${idx}`}>${fc.costo}</Text>
-                                    </View>
-                                ))
-                            }
-                        </View> : <></>
+                            <View style={styles.info}>
+                                <Text style={styles.subtitle}>Costo Por entregables</Text>
+                                {
+                                    costo_entregable.map((fc, idx) => (
+                                        <View style={styles.fecha_critica_row}>
+                                            <Text style={styles.fecha_critica_col_desc} key={`col1_${idx}`}>{fc.entregable}</Text>
+                                            <Text style={styles.fecha_critica_col_date} key={`col2_${idx}`}>${fc.costo}</Text>
+                                        </View>
+                                    ))
+                                }
+                            </View> : <></>
                     }
                     {costo_reserva_contingencia ? <Text style={styles.info}>
                         <Text style={styles.subtitle}>Reserva de Contingencia:</Text> ${costo_reserva_contingencia}
@@ -473,35 +480,35 @@ export const ProyectoPdf = ({ proyecto }) => {
                     </Text> : <></>}
                     {
                         calidad_metricas ?
-                        <View style={styles.info}>
-                            <Text style={styles.subtitle}>Metricas / criterios de aceptación: </Text>
-                            {
-                                calidad_metricas.map((fc, idx) => (
-                                    <View style={styles.metricas_row}>
-                                        <Text><Text style={styles.subtitle}>Entregable:</Text> {fc.entregable}</Text>
-                                        <Text><Text style={styles.subtitle}>Métrica:</Text> {fc.metrica}</Text>
-                                    </View>
-                                ))
-                            }
-                        </View> : <></>
+                            <View style={styles.info}>
+                                <Text style={styles.subtitle}>Metricas / criterios de aceptación: </Text>
+                                {
+                                    calidad_metricas.map((fc, idx) => (
+                                        <View style={styles.metricas_row}>
+                                            <Text><Text style={styles.subtitle}>Entregable:</Text> {fc.entregable}</Text>
+                                            <Text><Text style={styles.subtitle}>Métrica:</Text> {fc.metrica}</Text>
+                                        </View>
+                                    ))
+                                }
+                            </View> : <></>
                     }
                     {(riesgos) ?
                         <Text style={styles.title}>Riesgos Críticos</Text> : <></>}
 
                     {
                         riesgos ?
-                        <View style={styles.info}>
-                            {
-                                riesgos.map((fc, idx) => (
-                                    <View style={styles.fecha_critica_row}>
-                                        <Text style={styles.riesgos_col_desc} key={`col1_${idx}`}>{fc.descripcion}</Text>
-                                        <Text style={styles.riesgos_col_prob} key={`col2_${idx}`}>{riesgosMap[fc.probabilidad]}</Text>
-                                        <Text style={styles.riesgos_col_imp} key={`col3_${idx}`}>{riesgosMap[fc.impacto]}</Text>
-                                        <Text style={styles.riesgos_col_val} key={`col4_${idx}`}>{riesgosMap[fc.Valor]}</Text>
-                                    </View>
-                                ))
-                            }
-                        </View> : <></>
+                            <View style={styles.info}>
+                                {
+                                    riesgos.map((fc, idx) => (
+                                        <View style={styles.fecha_critica_row}>
+                                            <Text style={styles.riesgos_col_desc} key={`col1_${idx}`}>{fc.descripcion}</Text>
+                                            <Text style={styles.riesgos_col_prob} key={`col2_${idx}`}>{riesgosMap[fc.probabilidad]}</Text>
+                                            <Text style={styles.riesgos_col_imp} key={`col3_${idx}`}>{riesgosMap[fc.impacto]}</Text>
+                                            <Text style={styles.riesgos_col_val} key={`col4_${idx}`}>{riesgosMap[fc.Valor]}</Text>
+                                        </View>
+                                    ))
+                                }
+                            </View> : <></>
                     }
                     {(recursos_requeridos || supuestos || restricciones) ?
                         <Text style={styles.title}>Alcance</Text> : <></>}
@@ -514,7 +521,7 @@ export const ProyectoPdf = ({ proyecto }) => {
                     {restricciones ? <Text style={styles.info}>
                         <Text style={styles.subtitle}>Restricciones:</Text> {restricciones}
                     </Text> : <></>}
-                    
+
                     {(max_desvio_presupuesto || max_desvio_tiempo || dir_autorizado_firmas || dir_tareas_funciones || tipos_informes || incentivo || autidad_control_cambios) ?
                         <Text style={styles.title}>Alcance</Text> : <></>}
                     {max_desvio_presupuesto ? <Text style={styles.info}>

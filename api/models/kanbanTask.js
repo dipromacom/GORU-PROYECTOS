@@ -1,6 +1,6 @@
 
 module.exports = (db, Sequelize) => {
-    const KanbanTask = db.define('kanban_task',{
+    const KanbanTask = db.define('kanban_task', {
         id: {
             type: Sequelize.UUID,
             primaryKey: true,
@@ -24,6 +24,10 @@ module.exports = (db, Sequelize) => {
         },
         closed_at: {
             type: Sequelize.DATE,
+            allowNull: true
+        },
+        observacion: {
+            type: Sequelize.TEXT,
             allowNull: true
         },
         created_at: {

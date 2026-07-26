@@ -158,6 +158,7 @@ router.get('/proyecto/:proyectoId/control-cambio', solicitudCambioController.get
 // Programa
 router.get('/proyecto/:id/programa/proyectos', ProgramaController.getProyectosDelPrograma);
 router.get('/proyecto/:id/programa/disponibles', ProgramaController.getProyectosDisponibles);
+router.get('/proyecto/:id/programa/resumen-agregado', ProgramaController.getResumenAgregadoPrograma);
 router.post('/proyecto/:id/programa/asignar', ProgramaController.asignarProyecto);
 router.delete('/proyecto/:proyectoId/programa', ProgramaController.desasignarProyecto);
 

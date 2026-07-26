@@ -60,6 +60,13 @@ function Membership({ dispatch, isLoading, user, persona }) {
     if (!allowed.has(v)) return;
     setIsMembershipSelected(v);
     setValue(v);
+    if (hasLicencia) {
+      try {
+        dispatch(usuarioActions.setMembresia(user.id, v));
+      } catch (e) {
+        onError(e);
+      }
+    }
   }
 
   const selectionAllowed = value && allowed.has(value);
@@ -128,7 +135,7 @@ function Membership({ dispatch, isLoading, user, persona }) {
           />
         </div>
 
-        <div className="continue-container center">
+        <div className="continue-container center" style={{ display: "none" }}>
           <LoaderButton
             block
             type="submit"

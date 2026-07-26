@@ -133,10 +133,35 @@ const getProgramasByUsuario = async (req, res) => {
     }
 };
 
+/**
+ * GET /proyecto/:id/programa/resumen-agregado
+ * Retorna el resumen agregado de ejecución de todos los proyectos hijos del programa.
+ */
+const getResumenAgregadoPrograma = async (req, res) => {
+    try {
+        const { authorization } = req.headers;
+        if (!authorization) {
+            return res.status(401).json({ success: false, message: 'No autorizado' });
+        }
+        const { id: usuarioId } = decodeToken(authorization);
+        await PlanLicenciaUtils.assertUsuarioPlanCorporativo(usuarioId);
+
+        const { id: programaId } = req.params;
+        const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, programaId, P.PROGRAMA_PROYECTOS_VER);
+        if (!ok) return;
+
+        const resumen = await ProgramaUtils.getResumenAgregadoPrograma(programaId);
+        return res.status(200).json({ success: true, data: resumen });
+    } catch (error) {
+        return res.status(httpErrorStatus(error)).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     getProyectosDelPrograma,
     getProyectosDisponibles,
     asignarProyecto,
     desasignarProyecto,
     getProgramasByUsuario,
+    getResumenAgregadoPrograma,
 };

@@ -1,8 +1,9 @@
 import React from 'react';
-import { Page, Text, View, Document, StyleSheet } from '@react-pdf/renderer';
+import { Page, Text, View, Document, StyleSheet, Image } from '@react-pdf/renderer';
 
 const styles = StyleSheet.create({
     page: { padding: 40, fontSize: 9, fontFamily: 'Helvetica', color: '#333' },
+    logo: { width: 160, marginBottom: 20, alignSelf: 'center' },
     headerTable: { width: '100%', marginBottom: 20, border: '1pt solid #000' },
     headerTitle: { fontSize: 12, fontWeight: 'bold', textAlign: 'center', padding: 10, backgroundColor: '#f0f0f0', borderBottom: '1pt solid #000' },
     tableRow: { flexDirection: 'row', borderBottom: '0.5pt solid #ccc', minHeight: 20, alignItems: 'center' },
@@ -30,6 +31,7 @@ const ChangeControlPdf = ({ data, proyecto, directorProyecto }) => {
     return (
         <Document>
             <Page size="A4" style={styles.page}>
+                <Image src="/img/goru-logo.jpg" style={styles.logo} />
                 <View style={styles.headerTable}>
                     <Text style={styles.headerTitle}>FORMATO SOLICITUD DE CAMBIO</Text>
                     <View style={styles.tableRow}>
