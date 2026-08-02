@@ -3,8 +3,9 @@ const path = require('path');
 const fs = require('fs-extra');
 const { v4: uuidv4 } = require('uuid');
 const {
-    Proyecto, ScrumEpic, ScrumStory, ScrumSprint, ScrumConfig, ScrumDocument,
+    Proyecto, ScrumEpic, ScrumStory, ScrumSprint, ScrumConfig, ScrumDocument, Usuario,
 } = require('../models/index');
+const GoogleDriveService = require('./google-drive-service');
 
 const MAX_DOC_ATTACHMENT_BYTES = 5 * 1024 * 1024;
 
@@ -1247,20 +1248,33 @@ async function addDocumentAttachment(docId, proyectoId, fileData, userId) {
     }
 
     const fileId = uuidv4();
-    const dir = documentUploadsDir(proyectoId, docId);
-    await fs.ensureDir(dir);
-    const safeName = String(nombre).replace(/[^a-zA-Z0-9._-]/g, '_');
-    await fs.writeFile(path.join(dir, `${fileId}-${safeName}`), buffer);
+    const user = await Usuario.findByPk(userId);
+    if (!user || !user.google_refresh_token) {
+        throw Object.assign(new Error('Debes conectar tu cuenta de Google Drive para subir archivos adjuntos.'), { statusCode: 400 });
+    }
 
-    const archivos = Array.isArray(doc.archivos) ? [...doc.archivos] : [];
-    archivos.push({
+    const driveRes = await GoogleDriveService.uploadFileToDrive(
+        user.google_refresh_token,
+        buffer,
+        nombre,
+        mime,
+    );
+
+    const attachmentMeta = {
         id: fileId,
         nombre,
         mime: mime || 'application/octet-stream',
         size: buffer.length,
         uploaded_at: new Date().toISOString(),
         uploaded_by: userId,
-    });
+        storage: 'google_drive',
+        drive_id: driveRes.id,
+        webViewLink: driveRes.webViewLink,
+        webContentLink: driveRes.webContentLink,
+    };
+
+    const archivos = Array.isArray(doc.archivos) ? [...doc.archivos] : [];
+    archivos.push(attachmentMeta);
     await doc.update({ archivos });
     return getDocumentById(docId, proyectoId);
 }
@@ -1272,13 +1286,18 @@ async function getDocumentAttachmentFile(docId, proyectoId, fileId) {
     const fileMeta = (doc.archivos || []).find((f) => f.id === fileId);
     if (!fileMeta) throw Object.assign(new Error('Archivo no encontrado'), { statusCode: 404 });
 
+    if (fileMeta.storage === 'google_drive' || fileMeta.webViewLink) {
+        return { fileMeta, isExternal: true, externalUrl: fileMeta.webViewLink || fileMeta.webContentLink };
+    }
+
     const dir = documentUploadsDir(proyectoId, docId);
-    const files = await fs.readdir(dir);
+    const files = await fs.readdir(dir).catch(() => []);
     const match = files.find((f) => f.startsWith(fileId));
     if (!match) throw Object.assign(new Error('Archivo no encontrado en disco'), { statusCode: 404 });
 
     return {
         fileMeta,
+        isExternal: false,
         filePath: path.join(dir, match),
     };
 }

@@ -371,7 +371,7 @@ const getResumenAgregadoPrograma = async (programaId) => {
             estado: p.estado,
             modo: p.modo,
             tipo_proyecto: p.tipo_proyecto,
-            director: p.DirectorProyecto?.Persona
+            director: (p.DirectorProyecto && p.DirectorProyecto.Persona && p.DirectorProyecto.Persona.nombre)
                 ? `${p.DirectorProyecto.Persona.nombre} ${p.DirectorProyecto.Persona.apellido || ''}`.trim()
                 : 'Sin director',
             alcance: { total: totalEntregables, completados, porcentaje: totalEntregables > 0 ? Math.round((completados / totalEntregables) * 100) : 0 },

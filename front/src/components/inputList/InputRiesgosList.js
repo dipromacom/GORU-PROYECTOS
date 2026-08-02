@@ -100,14 +100,21 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
         const nextId = `R${(riesgosList?.length || 0) + 1}`;
 
         const riesgo = {
-            id: nextId, 
+            id: nextId,
             descripcion: riesgosDesc,
             valor: riesgoVal,
             probabilidad: probNum,
             impacto: impactNum,
-            probabilidad_residual: null, 
-            impacto_residual: null, 
-            valor_residual: null, 
+            probabilidad_residual: null,
+            impacto_residual: null,
+            valor_residual: null,
+            planes_respuesta: [],
+            plan_contingencia: {
+                disparador: '',
+                descripcion: '',
+                costo: 0,
+                responsable_id: ''
+            },
             plan_descripcion: '',
             fecha_realizacion: '',
             responsable_id: '',
@@ -148,33 +155,62 @@ const InputRiesgosList = ({ riesgosList = [], setRiesgosList = () => { }, disabl
     };
 
     const getResponsableName = (id) => {
-        return interesados.find(i => i.id === id)?.nombre_interesado || 'N/A';
+        if (!id) return 'N/A';
+        const found = interesados.find(i => Number(i.id) === Number(id));
+        return found ? (found.nombre_interesado || found.nombre || 'N/A') : 'N/A';
     };
 
 
     const renderPlanInfo = (item) => {
         if (!(ejecutado || cerrado)) return null;
 
-        const responsable = getResponsableName(item.responsable_id);
-        const fecha = item.fecha_realizacion
-            ? new Date(item.fecha_realizacion).toLocaleDateString('es-ES', { year: 'numeric', month: 'short', day: 'numeric' })
-            : 'Pendiente';
+        const planes = Array.isArray(item.planes_respuesta) && item.planes_respuesta.length > 0
+            ? item.planes_respuesta
+            : (item.plan_descripcion ? [{
+                descripcion: item.plan_descripcion,
+                costo: item.costo || 0,
+                fecha_realizacion: item.fecha_realizacion,
+                responsable_id: item.responsable_id,
+                completado: item.completado
+            }] : []);
+
+        const numPlanes = planes.length;
+        const costoTotalPlanes = planes.reduce((sum, p) => sum + (Number(p.costo) || 0), 0);
+
+        const cont = item.plan_contingencia || {};
+        const tieneContingencia = Boolean(cont.disparador || cont.descripcion || item.disparador);
+
         const completadoText = item.completado ? 'Cerrado' : 'Abierto';
 
         return (
-            <div className="mt-1 p-1" style={{ borderTop: '1px dotted #ccc', fontSize: '0.8rem', backgroundColor: '#f9f9f9' }}>
-                <Row>
-                    <Col xs={6}>
-                        Plan: <span className="text-muted text-break" title={item.plan_descripcion}>{item.plan_descripcion || 'Pendiente'}</span>
+            <div className="mt-1 p-2 border-top bg-light text-muted" style={{ fontSize: '0.8rem' }}>
+                <Row className="align-items-center g-2">
+                    <Col md={5}>
+                        <i className="bi bi-list-task me-1"></i>
+                        <strong>Planes Resp.:</strong>{' '}
+                        {numPlanes > 0 ? (
+                            <span>
+                                {numPlanes} plan(es) — <strong className="text-success">${costoTotalPlanes.toLocaleString('es-ES', { minimumFractionDigits: 2 })}</strong>
+                            </span>
+                        ) : (
+                            <span className="fst-italic text-secondary">Sin planes</span>
+                        )}
                     </Col>
-                    <Col xs={2}>
-                        Fecha: <span className="text-muted">{fecha}</span>
+                    <Col md={5}>
+                        <i className="bi bi-life-preserver me-1"></i>
+                        <strong>Contingencia:</strong>{' '}
+                        {tieneContingencia ? (
+                            <span className="text-dark">
+                                {cont.disparador || item.disparador} {cont.costo ? `($${Number(cont.costo).toLocaleString('es-ES')})` : ''}
+                            </span>
+                        ) : (
+                            <span className="fst-italic text-secondary">Sin configurar</span>
+                        )}
                     </Col>
-                    <Col xs={3}>
-                        Resp.: <span className="text-muted">{responsable}</span>
-                    </Col>
-                    <Col xs={1} className="text-end">
-                        <span className={`fw-bold ${item.completado ? 'text-success' : 'text-danger'}`}>{completadoText}</span>
+                    <Col md={2} className="text-end">
+                        <span className={`fw-bold ${item.completado ? 'text-success' : 'text-danger'}`}>
+                            {completadoText}
+                        </span>
                     </Col>
                 </Row>
             </div>

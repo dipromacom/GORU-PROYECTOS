@@ -28,6 +28,14 @@ module.exports = (db, Sequelize) => {
       allowNull: false,
       defaultValue: false,
     },
+    google_refresh_token: {
+      type: Sequelize.TEXT,
+      allowNull: true,
+    },
+    google_connected_email: {
+      type: Sequelize.STRING,
+      allowNull: true,
+    },
   }, {
     freezeTableName: true,
     tableName: 'usuario',
@@ -68,10 +76,10 @@ module.exports = (db, Sequelize) => {
       foreignKey: 'usuario',
     });
 
-   /* Usuario.Proyecto = Usuario.hasMany(Proyecto, {
-      as: 'Usuario',
-      foreignKey: 'usuario_creador',
-    });*/
+    /* Usuario.Proyecto = Usuario.hasMany(Proyecto, {
+       as: 'Usuario',
+       foreignKey: 'usuario_creador',
+     });*/
 
     Usuario.associate = (models) => {
       const {

@@ -245,11 +245,14 @@ const addDocumentAttachment = (req, res) =>
 
 const downloadDocumentAttachment = (req, res) =>
     withScrumAccess(req, res, P.SCRUM_VER, async ({ res: r, projectId }) => {
-        const { fileMeta, filePath } = await ScrumUtils.getDocumentAttachmentFile(
+        const { fileMeta, isExternal, externalUrl, filePath } = await ScrumUtils.getDocumentAttachmentFile(
             req.params.docId,
             projectId,
             req.params.fileId,
         );
+        if (isExternal && externalUrl) {
+            return r.redirect(externalUrl);
+        }
         return r.download(filePath, fileMeta.nombre, (err) => {
             if (err && !r.headersSent) {
                 return r.status(404).json({ success: false, message: 'No se pudo descargar el archivo' });

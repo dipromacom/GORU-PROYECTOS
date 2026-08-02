@@ -500,4 +500,14 @@ export const getProyectosDisponiblesParaPrograma = (programaId) => apiWithToken.
 export const getResumenAgregadoPrograma = (programaId) => apiWithToken.get(`/proyecto/${programaId}/programa/resumen-agregado`);
 export const asignarProyectoAPrograma = (programaId, proyectoId) => apiWithToken.post(`/proyecto/${programaId}/programa/asignar`, { proyectoId });
 export const desasignarProyectoDePrograma = (proyectoId) => apiWithToken.delete(`/proyecto/${proyectoId}/programa`);
+
+
+// --- GOOGLE DRIVE AUTH ---
+export const getGoogleAuthStatus = () => apiWithToken.get('/auth/google/status');
+export const disconnectGoogleDrive = () => apiWithToken.delete('/auth/google/disconnect');
+export const getGoogleConnectUrl = () => {
+  const userToken = store?.getState()?.session?.jwtToken || localStorage.getItem('jwtToken') || '';
+  const baseUrl = url || process.env.REACT_APP_API_URL || 'http://localhost:8001';
+  return `${baseUrl}/api/auth/google/connect?token=${encodeURIComponent(userToken)}`;
+};
 export const getProgramasLista = () => apiWithToken.get('/proyecto/programas/lista');

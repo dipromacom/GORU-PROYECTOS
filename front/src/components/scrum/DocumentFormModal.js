@@ -1,5 +1,6 @@
-import React, { useEffect, useState } from 'react';
-import { Modal, Form, Button, Tabs, Tab, ListGroup, Badge } from 'react-bootstrap';
+import React, { useEffect, useState, useCallback } from 'react';
+import { Modal, Form, Button, Tabs, Tab, ListGroup, Badge, Alert, Spinner } from 'react-bootstrap';
+import * as Api from '../../api';
 import {
     DOCUMENT_TYPES, DOCUMENT_STATES, DOCUMENT_RELATION_TYPES, emptyDocument, labelFor,
 } from './scrumConstants';
@@ -24,13 +25,69 @@ export default function DocumentFormModal({
     readOnly,
 }) {
     const [form, setForm] = useState(emptyDocument());
+    const [googleDrive, setGoogleDrive] = useState({ connected: false, email: null, loading: false });
+    const [uploadingAttachment, setUploadingAttachment] = useState(false);
     const isEdit = Boolean(doc?.id);
+
+    const checkGoogleDriveStatus = useCallback(async () => {
+        try {
+            setGoogleDrive((prev) => ({ ...prev, loading: true }));
+            const res = await Api.getGoogleAuthStatus();
+            if (res.data?.success) {
+                setGoogleDrive({
+                    connected: res.data.connected,
+                    email: res.data.email,
+                    loading: false,
+                });
+            }
+        } catch (e) {
+            setGoogleDrive((prev) => ({ ...prev, loading: false }));
+        }
+    }, []);
 
     useEffect(() => {
         if (show) {
             setForm(doc ? { ...emptyDocument(), ...doc } : emptyDocument());
+            checkGoogleDriveStatus();
         }
-    }, [show, doc]);
+    }, [show, doc, checkGoogleDriveStatus]);
+
+    useEffect(() => {
+        const handleMessage = (event) => {
+            if (event.data?.type === 'GOOGLE_DRIVE_CONNECTED') {
+                checkGoogleDriveStatus();
+            }
+        };
+        window.addEventListener('message', handleMessage);
+        return () => window.removeEventListener('message', handleMessage);
+    }, [checkGoogleDriveStatus]);
+
+    const handleConnectGoogleDrive = () => {
+        const url = Api.getGoogleConnectUrl();
+        const width = 600;
+        const height = 700;
+        const left = window.screenX + (window.outerWidth - width) / 2;
+        const top = window.screenY + (window.outerHeight - height) / 2;
+        const popup = window.open(url, 'GoogleDriveAuth', `width=${width},height=${height},left=${left},top=${top}`);
+        if (popup) {
+            const timer = setInterval(() => {
+                if (popup.closed) {
+                    clearInterval(timer);
+                    checkGoogleDriveStatus();
+                }
+            }, 800);
+        }
+    };
+
+    const handleDisconnectGoogleDrive = async () => {
+        if (!window.confirm('¿Desvincular tu cuenta de Google Drive? Los nuevos archivos deberán subirse tras volver a conectar.')) return;
+        try {
+            await Api.disconnectGoogleDrive();
+            setGoogleDrive({ connected: false, email: null, loading: false });
+        } catch (e) {
+            console.error('Error al desvincular Google Drive', e);
+        }
+    };
 
     const setField = (key, value) => setForm((f) => ({ ...f, [key]: value }));
 
@@ -51,19 +108,26 @@ export default function DocumentFormModal({
         const file = e.target.files?.[0];
         if (!file || !onUploadAttachment) return;
         if (file.size > 5 * 1024 * 1024) {
+            alert('El archivo supera el límite de 5 MB');
             e.target.value = '';
             return;
         }
+        setUploadingAttachment(true);
         const reader = new FileReader();
-        reader.onload = () => {
-            const base64 = String(reader.result).split(',')[1];
-            onUploadAttachment({
-                nombre: file.name,
-                mime: file.type,
-                data: base64,
-            });
-            e.target.value = '';
+        reader.onload = async () => {
+            try {
+                const base64 = String(reader.result).split(',')[1];
+                await onUploadAttachment({
+                    nombre: file.name,
+                    mime: file.type,
+                    data: base64,
+                });
+            } finally {
+                setUploadingAttachment(false);
+                e.target.value = '';
+            }
         };
+        reader.onerror = () => setUploadingAttachment(false);
         reader.readAsDataURL(file);
     };
 
@@ -275,10 +339,51 @@ export default function DocumentFormModal({
                         </Tab>
                         {isEdit && (
                             <Tab eventKey="adjuntos" title={`Adjuntos (${(doc?.archivos || []).length})`}>
+                                <div className="mb-3">
+                                    {googleDrive.connected ? (
+                                        <Alert variant="success" className="d-flex align-items-center justify-content-between py-2 mb-3">
+                                            <div className="small">
+                                                <i className="bi bi-google me-2" />
+                                                <strong>Google Drive Conectado:</strong> {googleDrive.email || 'Cuenta vinculada'}
+                                                <br />
+                                                <span className="text-muted">Los nuevos archivos adjuntos se subirán automáticamente a tu Google Drive.</span>
+                                            </div>
+                                            {!readOnly && (
+                                                <Button size="sm" variant="outline-danger" className="ms-2" onClick={handleDisconnectGoogleDrive}>
+                                                    Desvincular
+                                                </Button>
+                                            )}
+                                        </Alert>
+                                    ) : (
+                                        <Alert variant="light" className="border d-flex align-items-center justify-content-between py-2 mb-3">
+                                            <div className="small text-muted">
+                                                <i className="bi bi-cloud-upload me-2" />
+                                                <strong>¿Sin espacio?</strong> Conecta tu cuenta de Google Drive para guardar los adjuntos directamente en tu propio Drive sin límites.
+                                            </div>
+                                            {!readOnly && (
+                                                <Button size="sm" variant="outline-primary" className="ms-2 text-nowrap" onClick={handleConnectGoogleDrive}>
+                                                    <i className="bi bi-google me-1" /> Conectar Google Drive
+                                                </Button>
+                                            )}
+                                        </Alert>
+                                    )}
+                                </div>
+
                                 {!readOnly && onUploadAttachment && (
                                     <Form.Group className="mb-3">
-                                        <Form.Label>Subir archivo (máx. 5 MB)</Form.Label>
-                                        <Form.Control type="file" onChange={handleFileChange} disabled={readOnly} />
+                                        <Form.Label>Subir archivo a Google Drive (máx. 5 MB)</Form.Label>
+                                        <Form.Control type="file" onChange={handleFileChange} disabled={readOnly || uploadingAttachment || !googleDrive.connected} />
+                                        {uploadingAttachment && (
+                                            <div className="text-primary small mt-2 d-flex align-items-center">
+                                                <Spinner animation="border" size="sm" className="me-2" />
+                                                Subiendo archivo a tu Google Drive...
+                                            </div>
+                                        )}
+                                        {!googleDrive.connected && (
+                                            <Form.Text className="text-danger">
+                                                Debes conectar tu cuenta de Google Drive arriba para poder adjuntar archivos.
+                                            </Form.Text>
+                                        )}
                                     </Form.Group>
                                 )}
                                 {(doc?.archivos || []).length === 0 ? (
@@ -288,22 +393,44 @@ export default function DocumentFormModal({
                                         {(doc.archivos || []).map((f) => (
                                             <ListGroup.Item key={f.id} className="d-flex justify-content-between align-items-center small">
                                                 <span>
-                                                    <i className="bi bi-paperclip me-1" />
-                                                    {f.nombre}
+                                                    <i className={f.storage === 'google_drive' || f.webViewLink ? 'bi bi-google text-success me-1' : 'bi bi-paperclip me-1'} />
+                                                    {f.webViewLink ? (
+                                                        <a href={f.webViewLink} target="_blank" rel="noopener noreferrer" className="fw-semibold">
+                                                            {f.nombre}
+                                                        </a>
+                                                    ) : (
+                                                        f.nombre
+                                                    )}
                                                     <Badge variant="light" className="ms-2 text-muted">
                                                         {Math.round((f.size || 0) / 1024)} KB
                                                     </Badge>
+                                                    {f.storage === 'google_drive' && (
+                                                        <Badge variant="success" className="ms-1">Google Drive</Badge>
+                                                    )}
                                                 </span>
-                                                {!readOnly && onRemoveAttachment && (
-                                                    <Button
-                                                        variant="link"
-                                                        size="sm"
-                                                        className="p-0 text-danger"
-                                                        onClick={() => onRemoveAttachment(f.id)}
-                                                    >
-                                                        <i className="bi bi-trash" />
-                                                    </Button>
-                                                )}
+                                                <div>
+                                                    {f.webViewLink && (
+                                                        <a
+                                                            href={f.webViewLink}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="btn btn-link btn-sm p-0 me-2 text-primary"
+                                                            title="Ver en Google Drive"
+                                                        >
+                                                            <i className="bi bi-box-arrow-up-right" />
+                                                        </a>
+                                                    )}
+                                                    {!readOnly && onRemoveAttachment && (
+                                                        <Button
+                                                            variant="link"
+                                                            size="sm"
+                                                            className="p-0 text-danger"
+                                                            onClick={() => onRemoveAttachment(f.id)}
+                                                        >
+                                                            <i className="bi bi-trash" />
+                                                        </Button>
+                                                    )}
+                                                </div>
                                             </ListGroup.Item>
                                         ))}
                                     </ListGroup>
