@@ -222,6 +222,22 @@ const deleteUsuario = async (req, res) => {
     }
 };
 
+const deleteEmpresa = async (req, res) => {
+    try {
+        if (!(await assertSuperAdmin(req, res))) return;
+        const { id } = req.params;
+        const eid = parseInt(id, 10);
+        if (Number.isNaN(eid)) {
+            return res.status(400).json({ success: false, message: 'ID de empresa inválido.' });
+        }
+
+        const result = await EmpresaUtils.deleteEmpresa(eid);
+        return res.status(200).json({ success: true, message: result.message, deleted: result.deleted });
+    } catch (error) {
+        return res.status(500).json({ success: false, message: error.message });
+    }
+};
+
 module.exports = {
     listUsuarios,
     patchUsuarioTipoLicencia,
@@ -229,6 +245,7 @@ module.exports = {
     deleteUsuario,
     createEmpresa,
     updateEmpresa,
+    deleteEmpresa,
     getColaboradoresProyectoConfig,
     putColaboradoresProyectoConfig,
     getSesionTimeoutConfig,

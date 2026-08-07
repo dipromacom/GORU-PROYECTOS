@@ -195,10 +195,10 @@ const PlanRespuestaModal = ({ show, handleClose, riesgo, handleSave, interesados
                                 <strong>{riesgo.descripcion}</strong>
                             </Col>
                             <Col md={5} className="text-md-end">
-                                <Badge bg="info" className="me-2">
+                                <Badge variant="info" className="me-2">
                                     Prob: {riesgo.probabilidad} | Imp: {riesgo.impacto}
                                 </Badge>
-                                <Badge bg={riesgo.valor >= 7 ? 'danger' : riesgo.valor >= 4 ? 'warning' : 'success'}>
+                                <Badge variant={riesgo.valor >= 7 ? 'danger' : riesgo.valor >= 4 ? 'warning' : 'success'}>
                                     Valor: {riesgo.valor}
                                 </Badge>
                             </Col>
@@ -218,7 +218,7 @@ const PlanRespuestaModal = ({ show, handleClose, riesgo, handleSave, interesados
                             <Nav.Link eventKey="contingencia" className="fw-bold">
                                 <i className="bi bi-life-preserver me-2"></i>
                                 Plan de Contingencia
-                                {disparador && <Badge bg="warning" text="dark" className="ms-2">Configurado</Badge>}
+                                {disparador && <Badge variant="warning" className="text-dark ms-2">Configurado</Badge>}
                             </Nav.Link>
                         </Nav.Item>
                         <Nav.Item>
@@ -335,7 +335,7 @@ const PlanRespuestaModal = ({ show, handleClose, riesgo, handleSave, interesados
                             {/* Tabla de Planes Registrados */}
                             <h6 className="fw-bold mb-2 text-dark d-flex justify-content-between align-items-center">
                                 <span>Planes Asociados</span>
-                                <Badge bg="success" className="fs-6 font-monospace">
+                                <Badge variant="success" className="fs-6 font-monospace">
                                     Total Costo Planes: ${costoTotalPlanes.toLocaleString('es-ES', { minimumFractionDigits: 2 })}
                                 </Badge>
                             </h6>
@@ -363,7 +363,9 @@ const PlanRespuestaModal = ({ show, handleClose, riesgo, handleSave, interesados
                                             <tr key={plan.id || idx}>
                                                 <td className="fw-bold text-break" style={{ maxWidth: '200px' }}>{plan.descripcion}</td>
                                                 <td>
-                                                    <Badge bg="secondary" className="text-capitalize">{plan.estrategia}</Badge>
+                                                    <Badge bg="info" className="text-capitalize px-2 py-1">
+                                                        {plan.estrategia}
+                                                    </Badge>
                                                 </td>
                                                 <td className="fw-bold text-success">
                                                     ${(Number(plan.costo) || 0).toLocaleString('es-ES', { minimumFractionDigits: 2 })}
@@ -371,8 +373,18 @@ const PlanRespuestaModal = ({ show, handleClose, riesgo, handleSave, interesados
                                                 <td>{getResponsableName(plan.responsable_id)}</td>
                                                 <td>{plan.fecha_realizacion || '—'}</td>
                                                 <td>
-                                                    <Badge bg={plan.completado ? 'success' : 'warning'}>
-                                                        {plan.completado ? 'Completado' : 'Pendiente'}
+                                                    <Badge
+                                                        bg={plan.completado ? 'success' : 'warning'}
+                                                        className={`px-2 py-1 ${!plan.completado ? 'text-dark' : ''}`}
+                                                        style={{ cursor: 'pointer' }}
+                                                        title="Hacer clic para cambiar estado"
+                                                        onClick={() => {
+                                                            const updated = [...planesRespuesta];
+                                                            updated[idx].completado = !updated[idx].completado;
+                                                            setPlanesRespuesta(updated);
+                                                        }}
+                                                    >
+                                                        {plan.completado ? 'Hecho' : 'Pendiente'}
                                                     </Badge>
                                                 </td>
                                                 <td className="text-end">

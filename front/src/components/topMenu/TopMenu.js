@@ -14,6 +14,7 @@ function TopMenu({ dispatch, persona, user }) {
   const [isProfileMenuClicked, setProfileMenuClicked] = useState(false);
   const [nombre, setNombre] = useState("Usuario");
   const [email, setEmail] = useState("Loading...");
+  const [profilePhoto, setProfilePhoto] = useState(null);
   const divRef = useRef(null);
 
 
@@ -70,10 +71,35 @@ function TopMenu({ dispatch, persona, user }) {
         ? user.username.length > 21 ? user.username.substring(0, 20) : user.username
         : '';
       setEmail(userEmail);
+
+      // Cargar foto de perfil desde localStorage
+      if (user && user.id) {
+        const saved = localStorage.getItem(`profilePhoto_${user.id}`);
+        setProfilePhoto(saved || null);
+      }
     }
 
     init();
   }, [persona, user]);
+
+  useEffect(() => {
+    const handleStorage = (event) => {
+      if (user && user.id && event.key === `profilePhoto_${user.id}`) {
+        setProfilePhoto(event.newValue || null);
+      }
+    };
+    const handlePhotoChange = () => {
+      if (user && user.id) {
+        setProfilePhoto(localStorage.getItem(`profilePhoto_${user.id}`) || null);
+      }
+    };
+    window.addEventListener('storage', handleStorage);
+    window.addEventListener('profilePhotoChange', handlePhotoChange);
+    return () => {
+      window.removeEventListener('storage', handleStorage);
+      window.removeEventListener('profilePhotoChange', handlePhotoChange);
+    };
+  }, [user]);
 
   function capitalizeFirstLetter(string) {
     return string.charAt(0).toUpperCase() + string.slice(1);
@@ -142,8 +168,16 @@ function TopMenu({ dispatch, persona, user }) {
               </div>
 
               <div className="float-left menu-margin">
-                {/* <img src={`/img/persona.jpg`} alt="User Profile" className="menu-profile-image"></img> */}
-                <img src={`/icons/profile-icon.svg`} alt="User Profile" className="menu-profile-image"></img>
+                {profilePhoto ? (
+                  <img
+                    src={profilePhoto}
+                    alt="User Profile"
+                    className="menu-profile-image"
+                    style={{ borderRadius: '50%', objectFit: 'cover', border: '2px solid #f4742b' }}
+                  />
+                ) : (
+                  <img src={`/icons/profile-icon.svg`} alt="User Profile" className="menu-profile-image"></img>
+                )}
               </div>
 
               <div className="float-left menu-margin">
@@ -155,7 +189,7 @@ function TopMenu({ dispatch, persona, user }) {
               isProfileMenuClicked &&
               <div ref={divRef} className="profile-container box-shadow blue">
                 <div className="sub-item-container">
-                  <p className="user-name-text">{email}</p>
+                  <p className="user-name-text" style={{ margin: 0, padding: '8px 0', fontSize: '0.75rem' }}>{email}</p>
                 </div>
 
                 <div className="sub-item-container">

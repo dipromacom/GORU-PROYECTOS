@@ -20,7 +20,7 @@ function requestHttps(options, postData = null, isBufferPayload = false) {
                     if (res.statusCode >= 200 && res.statusCode < 300) {
                         resolve(parsed);
                     } else {
-                        reject(new Error(parsed.error_description || parsed.error?.message || `HTTP ${res.statusCode}: ${bodyStr}`));
+                        reject(new Error(parsed.error_description || (parsed.error && parsed.error.message) || `HTTP ${res.statusCode}: ${bodyStr}`));
                     }
                 } catch (e) {
                     if (res.statusCode >= 200 && res.statusCode < 300) {

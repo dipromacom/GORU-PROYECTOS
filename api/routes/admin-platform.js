@@ -18,6 +18,7 @@ router.patch('/admin/usuarios/:id/empresa', SecurityUtils.validateToken(AdminPla
 router.delete('/admin/usuarios/:id', SecurityUtils.validateToken(AdminPlatformController.deleteUsuario));
 router.post('/admin/empresas', SecurityUtils.validateToken(AdminPlatformController.createEmpresa));
 router.put('/admin/empresas/:id', SecurityUtils.validateToken(AdminPlatformController.updateEmpresa));
+router.delete('/admin/empresas/:id', SecurityUtils.validateToken(AdminPlatformController.deleteEmpresa));
 
 router.get(
   '/admin/madurez-direccion-proyectos',

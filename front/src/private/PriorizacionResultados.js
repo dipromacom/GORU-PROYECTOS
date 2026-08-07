@@ -57,7 +57,7 @@ function PriorizacionResultados({ dispatch, isLoading, usuario, evaluacionList, 
     );
 
     if (confirmacion) {
-      dispatch(projectActions.startProject(projectId, 'P', false));
+      dispatch(projectActions.startProject(projectId, 'P', false, true));
       setProyectosIniciados(prev => ({
         ...prev,
         [projectId]: 'D'

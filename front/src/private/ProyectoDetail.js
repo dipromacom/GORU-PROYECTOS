@@ -52,6 +52,7 @@ import GanttChart from "../components/GanttChart/GanttChart";
 import Whiteboard from "../components/pizarra/Whiteboard";
 import ScrumModule from "../components/scrum/ScrumModule";
 import DocsPanel from "../components/scrum/DocsPanel";
+import AgileIndicators from "../components/scrum/AgileIndicators";
 //Importar el Modal de Configuración
 import RoleSettingsModal from "../components/proyectoDetails/RoleSettingsModal";
 //sesion action
@@ -1354,6 +1355,14 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                         </Nav.Item>
                                                     )}
 
+                                                    {esProyectoScrum && puede(PermProy.SCRUM_VER) && (ejecutado || cerrado) && (
+                                                        <Nav.Item>
+                                                            <Nav.Link eventKey="indicadores-agil-resumen" className="px-4 py-2">
+                                                                <i className="bi bi-bar-chart-line me-1"></i>Indicadores Ágil
+                                                            </Nav.Link>
+                                                        </Nav.Item>
+                                                    )}
+
                                                     {puede(PermProy.ENCUESTAS_VER) && (
                                                         <Nav.Item>
                                                             <Nav.Link eventKey="encuesta" className="px-4 py-2">
@@ -1500,6 +1509,16 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                                                 </Row>
                                                             </Tab.Pane>
                                                         </>
+                                                    )}
+                                                    {esProyectoScrum && puede(PermProy.SCRUM_VER) && (
+                                                        <Tab.Pane eventKey="indicadores-agil-resumen">
+                                                            <AgileIndicators
+                                                                projectId={numericId}
+                                                                onNavigate={(tab) => {
+                                                                    setActiveKey(tab);
+                                                                }}
+                                                            />
+                                                        </Tab.Pane>
                                                     )}
                                                     <Tab.Pane eventKey="encuesta">
                                                         <div className="survey-container mt-4 p-3 border rounded bg-light">
@@ -2709,3 +2728,4 @@ const mapStateToProps = state => ({
 });
 
 export default connect(mapStateToProps)(ProyectoDetail);
+

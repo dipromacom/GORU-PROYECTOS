@@ -68,6 +68,29 @@ const updateEmpresa = async (id, data) => {
   return empresa;
 };
 
+const deleteEmpresa = async (id) => {
+  const { Usuario, Proyecto } = require('../models/index');
+  const empresa = await Empresa.findByPk(id);
+  if (!empresa) throw new Error('Empresa no encontrada.');
+
+  const countUsuarios = await Usuario.count({ where: { empresa: id } });
+  const countProyectos = await Proyecto.count({ where: { empresa: id } });
+
+  if (countUsuarios > 0 || countProyectos > 0) {
+    await empresa.update({ activo: false });
+    return {
+      deleted: false,
+      message: `La empresa está asociada a ${countUsuarios} usuario(s) y ${countProyectos} proyecto(s). Ha sido desactivada para evitar errores en el sistema.`
+    };
+  }
+
+  await empresa.destroy();
+  return {
+    deleted: true,
+    message: 'Empresa eliminada correctamente.'
+  };
+};
+
 module.exports = {
   getAllEmpresa,
   getActiveEmpresa,
@@ -75,4 +98,5 @@ module.exports = {
   existsEmpresaNombreCaseInsensitive,
   createEmpresa,
   updateEmpresa,
+  deleteEmpresa,
 };

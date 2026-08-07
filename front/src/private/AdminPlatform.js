@@ -21,6 +21,7 @@ import {
     deleteAdminUsuario,
     postAdminEmpresa,
     putAdminEmpresa,
+    deleteAdminEmpresa,
     getAllTipoLicenciaCatalogo,
     getAllEmpresasCatalogo,
     getAdminColaboradoresProyectoConfig,
@@ -447,6 +448,21 @@ function AdminPlatform({ user }) {
         }
     };
 
+    const handleDeleteEmpresa = async (empresa) => {
+        const confirmacion = window.confirm(`¿Está seguro que desea eliminar o desactivar la empresa "${empresa.nombre}"?`);
+        if (!confirmacion) return;
+
+        try {
+            const res = await deleteAdminEmpresa(empresa.id);
+            if (res.data.success) {
+                toast.info(res.data.message || 'Empresa procesada correctamente.');
+                await loadCatalogos();
+            }
+        } catch (er) {
+            toast.error(er.response && er.response.data && er.response.data.message ? er.response.data.message : er.message);
+        }
+    };
+
     if (!user || !user.es_super_admin) {
         return null;
     }
@@ -676,9 +692,17 @@ function AdminPlatform({ user }) {
                                                             <Button
                                                                 size="sm"
                                                                 variant="outline-primary"
+                                                                className="me-2"
                                                                 onClick={() => handleEditarEmpresa(em)}
                                                             >
                                                                 Editar
+                                                            </Button>
+                                                            <Button
+                                                                size="sm"
+                                                                variant="outline-danger"
+                                                                onClick={() => handleDeleteEmpresa(em)}
+                                                            >
+                                                                Eliminar
                                                             </Button>
                                                         </td>
                                                     </tr>
@@ -1057,3 +1081,4 @@ const mapStateToProps = (state) => ({
 });
 
 export default connect(mapStateToProps)(AdminPlatform);
+
