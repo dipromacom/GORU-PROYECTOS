@@ -2,6 +2,7 @@
 /* eslint-disable max-len */
 const ProyectoUtils = require('../utils/proyecto-utils');
 const DateUtils = require('../utils/date-utils');
+const { Proyecto } = require('../models/index');
 const { decodeToken } = require('../utils/security-utils');
 const PermisoProyectoUtils = require('../utils/permiso-proyecto-utils');
 const { P } = PermisoProyectoUtils;
@@ -127,6 +128,21 @@ const activarProyecto = async (req, res) => {
     const { authorization } = req.headers;
     const { id: usuarioId } = decodeToken(authorization);
     const { projectId } = req.body;
+
+    if (!projectId) return res.status(400).json({ success: false, message: 'El campo projectId es obligatorio' });
+
+    const actual = await Proyecto.findByPk(projectId, { attributes: ['id', 'usuario_creador', 'estado', 'activo'] });
+    if (!actual) return res.status(404).json({ success: false, message: 'Proyecto no encontrado' });
+
+    const sinTitular = actual.usuario_creador == null;
+
+    // Proyecto creado desde un batch/priorización: aún sin dueño ni miembros.
+    // El primer usuario que lo "inicia" lo reclama: se le asigna como creador
+    // y se deja en estado Creado (C) para que continúe desde la sección de proyectos.
+    if (sinTitular) {
+      const proyecto = await ProyectoUtils.adoptProyectoDelBatch(projectId, usuarioId);
+      return res.status(200).json({ success: true, data: proyecto });
+    }
 
     const ok = await PermisoProyectoUtils.assertPermisoProyecto(res, usuarioId, projectId, P.PROYECTO_CONFIG_GEST);
     if (!ok) return;

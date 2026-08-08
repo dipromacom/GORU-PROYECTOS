@@ -476,6 +476,32 @@ const assignCreatorToProject = async (projectId, usuarioId) => {
   await proyecto.addUsuario(usuarioId);
 };
 
+// 🔹 Reclama un proyecto creado desde un batch/priorización que aún no tenía
+// dueño. Asigna al usuario como creador, lo vincula como miembro y deja el
+// proyecto en estado Creado (C) para que continúe desde la sección de proyectos.
+const adoptProyectoDelBatch = async (projectId, usuarioId) => {
+  const proyecto = await Proyecto.findByPk(projectId);
+  if (!proyecto) throw new Error(`Proyecto con ID ${projectId} no encontrado.`);
+
+  await proyecto.update({
+    usuario_creador: usuarioId,
+    estado: 'C',
+    activo: true,
+  });
+
+  await proyecto.addUsuario(usuarioId);
+
+  await saveLog({
+    userId: usuarioId,
+    actionType: 'PROJECT_ACTIVATED',
+    resourceType: 'Proyecto',
+    resourceId: projectId,
+    details: { message: 'Proyecto reclamado desde batch/priorización', usuario_creador: usuarioId },
+  });
+
+  return proyecto;
+};
+
 // 🔹 Actualiza estado del proyecto y registra el cambio en logs
 const logUpdateEstadoProyecto = async (projectId, newStatus, userId, extraFields = {}, actionType) => {
   const proyecto = await Proyecto.findByPk(projectId);
@@ -509,5 +535,6 @@ module.exports = {
   updateProyectoGeneralData,
   getFilteredProjects,
   assignCreatorToProject,
+  adoptProyectoDelBatch,
   logUpdateEstadoProyecto,
 };
