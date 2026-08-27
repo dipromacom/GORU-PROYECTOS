@@ -24,6 +24,7 @@ import informeAvance from "./informe-avance";
 import controlCambio from "./controlCambio";
 import programa from "./programa";
 import scrum from "./scrum";
+import timesheet from "./timesheet";
 
 const createRootReducer = (history) => combineReducers({
   router: connectRouter(history),
@@ -49,7 +50,8 @@ const createRootReducer = (history) => combineReducers({
   informeAvance,
   controlCambio,
   programa,
-  scrum
+  scrum,
+  timesheet
 
 });
 

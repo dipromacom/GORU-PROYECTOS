@@ -1,4 +1,4 @@
-import React, { useEffect} from "react";
+import React, { useEffect } from "react";
 import { Route, Switch } from "react-router-dom";
 // import Home from "./publicRoutes/Home";
 import Login from "./public/Login";
@@ -32,6 +32,7 @@ import Interesados from "./components/ProyectoDetailMatriz/ViewInteresados";
 import Dashboard from "./private/Dashboard";
 import AdminPlatform from "./private/AdminPlatform";
 import MadurezDireccionProyectos from "./private/MadurezDireccionProyectos";
+import Timesheet from "./private/Timesheet";
 
 const ExternalRedirect = ({ url }) => {
   useEffect(() => {
@@ -87,6 +88,7 @@ export default function Routes() {
       <Desktop exact path="/Interesado/:id" component={Interesado} />
       <Desktop exact path="/Dashboard" component={Dashboard} />
       <Desktop exact path="/admin" component={AdminPlatform} />
+      <Desktop exact path="/timesheet" component={Timesheet} />
       {/* <Desktop exact path="/Interesados" component={Interesados}/> */}
       <Route>
         <NotFound />

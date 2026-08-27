@@ -22,6 +22,7 @@ import informeAvance from "./informe-avance";
 import controlCambio from "./controlCambio";
 import programa from "./programa";
 import scrum from "./scrum";
+import timesheet from "./timesheet";
 
 
 
@@ -50,6 +51,7 @@ const sagas = [
   ...controlCambio,
   ...programa,
   ...scrum,
+  ...timesheet,
 ];
 
 export default function* rootSaga() {

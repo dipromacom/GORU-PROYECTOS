@@ -6,11 +6,13 @@ import "gantt-task-react/dist/index.css";
 import { v4 as uuidv4 } from "uuid";
 
 import InteresadosMultiSelect from "./InteresadosMultiSelect";
+import IntegrantesMultiSelect from "./IntegrantesMultiSelect";
+import ActualizarAvanceModal from "./ActualizarAvanceModal";
 import { actions as ganttActions, selectors as ganttSelectors } from "../../reducers/gantt";
 import "./GanttChart.css";
-import { duration } from "moment";
+import moment from "moment";
 
-const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, cerrado, ejecutado, esPrograma, onSummaryChange = () => { }, onPerformanceChange = () => { }, onGanttSummary = () => { } }) => {
+const GanttChart = ({ projectId, interesados = [], integrantes = [], tasks: rawTasks, dispatch, cerrado, ejecutado, esPrograma, onSummaryChange = () => { }, onPerformanceChange = () => { }, onGanttSummary = () => { } }) => {
     let type = "actividad"
     if (esPrograma) type = "componente"
     let types = "actividades"
@@ -29,6 +31,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
     const [showModal, setShowModal] = useState(false);
     const [modalMode, setModalMode] = useState("create");
     const [editingId, setEditingId] = useState(null);
+    const [showActualizarAvanceModal, setShowActualizarAvanceModal] = useState(false);
+    const [selectedTaskIds, setSelectedTaskIds] = useState([]);
     const [form, setForm] = useState({
         id: null,
         name: "",
@@ -38,6 +42,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         progress: 0,
         dependencies: [],
         interesados_id: [],
+        usuarios_id: [],
         status: "pending",
         type: "task",
         parent_id: "",
@@ -324,9 +329,18 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         // 🔸 5. Mapear a formato del Gantt
         return orderedTasks.map((t) => {
             const nt = normalizeTaskForGantt(t);
-            const interesadosNames = (nt.interesados_id || []).map((iid) => {
-                const found = interesados.find((x) => String(x.id) === String(iid));
-                return found ? found.nombre_interesado : iid;
+            const usuariosIds = Array.isArray(nt.usuarios_id) ? nt.usuarios_id : (nt.interesados_id || []);
+            const integrantesNames = usuariosIds.map((uid) => {
+                const found = integrantes.find((x) => String(x.usuario_id || x.id || x.Usuario?.id) === String(uid));
+                if (found) {
+                    const u = found.Usuario || found;
+                    const p = u.Persona;
+                    if (p && (p.nombre || p.apellido)) return `${p.nombre || ''} ${p.apellido || ''}`.trim();
+                    return u.username || `Usuario #${uid}`;
+                }
+                const foundInteresado = interesados.find((x) => String(x.id) === String(uid));
+                if (foundInteresado) return foundInteresado.nombre_interesado;
+                return `Usuario #${uid}`;
             });
 
             const isCritical = criticalIds.includes(nt.id);
@@ -347,7 +361,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                 },
                 _meta: {
                     description: nt.description || "",
-                    interesadosNames,
+                    interesadosNames: integrantesNames,
+                    integrantesNames,
+                    usuariosIds,
                     interesadosIds: nt.interesados_id || [],
                     isCritical,
                     originalName: t.name,
@@ -355,7 +371,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                 },
             };
         });
-    }, [tasks, interesados]);
+    }, [tasks, interesados, integrantes]);
 
     // --- Dependencias inversas
     const dependencyMap = useMemo(() => {
@@ -410,6 +426,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             progress: 0,
             dependencies: [],
             interesados_id: [],
+            usuarios_id: [],
             status: "pending",
             type: "task",
             parent_id: "",
@@ -438,6 +455,10 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         const endDate = new Date(t.end_date || t.end);
         const durationInDays = Math.ceil((endDate - startDate) / (1000 * 3600 * 24));
 
+        const usuariosAsignadosIds = t.usuarios_id
+            ? t.usuarios_id.map(String)
+            : (t.interesados_id ? t.interesados_id.map(String) : []);
+
         setForm({
             id: t.id,
             name: t.name || "",
@@ -446,7 +467,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             end_date: t.end_date ? toInputDate(t.end_date) : toInputDate(t.end), // Se mantiene para referencia
             progress: Number(t.progress ?? 0),
             dependencies: t.dependencies ? [...t.dependencies] : [],
-            interesados_id: t.interesados_id ? t.interesados_id.map(String) : [],
+            interesados_id: usuariosAsignadosIds,
+            usuarios_id: usuariosAsignadosIds,
             status: t.status ?? "pending",
             type: t.type || "task",
             parent_id: t.parent_id || "",
@@ -489,7 +511,7 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
         if (!form.start_date) return alert("Fecha de inicio requerida");
         if (!form.duration || form.duration < 1) return alert("La duración debe ser al menos 1 día");
 
-        const interesadosUUID = (form.interesados_id || []).map(String);
+        const usuariosUUID = (form.usuarios_id || form.interesados_id || []).map(String);
 
         // 🔹 NUEVO: Calcular fecha final basada en la duración
         const startDate = new Date(`${form.start_date}T00:00:00`);
@@ -506,7 +528,9 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             end: endDate.toISOString(), // 🔹 CAMBIO: Usar fecha calculada
             progress: Number(form.progress || 0),
             dependencies: form.dependencies || [],
-            interesados_id: interesadosUUID,
+            interesados_id: usuariosUUID,
+            usuarios_id: usuariosUUID,
+            horas_estimadas: parseInt(form.duration, 10) * 8,
             parent_id: form.parent_id || null,
             status: form.status,
             is_critical: false,
@@ -541,6 +565,111 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
 
         dispatch(ganttActions.sync({ projectId: safeProjectId }));
         setShowModal(false);
+    };
+
+    // --- Manejo de selección de tareas para actualización masiva ---
+    const toggleTaskSelection = (taskId, e) => {
+        if (e && e.stopPropagation) e.stopPropagation();
+        setSelectedTaskIds((prev) =>
+            prev.includes(taskId) ? prev.filter((id) => id !== taskId) : [...prev, taskId]
+        );
+    };
+
+    const toggleSelectAll = () => {
+        const individualTasks = tasks.filter((t) => t.type !== "group");
+        if (selectedTaskIds.length === individualTasks.length) {
+            setSelectedTaskIds([]);
+        } else {
+            setSelectedTaskIds(individualTasks.map((t) => t.id));
+        }
+    };
+
+    // --- 🔹 Aplicar Actualizar Avance (estilo Sciforma) ---
+    const handleApplyActualizarAvance = ({ alcance, fechaActu, metodo, selectedTaskIds: chosenSelectedIds }) => {
+        if (!tasks || tasks.length === 0) return;
+
+        const targetIds =
+            alcance === "selected" && chosenSelectedIds.length > 0
+                ? chosenSelectedIds.map(String)
+                : null; // null significa todas las tareas
+
+        const cutDate = moment(fechaActu).endOf("day");
+        const updatedTasksList = [];
+
+        tasks.forEach((t) => {
+            if (t.type === "group") return; // Grupos se recalculan por sus hijos
+            if (targetIds && !targetIds.includes(String(t.id))) return;
+
+            const tStart = moment(t.start_date || t.start);
+            const tEnd = moment(t.end_date || t.end);
+            const totalDurationMs = tEnd.diff(tStart);
+
+            let newProgress = t.progress ?? 0;
+            let newStart = t.start_date || t.start;
+            let newEnd = t.end_date || t.end;
+
+            if (metodo === "completar") {
+                // Completar hasta la fecha de progreso:
+                // Si la fecha de corte es anterior al inicio de la tarea -> 0%
+                // Si la fecha de corte es posterior al fin de la tarea -> 100%
+                // Si está en medio -> (días transcurridos / duración total) * 100
+                if (cutDate.isBefore(tStart)) {
+                    newProgress = 0;
+                } else if (cutDate.isSameOrAfter(tEnd)) {
+                    newProgress = 100;
+                } else {
+                    const elapsedMs = cutDate.diff(tStart);
+                    const calc = totalDurationMs > 0 ? (elapsedMs / totalDurationMs) * 100 : 100;
+                    newProgress = Math.min(100, Math.max(0, Math.round(calc)));
+                }
+            } else if (metodo === "retraso") {
+                // Defina el «Retraso de inicio» o mueva la porción restante a la fecha de progreso
+                if (cutDate.isBefore(tStart)) {
+                    // No hay retraso que mover
+                } else if ((t.progress || 0) < 100 && cutDate.isAfter(tStart)) {
+                    // Si la tarea no está terminada, mover la porción restante a partir de fechaActu
+                    const currentProgress = (t.progress || 0) / 100;
+                    const remainingRatio = 1 - currentProgress;
+                    const remainingDurationMs = totalDurationMs * remainingRatio;
+
+                    const newStartDate = moment(fechaActu).startOf("day");
+                    const newEndDate = newStartDate.clone().add(remainingDurationMs, "ms");
+
+                    newStart = newStartDate.toISOString();
+                    newEnd = newEndDate.toISOString();
+                }
+            } else if (metodo === "iniciar_despues") {
+                // Defina el campo «Iniciar después del» o mueva la porción restante
+                if ((t.progress || 0) < 100 && cutDate.isSameOrAfter(tStart)) {
+                    const durationDays = t.duration || Math.max(1, Math.ceil(tEnd.diff(tStart, "days", true)));
+                    const newStartDate = moment(fechaActu).startOf("day");
+                    const newEndDate = newStartDate.clone().add(durationDays, "days");
+
+                    newStart = newStartDate.toISOString();
+                    newEnd = newEndDate.toISOString();
+                }
+            }
+
+            const newStatus =
+                newProgress >= 100
+                    ? "completed"
+                    : newProgress > 0
+                        ? "in_progress"
+                        : "pending";
+
+            updatedTasksList.push({
+                id: t.id,
+                progress: newProgress,
+                status: newStatus,
+                start_date: newStart,
+                end_date: newEnd,
+            });
+        });
+
+        if (updatedTasksList.length > 0) {
+            dispatch(ganttActions.batchUpdateTasks(updatedTasksList));
+            dispatch(ganttActions.sync({ projectId: safeProjectId }));
+        }
     };
 
     // --- Eventos Gantt ---
@@ -771,15 +900,25 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
             });
         };
 
-        // 🔹 Render auxiliar para interesados
+        // 🔹 Render auxiliar para integrantes asignados
         const renderInteresados = (ids) => {
             if (!ids || ids.length === 0)
-                return <span className="gantt-task-none">Sin interesados</span>;
-            return ids.slice(0, 3).map((iid, i) => {
-                const found = interesados.find((x) => String(x.id) === String(iid));
+                return <span className="gantt-task-none">Sin asignados</span>;
+            return ids.slice(0, 3).map((uid, i) => {
+                const found = integrantes.find((x) => String(x.usuario_id || x.id || x.Usuario?.id) === String(uid));
+                let nombre = `Usuario #${uid}`;
+                if (found) {
+                    const u = found.Usuario || found;
+                    const p = u.Persona;
+                    if (p && (p.nombre || p.apellido)) nombre = `${p.nombre || ''} ${p.apellido || ''}`.trim();
+                    else nombre = u.username || nombre;
+                } else {
+                    const foundInteresado = interesados.find((x) => String(x.id) === String(uid));
+                    if (foundInteresado) nombre = foundInteresado.nombre_interesado;
+                }
                 return (
-                    <Badge key={i} bg="secondary" className="gantt-mini-badge">
-                        {found ? found.nombre_interesado : iid}
+                    <Badge key={i} bg="secondary" className="gantt-mini-badge me-1">
+                        {nombre}
                     </Badge>
                 );
             });
@@ -790,12 +929,39 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                 {renderProjectSummary()}
                 <div className="gantt-left">
                     <div className="gantt-left-header">
-                        <h5>{esPrograma ? "Componentes" : "Actividades"}</h5>
-                        {!cerrado && (
-                            <Button size="sm" variant="outline-primary" onClick={openCreate}>
-                                + Nueva
-                            </Button>
-                        )}
+                        <div className="d-flex align-items-center gap-2">
+                            <h5 className="mb-0">{esPrograma ? "Componentes" : "Actividades"}</h5>
+                            {normalTasks.length > 0 && !cerrado && (
+                                <Form.Check
+                                    type="checkbox"
+                                    id="select-all-tasks"
+                                    title="Seleccionar / deseleccionar todas las tareas"
+                                    className="ms-2"
+                                    checked={
+                                        normalTasks.length > 0 &&
+                                        selectedTaskIds.length === normalTasks.length
+                                    }
+                                    onChange={toggleSelectAll}
+                                />
+                            )}
+                        </div>
+                        <div className="d-flex align-items-center gap-1">
+                            {!cerrado && normalTasks.length > 0 && (
+                                <button
+                                    type="button"
+                                    className="btn-actualizar-avance-trigger"
+                                    onClick={() => setShowActualizarAvanceModal(true)}
+                                    title="Actualizar avance masivo (tipo Sciforma)"
+                                >
+                                    <i className="bi bi-clock-history" /> Actualizar avance
+                                </button>
+                            )}
+                            {!cerrado && (
+                                <Button size="sm" variant="outline-primary" onClick={openCreate}>
+                                    + Nueva
+                                </Button>
+                            )}
+                        </div>
                     </div>
 
                     <ListGroup variant="flush" className="gantt-left-list">
@@ -891,8 +1057,17 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                             className="gantt-list-item gantt-child-item"
                                         >
                                             <div className="gantt-item-info">
-                                                <div className="gantt-item-title">
-                                                    {t.name} ({taskAliasMap[t.id] || 'T?'})
+                                                <div className="gantt-item-title d-flex align-items-center">
+                                                    {!cerrado && (
+                                                        <Form.Check
+                                                            type="checkbox"
+                                                            className="gantt-item-select-checkbox"
+                                                            checked={selectedTaskIds.includes(t.id)}
+                                                            onChange={(e) => toggleTaskSelection(t.id, e)}
+                                                            onClick={(e) => e.stopPropagation()}
+                                                        />
+                                                    )}
+                                                    <span>{t.name} ({taskAliasMap[t.id] || 'T?'})</span>
                                                 </div>
                                                 <div className="gantt-item-dates">
                                                     {updatedTasksMap[t.id]?.start_date_local
@@ -909,8 +1084,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                                         {renderDependencies(t.dependencies)}
                                                     </div>
                                                     <div>
-                                                        <strong>Interesados:</strong>{" "}
-                                                        {renderInteresados(t.interesados_id)}
+                                                        <strong>Asignados:</strong>{" "}
+                                                        {renderInteresados(t.usuarios_id && t.usuarios_id.length > 0 ? t.usuarios_id : t.interesados_id)}
                                                     </div>
                                                     {(cerrado || ejecutado) && (
                                                         <>
@@ -990,7 +1165,18 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                     className="gantt-list-item"
                                 >
                                     <div className="gantt-item-info">
-                                        <div className="gantt-item-title">{t.name} ({taskAliasMap[t.id] || 'T?'})</div>
+                                        <div className="gantt-item-title d-flex align-items-center">
+                                            {!cerrado && (
+                                                <Form.Check
+                                                    type="checkbox"
+                                                    className="gantt-item-select-checkbox"
+                                                    checked={selectedTaskIds.includes(t.id)}
+                                                    onChange={(e) => toggleTaskSelection(t.id, e)}
+                                                    onClick={(e) => e.stopPropagation()}
+                                                />
+                                            )}
+                                            <span>{t.name} ({taskAliasMap[t.id] || 'T?'})</span>
+                                        </div>
                                         <div className="gantt-item-dates">
                                             {updatedTasksMap[t.id]?.start_date_local
                                                 ? `${updatedTasksMap[t.id].start_date_local} → ${updatedTasksMap[t.id].end_date_local}`
@@ -1006,8 +1192,8 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                                                 {renderDependencies(t.dependencies)}
                                             </div>
                                             <div>
-                                                <strong>Interesados:</strong>{" "}
-                                                {renderInteresados(t.interesados_id)}
+                                                <strong>Asignados:</strong>{" "}
+                                                {renderInteresados(t.usuarios_id && t.usuarios_id.length > 0 ? t.usuarios_id : t.interesados_id)}
                                             </div>
                                             <div>
                                                 <strong>Avance estimado:</strong>{" "}
@@ -1247,12 +1433,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                         )}
 
                         <Form.Group className="mb-3">
-                            <Form.Label>Interesados</Form.Label>
-                            <InteresadosMultiSelect
-                                interesados={interesados}
-                                selectedIds={form.interesados_id}
-                                onChange={(selected) => setForm({ ...form, interesados_id: selected })}
+                            <Form.Label>Integrantes Asignados</Form.Label>
+                            <IntegrantesMultiSelect
+                                integrantes={integrantes}
+                                selectedIds={form.usuarios_id && form.usuarios_id.length > 0 ? form.usuarios_id : form.interesados_id}
+                                onChange={(selected) => setForm({ ...form, usuarios_id: selected, interesados_id: selected })}
                             />
+                            <Form.Text className="text-muted">
+                                Seleccione los integrantes del proyecto asignados a esta tarea. El esfuerzo se repartirá equitativamente.
+                            </Form.Text>
                         </Form.Group>
                         <Form.Group className="mb-3">
                             <Form.Label>Dependencias</Form.Label>
@@ -1347,6 +1536,15 @@ const GanttChart = ({ projectId, interesados = [], tasks: rawTasks, dispatch, ce
                     </Button>
                 </Modal.Footer>
             </Modal>
+
+            {/* --- 🔹 Modal Actualizar Avance (estilo Sciforma) --- */}
+            <ActualizarAvanceModal
+                show={showActualizarAvanceModal}
+                onHide={() => setShowActualizarAvanceModal(false)}
+                tasks={tasks}
+                selectedTaskIds={selectedTaskIds}
+                onApply={handleApplyActualizarAvance}
+            />
         </>
     );
 };

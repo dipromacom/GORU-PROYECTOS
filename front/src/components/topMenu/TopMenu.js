@@ -157,6 +157,9 @@ function TopMenu({ dispatch, persona, user }) {
           <div className="float-left top-menu-item top-menu-text" onClick={() => handleMenuItemClick("aboutUs")}>
             <p>Nosotros</p>
           </div>
+          <div className="float-left top-menu-item top-menu-text" onClick={() => handleMenuItemClick("timesheet")} title="Hoja de Tiempos (Calendario de Actividades)">
+            <p><i className="bi bi-clock-history me-1" />Tiempos</p>
+          </div>
           <div className="float-left top-menu-item">
             <img src={`/icons/Notificaciones.svg`} alt="Notificaciones"></img>
           </div>
@@ -194,6 +197,20 @@ function TopMenu({ dispatch, persona, user }) {
 
                 <div className="sub-item-container">
                   <button type="button" className="btn btn-profile-menu blue-br btn-lg" onClick={handleEditProfile}>Mi Perfil</button>
+                </div>
+
+                <div className="sub-item-container">
+                  <button
+                    type="button"
+                    className="btn btn-profile-menu blue-br btn-lg"
+                    onClick={() => {
+                      setProfileMenuClicked(false);
+                      handleMenuItemClick("timesheet");
+                    }}
+                  >
+                    <i className="bi bi-clock-history me-2" />
+                    Hoja de Tiempos
+                  </button>
                 </div>
 
                 {user && user.es_super_admin && (

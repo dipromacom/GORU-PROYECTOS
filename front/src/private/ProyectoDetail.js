@@ -92,7 +92,7 @@ import { proyectoPuede, P as PermProy } from "../libs/proyectoPermiso";
 import GoruQueHacemosHoyPanel from "../components/goruAssistant/GoruQueHacemosHoyPanel";
 
 
-function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, membershipNavMode, userProjectPermisos, isLoadingUserRol, resumenAgregadoPrograma }) {
+function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, batchFrom, batchLoading, todo, showNotification, tipoProyectoList, analysisData, respuestaAnalisisAmbiental, setInteresado, interesado, debeVerEncuesta, listaEncuestas, estadisticas, encuestaActual, logs, logsLoading, informeAvance, listaInformes, informeLoading, listaSolicitudes, programasLista, membershipNavMode, userProjectPermisos, isLoadingUserRol, resumenAgregadoPrograma, usuariosAsignados }) {
     const routeParams = useParams();
     const [activeKey, setActiveKey] = useState('general');
     // const [interesado, setInteresado] = useState([]);
@@ -147,6 +147,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
             dispatch(logActions.getProjectLogs(numericId));
             dispatch(projectActions.getInteresadoList(numericId));
             dispatch(projectActions.getAnalisisAmbientalRequest(numericId));
+            dispatch(rolProyectoActions.getUsuariosProyectoRequest(numericId));
         }
     }, [numericId, dispatch]);
 
@@ -2606,6 +2607,7 @@ function ProyectoDetail({ dispatch, persona, isLoading, usuario, projectDetail, 
                                         ? <GanttChart
                                             projectId={projectId}
                                             interesados={interesado}
+                                            integrantes={usuariosAsignados}
                                             cerrado={cerrado}
                                             ejecutado={ejecutado}
                                             onSummaryChange={setPorcentajeCompletado}
@@ -2725,7 +2727,7 @@ const mapStateToProps = state => ({
 
     userProjectPermisos: rolProyectoSelectors.getUserProjectPermisos(state),
     isLoadingUserRol: rolProyectoSelectors.getIsLoadingUserRol(state),
+    usuariosAsignados: rolProyectoSelectors.getUsuariosAsignados(state),
 });
 
 export default connect(mapStateToProps)(ProyectoDetail);
-

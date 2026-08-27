@@ -20,7 +20,7 @@ export default sagas;
 ================================================================ */
 function* handleFetchGantt({ projectId }) {
     try {
-        yield put({ type: types.CLEAR_TASKS }); 
+        yield put({ type: types.CLEAR_TASKS });
         const response = yield call(Api.fetchGantt, { projectId });
         const { success, tasks } = response.data;
         if (success) {
@@ -85,13 +85,14 @@ function* handleCreateTask({
     projectId,
     dependencies,
     interesados_id,
+    usuarios_id,
     type,
     parent_id,
     is_critical,
     duration,
 }) {
     try {
-        console.log("entra a handleCreateTask: "+ projectId);
+        console.log("entra a handleCreateTask: " + projectId);
         const response = yield call(Api.createTask, {
             id,
             name,
@@ -102,6 +103,7 @@ function* handleCreateTask({
             project_id: projectId,
             dependencies,
             interesados_id,
+            usuarios_id,
             type,
             parent: parent_id,
             is_critical,
@@ -131,6 +133,7 @@ function* handleEditTask({
     progress,
     dependencies,
     interesados_id,
+    usuarios_id,
     type,
     parent_id,
     is_critical,
@@ -150,6 +153,7 @@ function* handleEditTask({
             progress: progress ?? task.progress,
             dependencies: dependencies ?? task.dependencies,
             interesados_id: interesados_id ?? task.interesados_id,
+            usuarios_id: usuarios_id ?? task.usuarios_id ?? [],
             type: type ?? task.type,
             parent: parent_id ?? task.parent_id,
             is_critical: is_critical ?? task.is_critical,

@@ -1,0 +1,334 @@
+/* Timesheet CSS - Estilo GORU con UX inspirada en Sciforma / ProjectAdvantage */
+
+.timesheet-page {
+    padding: 24px;
+    background-color: #f8f9fa;
+    min-height: calc(100vh - 80px);
+}
+
+.timesheet-header {
+    background: #ffffff;
+    border-radius: 12px;
+    padding: 20px 24px;
+    box-shadow: 0 2px 12px rgba(10, 37, 64, 0.06);
+    margin-bottom: 24px;
+}
+
+.timesheet-title {
+    color: #f4742b;
+    font-size: 1.6rem;
+    font-weight: 700;
+    margin: 0;
+}
+
+.timesheet-subtitle {
+    color: #6c757d;
+    font-size: 0.875rem;
+    margin-top: 4px;
+}
+
+/* Barra de controles */
+.timesheet-controls {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: #ffffff;
+    border-radius: 10px;
+    padding: 16px 20px;
+    box-shadow: 0 2px 8px rgba(10, 37, 64, 0.04);
+    margin-bottom: 20px;
+}
+
+.timesheet-nav-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.timesheet-period-label {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: #0a2540;
+    min-width: 170px;
+    text-align: center;
+    text-transform: capitalize;
+}
+
+.timesheet-view-toggle .btn {
+    font-size: 0.85rem;
+    font-weight: 600;
+    padding: 6px 16px;
+}
+
+.timesheet-status-card {
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    background: #fdfaf6;
+    border: 1px solid #fce8db;
+    border-radius: 8px;
+    padding: 8px 16px;
+}
+
+.timesheet-hours-total {
+    font-size: 1.1rem;
+    font-weight: 700;
+    color: #0a2540;
+}
+
+/* Tabla Grid de Timesheet */
+.timesheet-table-container {
+    background: #ffffff;
+    border-radius: 12px;
+    box-shadow: 0 2px 12px rgba(10, 37, 64, 0.06);
+    overflow-x: auto;
+    border: 1px solid #e9ecef;
+}
+
+.timesheet-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.875rem;
+}
+
+.timesheet-table th,
+.timesheet-table td {
+    padding: 10px 12px;
+    vertical-align: middle;
+    border-bottom: 1px solid #edf2f7;
+    border-right: 1px solid #edf2f7;
+}
+
+.timesheet-table th:last-child,
+.timesheet-table td:last-child {
+    border-right: none;
+}
+
+/* Cabecera de fechas */
+.timesheet-header-row {
+    background: #f1f5f9;
+}
+
+.timesheet-th-activity {
+    min-width: 280px;
+    max-width: 340px;
+    font-weight: 700;
+    color: #0a2540;
+    position: sticky;
+    left: 0;
+    background: #f1f5f9;
+    z-index: 5;
+}
+
+.timesheet-th-effort {
+    min-width: 130px;
+    text-align: center;
+    font-weight: 700;
+    color: #0a2540;
+    background: #f1f5f9;
+}
+
+.timesheet-th-day {
+    min-width: 58px;
+    text-align: center;
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: #475569;
+    padding: 6px 4px !important;
+}
+
+.timesheet-th-day.weekend {
+    background: #f8fafc;
+    color: #94a3b8;
+}
+
+.timesheet-th-day.today {
+    background: #eff6ff;
+    color: #2563eb;
+    border-bottom: 2px solid #2563eb;
+}
+
+.timesheet-day-name {
+    text-transform: capitalize;
+    font-size: 0.72rem;
+}
+
+.timesheet-day-number {
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.timesheet-day-sum {
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: #f4742b;
+    margin-top: 2px;
+}
+
+/* Filas jerárquicas */
+.timesheet-row-project {
+    background: #f8fafc;
+    font-weight: 700;
+    color: #0a2540;
+}
+
+.timesheet-row-project td {
+    padding-top: 14px;
+    padding-bottom: 14px;
+    background: #f8fafc;
+}
+
+.timesheet-row-group {
+    background: #fafbfc;
+    font-weight: 600;
+    color: #334155;
+}
+
+.timesheet-row-task {
+    background: #ffffff;
+    transition: background 0.15s;
+}
+
+.timesheet-row-task:hover {
+    background: #f8fafc;
+}
+
+/* Columna Sticky de actividad */
+.timesheet-td-activity {
+    position: sticky;
+    left: 0;
+    background: #ffffff;
+    z-index: 4;
+}
+
+.timesheet-row-task:hover .timesheet-td-activity {
+    background: #f8fafc;
+}
+
+.timesheet-row-project .timesheet-td-activity {
+    background: #f8fafc;
+    z-index: 4;
+}
+
+.timesheet-row-group .timesheet-td-activity {
+    background: #fafbfc;
+    z-index: 4;
+}
+
+.timesheet-tree-toggle {
+    cursor: pointer;
+    user-select: none;
+    margin-right: 8px;
+    font-size: 0.8rem;
+    color: #64748b;
+    display: inline-block;
+    width: 16px;
+    text-align: center;
+}
+
+/* Celdas de inputs */
+.timesheet-input-cell {
+    padding: 4px 6px !important;
+    text-align: center;
+}
+
+.timesheet-input {
+    width: 100%;
+    min-width: 46px;
+    text-align: center;
+    border: 1px solid #cbd5e1;
+    border-radius: 6px;
+    padding: 6px 2px;
+    font-size: 0.85rem;
+    font-weight: 600;
+    color: #0f172a;
+    transition: all 0.2s;
+    background: #ffffff;
+}
+
+.timesheet-input:focus {
+    border-color: #f4742b;
+    box-shadow: 0 0 0 3px rgba(244, 116, 43, 0.18);
+    outline: none;
+}
+
+.timesheet-input.has-value {
+    background: #fff8f5;
+    border-color: #fca5a5;
+    color: #c2410c;
+}
+
+.timesheet-input.is-submitted {
+    background: #f1f5f9;
+    border-color: #e2e8f0;
+    color: #64748b;
+    cursor: not-allowed;
+}
+
+.timesheet-input.is-weekend {
+    background: #f8fafc;
+}
+
+.timesheet-input-wrapper {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+
+.timesheet-submitted-icon {
+    position: absolute;
+    top: -4px;
+    right: -2px;
+    font-size: 0.65rem;
+    color: #16a34a;
+}
+
+/* Botón Enviar Principal */
+.btn-submit-timesheet {
+    background: linear-gradient(135deg, #f4742b 0%, #e05a1a 100%);
+    color: #ffffff;
+    font-weight: 700;
+    border: none;
+    padding: 8px 22px;
+    border-radius: 8px;
+    box-shadow: 0 4px 14px rgba(244, 116, 43, 0.3);
+    transition: all 0.2s;
+}
+
+.btn-submit-timesheet:hover:not(:disabled) {
+    transform: translateY(-1px);
+    box-shadow: 0 6px 18px rgba(244, 116, 43, 0.4);
+    color: #ffffff;
+}
+
+.btn-submit-timesheet:disabled {
+    opacity: 0.65;
+    cursor: not-allowed;
+}
+
+/* Badges de esfuerzo */
+.timesheet-effort-badge {
+    background: #e0f2fe;
+    color: #0369a1;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    font-size: 0.78rem;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.timesheet-effort-badge.critical {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.timesheet-effort-badge.completed {
+    background: #dcfce7;
+    color: #15803d;
+}

@@ -159,6 +159,8 @@ const setGantt = async ({ task, projectId }) => {
             progress: task.progress || 0,
             dependencies: task.dependencies || [],
             interesados_id: task.interesados_id || [],
+            usuarios_id: task.usuarios_id || [],
+            horas_estimadas: task.horas_estimadas !== undefined && task.horas_estimadas !== null ? task.horas_estimadas : (duration * 8),
             status: task.status || 'pending',
             is_critical: task.is_critical || false,
             updated_at: new Date()
@@ -224,6 +226,8 @@ const syncGantt = async ({ tasks, projectId }) => {
                 progress: task.progress || 0,
                 dependencies: task.dependencies || [],
                 interesados_id: task.interesados_id || [],
+                usuarios_id: task.usuarios_id || [],
+                horas_estimadas: task.horas_estimadas !== undefined && task.horas_estimadas !== null ? task.horas_estimadas : (duration * 8),
                 status: task.status || 'pending',
                 is_critical: task.is_critical || false,
                 updated_at: new Date()
@@ -257,7 +261,7 @@ const getGantt = async ({ projectId }) => {
             where: { project_id: parseInt(projectId) },
             attributes: [
                 'id', 'name', 'description', 'start_date', 'end_date', 'duration',
-                'progress', 'status', 'dependencies', 'interesados_id',
+                'progress', 'status', 'dependencies', 'interesados_id', 'usuarios_id', 'horas_estimadas',
                 'parent_id', 'type', 'is_critical'
             ],
             order: [['start_date', 'ASC']]

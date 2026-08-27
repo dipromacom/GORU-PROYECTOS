@@ -20,8 +20,8 @@ export const types = {
     FETCH_GANTT_DASHBOARD_ERROR: "gantt/FETCH_GANTT_DASHBOARD_ERROR",
 
     CLEAR_TASKS: "gantt/CLEAR_TASKS",
-
     CLEAN: "gantt/CLEAN",
+    BATCH_UPDATE_TASKS: "gantt/BATCH_UPDATE_TASKS",
 };
 
 export const actions = {
@@ -35,13 +35,14 @@ export const actions = {
         projectId,
         dependencies = [],
         interesados_id = [],
+        usuarios_id = [],
         type = "task",
         parent_id = null,
         is_critical = false,
         duration = 0,
     }) => ({
         type: types.CREATE_TASK,
-        id: id || uuidv4(),
+        id,
         name,
         description,
         start,
@@ -50,6 +51,7 @@ export const actions = {
         projectId,
         dependencies,
         interesados_id,
+        usuarios_id,
         gantt_type: type,
         parent_id,
         is_critical,
@@ -65,6 +67,7 @@ export const actions = {
         progress,
         dependencies = [],
         interesados_id = [],
+        usuarios_id,
         type,
         parent_id,
         is_critical,
@@ -79,10 +82,16 @@ export const actions = {
         progress,
         dependencies,
         interesados_id,
+        usuarios_id,
         gantt_type: type,
         parent_id,
         is_critical,
         duration,
+    }),
+
+    batchUpdateTasks: (updatedTasks) => ({
+        type: types.BATCH_UPDATE_TASKS,
+        updatedTasks,
     }),
 
     deleteTask: ({ id, projectId }) => ({
@@ -134,7 +143,6 @@ export const selectors = {
 };
 
 const ganttReducer = (state = defaultState, action = {}) => {
-    //console.log("Reducer action:", action.type, action); 
     const {
         id,
         name,
@@ -145,6 +153,7 @@ const ganttReducer = (state = defaultState, action = {}) => {
         tasks,
         dependencies,
         interesados_id,
+        usuarios_id,
         gantt_type,
         parent_id,
         is_critical,
@@ -162,6 +171,7 @@ const ganttReducer = (state = defaultState, action = {}) => {
                 progress: progress || 0,
                 dependencies: dependencies || [],
                 interesados_id: interesados_id || [],
+                usuarios_id: usuarios_id || [],
                 type: gantt_type || "task",
                 parent_id: parent_id || null,
                 is_critical: !!is_critical,
@@ -193,6 +203,8 @@ const ganttReducer = (state = defaultState, action = {}) => {
                             dependencies: dependencies ?? t.dependencies ?? [],
                             interesados_id:
                                 interesados_id ?? t.interesados_id ?? [],
+                            usuarios_id:
+                                usuarios_id ?? t.usuarios_id ?? [],
                             type: gantt_type ?? t.type ?? "task",
                             parent_id:
                                 parent_id !== undefined
@@ -206,6 +218,23 @@ const ganttReducer = (state = defaultState, action = {}) => {
                         }
                         : t
                 ),
+            };
+        }
+
+        case types.BATCH_UPDATE_TASKS: {
+            const updatesMap = new Map((action.updatedTasks || []).map(t => [String(t.id), t]));
+            return {
+                ...state,
+                tasks: state.tasks.map((t) => {
+                    const update = updatesMap.get(String(t.id));
+                    if (update) {
+                        return {
+                            ...t,
+                            ...update,
+                        };
+                    }
+                    return t;
+                }),
             };
         }
 
@@ -257,7 +286,6 @@ const ganttReducer = (state = defaultState, action = {}) => {
             };
 
         case types.FETCH_GANTT_DASHBOARD_SUCCESS:
-            // action.payload vendrá con la lista de tareas de todos los proyectos del usuario
             return {
                 ...state,
                 isLoading: false,
@@ -273,7 +301,7 @@ const ganttReducer = (state = defaultState, action = {}) => {
 
         case types.CLEAN:
             return defaultState;
-        
+
         case types.CLEAR_TASKS:
             return {
                 ...state,

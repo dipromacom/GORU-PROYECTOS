@@ -51,6 +51,14 @@ module.exports = (db, Sequelize) => {
             type: Sequelize.JSONB,
             defaultValue: []
         },
+        usuarios_id: {
+            type: Sequelize.JSONB,
+            defaultValue: []
+        },
+        horas_estimadas: {
+            type: Sequelize.DECIMAL(8, 2),
+            allowNull: true
+        },
         status: {
             type: Sequelize.STRING(50),
             defaultValue: 'pending'

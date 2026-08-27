@@ -512,3 +512,11 @@ export const getGoogleConnectUrl = () => {
   return `${baseUrl}/api/auth/google/connect?token=${encodeURIComponent(userToken)}`;
 };
 export const getProgramasLista = () => apiWithToken.get('/proyecto/programas/lista');
+
+// --- TIMESHEET (HOJA DE TIEMPOS) ---
+export const getMyTimesheet = (desde, hasta) =>
+  apiWithToken.get('/timesheet/my-sheet', { params: { desde, hasta } });
+export const postSaveTimesheet = (payload) =>
+  apiWithToken.post('/timesheet/save', payload);
+export const postSubmitTimesheet = (payload) =>
+  apiWithToken.post('/timesheet/submit', payload);

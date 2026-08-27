@@ -55,6 +55,7 @@ const resultadoAnalisis = require('./routes/resultado-analisis-impacto');
 const Chat = require('./routes/chat');
 const MadurezDireccionProyectos = require('./routes/madurez-direccion-proyectos');
 const AuthGoogle = require('./routes/auth-google');
+const Timesheet = require('./routes/timesheet');
 
 app.use('/api', TipoTelefonoRouter);
 app.use('/api', TipoDireccionRouter);
@@ -89,6 +90,7 @@ app.use('/api', resultadoAnalisis);
 app.use('/api', Chat);
 app.use('/api', MadurezDireccionProyectos);
 app.use('/api', AuthGoogle);
+app.use('/api', Timesheet);
 
 app.get('/', (req, res) => {
   res.send('Hello from Goru!!!');
